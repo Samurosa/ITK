@@ -1,49 +1,92 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"math"
+	"math/rand/v2"
 )
 
-type Shape interface {
-	Area() float64
-	Perimeter() float64
+type PaymentProcessor interface {
+	ProcessPayment(amount float64) error
 }
 
-type Circle struct {
-	Radius float64
+type Sber struct {
+	APIKey string
 }
 
-type Rectangle struct {
-	Width float64
-	Hight float64
+type Tbank struct {
+	APIKey string
 }
 
-func (c Circle) Area() float64 {
-	return math.Pi * math.Pow(c.Radius, 2)
+type Alfabank struct {
+	APIKey string
 }
 
-func (c Circle) Perimeter() float64 {
-	return math.Pi * 2 * c.Radius
+var (
+	ErrInvalidAmount = errors.New("некорректная сумма платежа")
+
+	ErrProviderUnavailable = errors.New("провайдер недоступен")
+
+	ErrInvalidAPIkey = errors.New("неизвестный провайдер")
+)
+
+func (b Sber) ProcessPayment(a float64) error {
+	return process(a, b.APIKey)
 }
 
-func (r Rectangle) Area() float64 {
-	return r.Width * r.Hight
+func (b Alfabank) ProcessPayment(a float64) error {
+	return process(a, b.APIKey)
 }
 
-func (r Rectangle) Perimeter() float64 {
-	return 2 * (r.Width + r.Hight)
+func (b Tbank) ProcessPayment(a float64) error {
+	return process(a, b.APIKey)
 }
 
-func Calculate(s Shape) {
-	fmt.Println(s.Area())
-	fmt.Println(s.Perimeter())
+func process(a float64, api string) error {
+	if api == "" {
+		return ErrInvalidAPIkey
+	}
+
+	if a < 0 {
+		return ErrInvalidAmount
+	}
+
+	err := checkProviderUnavailable()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
+func checkProviderUnavailable() error {
+	r := rand.Float64()
+	if r < 0.2 {
+		return ErrProviderUnavailable
+	}
+	return nil
+}
 func main() {
-	circle := Circle{Radius: 5}
-	rectangle := Rectangle{Width: 14, Hight: 5}
 
-	Calculate(circle)
-	Calculate(rectangle)
+	processor := []PaymentProcessor{
+		Tbank{APIKey: "ASDASDqw123sad1"},
+		Alfabank{APIKey: "123213asdasd1213"},
+		Sber{APIKey: "qweqwesadasd12321"},
+		Sber{APIKey: ""},
+	}
+
+	for _, p := range processor {
+		err := p.ProcessPayment(111)
+		if err != nil {
+			switch t := p.(type) {
+			case Sber:
+				fmt.Println("Sber error:", t.APIKey, err)
+			case Alfabank:
+				fmt.Println("Alfabank error:", t.APIKey, err)
+			case Tbank:
+				fmt.Println("Tbank error:", t.APIKey, err)
+			}
+		}
+	}
+
 }
