@@ -3,90 +3,115 @@ package main
 import (
 	"errors"
 	"fmt"
-	"math/rand/v2"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
-type PaymentProcessor interface {
-	ProcessPayment(amount float64) error
+type Device interface {
+	UpdateOS(version string) error
+	GetInfo() string
 }
 
-type Sber struct {
-	APIKey string
+type Smartfone struct {
+	OSVersion string
+	Model     string
 }
 
-type Tbank struct {
-	APIKey string
+type Laptop struct {
+	OSVersion string
+	Model     string
 }
 
-type Alfabank struct {
-	APIKey string
+type SmartWatch struct {
+	OSVersion string
+	Model     string
 }
 
 var (
-	ErrInvalidAmount = errors.New("некорректная сумма платежа")
-
-	ErrProviderUnavailable = errors.New("провайдер недоступен")
-
-	ErrInvalidAPIkey = errors.New("неизвестный провайдер")
+	ErrUnsupported = errors.New("обновление недоступно")
 )
 
-func (b Sber) ProcessPayment(a float64) error {
-	return process(a, b.APIKey)
-}
+func (d *Smartfone) UpdateOS(version string) error {
+	re := regexp.MustCompile(`\d+(\.\d+)?`)
+	match := re.FindString(d.OSVersion)
 
-func (b Alfabank) ProcessPayment(a float64) error {
-	return process(a, b.APIKey)
-}
+	curentVersion, _ := strconv.ParseFloat(match, 64)
 
-func (b Tbank) ProcessPayment(a float64) error {
-	return process(a, b.APIKey)
-}
-
-func process(a float64, api string) error {
-	if api == "" {
-		return ErrInvalidAPIkey
+	if curentVersion >= 12.0 {
+		return ErrUnsupported
 	}
 
-	if a < 0 {
-		return ErrInvalidAmount
-	}
-
-	err := checkProviderUnavailable()
-	if err != nil {
-		return err
-	}
-
+	d.OSVersion = version
 	return nil
 }
 
-func checkProviderUnavailable() error {
-	r := rand.Float64()
-	if r < 0.2 {
-		return ErrProviderUnavailable
+func (d *Laptop) UpdateOS(version string) error {
+	IsCorectVersion := strings.Contains(version, "Windows")
+
+	if !IsCorectVersion {
+		return ErrUnsupported
 	}
+
+	d.OSVersion = version
 	return nil
+}
+
+func (d *SmartWatch) UpdateOS(version string) error {
+	count := len([]rune(version))
+
+	if count < 5 {
+		return ErrUnsupported
+	}
+
+	d.OSVersion = version
+	return nil
+}
+
+func (d Smartfone) GetInfo() string {
+
+	return getinfo(d.OSVersion, d.Model)
+
+}
+
+func (d Laptop) GetInfo() string {
+
+	return getinfo(d.OSVersion, d.Model)
+
+}
+
+func (d SmartWatch) GetInfo() string {
+
+	return getinfo(d.OSVersion, d.Model)
+
+}
+
+func getinfo(os string, model string) string {
+	t := fmt.Sprintf("OS version: %s Model name: %s", os, model)
+	return t
 }
 func main() {
 
-	processor := []PaymentProcessor{
-		Tbank{APIKey: "ASDASDqw123sad1"},
-		Alfabank{APIKey: "123213asdasd1213"},
-		Sber{APIKey: "qweqwesadasd12321"},
-		Sber{APIKey: ""},
+	devices := []Device{
+		&Smartfone{OSVersion: "Android 12.0", Model: "Samsung"},
+		&Laptop{OSVersion: "Linux Ubuntu", Model: "Lenovo 123123"},
+		&SmartWatch{OSVersion: "Fenix 5 pro", Model: "Fuu"},
 	}
 
-	for _, p := range processor {
-		err := p.ProcessPayment(111)
+	newVers := []string{
+		"Android 12.3",
+		"Window 11",
+		"hhhh",
+	}
+
+	for i, p := range devices {
+		fmt.Println(p.GetInfo())
+
+		err := p.UpdateOS(newVers[i])
 		if err != nil {
-			switch t := p.(type) {
-			case Sber:
-				fmt.Println("Sber error:", t.APIKey, err)
-			case Alfabank:
-				fmt.Println("Alfabank error:", t.APIKey, err)
-			case Tbank:
-				fmt.Println("Tbank error:", t.APIKey, err)
-			}
+			fmt.Println(err)
 		}
+		fmt.Println(p.GetInfo())
 	}
 
 }
