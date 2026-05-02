@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
-	"strings"
 )
 
 type pair struct {
@@ -13,38 +11,38 @@ type pair struct {
 
 var pairs []pair
 
-// WordFrequency принимает строку текста и возвращает map с частотой слов.
-func WordFrequency(text string) map[string]int {
-	value := strings.Fields(text)
-	counter := make(map[string]int)
-	for _, v := range value {
-		counter[v]++
+// FilterByValue возвращает новую map, содержащую только элементы,
+// значения которых присутствуют в allowedValues.
+func FilterByValue(m map[int]string, allowedValues []string) map[int]string {
+	// Преобразовать allowedValues в set для быстрой проверки
+	whiteList := make(map[string]struct{})
+	for _, a := range allowedValues {
+		whiteList[a] = struct{}{}
 	}
-	return counter
+	// Создать новую map и заполнить её подходящими элементами
+	n := make(map[int]string)
+
+	for key, value := range m {
+		if _, ok := whiteList[value]; ok {
+			n[key] = value
+		}
+	}
+	return n
 }
 
-// PrintWordFrequency выводит частотный анализ слов, отсортированный по убыванию частоты.
-func PrintWordFrequency(freqMap map[string]int) {
-	// TODO: Реализуйте функцию.
+// InvertMap меняет ключи и значения местами.
+// Если значения исходной map не уникальны, возвращает ошибку.
+func InvertMap(m map[string]int) (map[int]string, error) {
+	// Проверять уникальность значений
+	// При обнаружении дубликата вернуть ошибку с описанием конфликта
+	invetredMap := make(map[int]string)
+	for key, value := range m {
+		if _, ok := invetredMap[value]; ok {
+			return nil, fmt.Errorf("duplicate value: %d", value)
+		}
 
-	for key, count := range freqMap {
-		pairs = append(pairs, pair{word: key, amount: count})
-
+		invetredMap[value] = key
 	}
 
-	sort.Slice(pairs, func(i, j int) bool {
-		return pairs[i].amount > pairs[j].amount
-	})
-
-	for _, p := range pairs {
-		fmt.Println(p.word, p.amount)
-	}
-}
-
-func main() {
-
-	text := "golang is great and golang is fast"
-
-	PrintWordFrequency(WordFrequency(text))
-
+	return invetredMap, nil
 }
