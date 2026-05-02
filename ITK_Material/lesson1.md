@@ -623,46 +623,58 @@ package main
 ```
 import "fmt"
 
+// создается структура с переменной целочисленного типа
 type MyStruct struct {
-	MyInt int
+    MyInt int
 }
 
+// создается новое значение структуры и возращается при вызове функции
 func func1() MyStruct {
-	return MyStruct{MyInt: 1}
+    return MyStruct{MyInt: 1}
 }
 
+// возвращается указатель на структуру
 func func2() *MyStruct {
-	return &MyStruct{}
+    return &MyStruct{}
 }
 
+// принимается указатель и изменяет значение оригинальной структуры
 func func3(s *MyStruct) {
-	s.MyInt = 333
+    s.MyInt = 333
 }
 
+// принимается копия структуры и изменяется внутри метода метод ничего не возращает поэтому он бесмысленный(ничего не изменяет в основной структуре и не возвращает никаких значений)
 func func4(s MyStruct) {
-	s.MyInt = 923
+    s.MyInt = 923
 }
 
+// возвращает пустой указатель на структуру
 func func5() *MyStruct {
-	return nil
+    return nil
 }
 
 func main() {
-	ms1 := func1()
-	fmt.Println(ms1.MyInt)
+    ms1 := func1()
+    fmt.Println(ms1.MyInt)
+    //MyInt = 1
 
-	ms2 := func2()
-	fmt.Println(ms2.MyInt)
+    ms2 := func2()
+    fmt.Println(ms2.MyInt)
+    //MyInt = 0
 
-	func3(ms2)
-	fmt.Println(ms2.MyInt)
+    func3(ms2)
+    fmt.Println(ms2.MyInt)
+    //MyInt = 333
 
-	func4(ms1)
-	fmt.Println(ms1.MyInt)
+    func4(ms1)
+    fmt.Println(ms1.MyInt)
+    //MyInt = 1
 
-	ms5 := func5()
-	fmt.Println(ms5.MyInt)
+    ms5 := func5()
+    fmt.Println(ms5.MyInt)
+    //panic ошибка с пустым указателем (nil pointer)
 }
+
 ```
 --------------------------------------------------------------------
 # Maps
@@ -710,6 +722,60 @@ func main() {
 
 }
 ```
+
+
+```golang
+package main
+
+import "fmt"
+
+var register map[string]int
+
+func init() {
+
+    register = make(map[string]int)
+}
+
+// Добавление записей
+func AddPerson(name string, age int) {
+    // Реализуйте добавление записи
+    register[name] = age
+}
+
+// Получение возраста
+func GetAge(name string) int {
+    // Реализуйте получение возраста
+    return register[name]
+}
+
+// Удаление записи
+func DeletePerson(name string) {
+    // Реализуйте удаление
+    delete(register, name)
+}
+
+// Вывод всех записей
+func PrintAll() {
+    // Реализуйте вывод всех записей
+    for name, age := range register {
+        fmt.Println(name, age)
+    }
+}
+
+func main() {
+    // Тестирование функций
+    AddPerson("Staniclav", 18)
+    AddPerson("Georgiy", 25)
+    AddPerson("Maria", 24)
+
+    name := "Staniclav"
+    fmt.Printf("%s %d years old\n", name, GetAge(name))
+
+    DeletePerson("Georgiy")
+
+    PrintAll()
+}
+```
 -----------------
 
 # 2. Частотный анализ слов
@@ -733,21 +799,48 @@ func main() {
 ```
 package main
 
+import (
+    "fmt"
+    "sort"
+    "strings"
+)
+
+type pair struct {
+    word   string
+    amount int
+}
+
+var pairs []pair
+
 // WordFrequency принимает строку текста и возвращает map с частотой слов.
 func WordFrequency(text string) map[string]int {
-	// TODO: Реализуйте функцию.
-	return nil
+    value := strings.Fields(text)
+    counter := make(map[string]int)
+    for _, v := range value {
+        counter[v]++
+    }
+    return counter
 }
 
 // PrintWordFrequency выводит частотный анализ слов, отсортированный по убыванию частоты.
 func PrintWordFrequency(freqMap map[string]int) {
-	// TODO: Реализуйте функцию.
+    for key, count := range freqMap {
+        pairs = append(pairs, pair{word: key, amount: count})
+    }
+  
+    sort.Slice(pairs, func(i, j int) bool {
+        return pairs[i].amount > pairs[j].amount
+    })
+
+    for _, p := range pairs {
+        fmt.Println(p.word, p.amount)
+    }
 }
 
 func main() {
 
-	text := "golang is great and golang is fast"
-
+    text := "golang is great and golang is fast"
+    PrintWordFrequency(WordFrequency(text))
 }
 ```
 
