@@ -969,6 +969,91 @@ type Vehicle interface {
 	GetInfo() string
 }
 ```
+
+```golang
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var (
+    ErrEngineAlreadyRunning = errors.New("двигатель уже работает")
+    ErrEngineOff            = errors.New("двигатель не запущен")
+    ErrLowBattery           = errors.New("низкий заряд батареи")
+)
+
+type Vehicle interface {
+    StartEngine() error
+    StopEngine() error
+    GetInfo() string
+}
+
+type Car struct {
+    Brand    string
+    EngineOn bool
+}
+
+func (c Car) Honk() string {
+    return "Beep beep!"
+}
+
+func (c Car) GetEngineStatus() bool {
+    return c.EngineOn
+}
+
+func (c *Car) StartEngine() error {
+    if c.EngineOn == true {
+        return ErrEngineAlreadyRunning
+    }
+    c.EngineOn = true
+    return nil
+}
+
+func (c *Car) StopEngine() error {
+    if c.EngineOn == false {
+        return ErrEngineOff
+    }
+    c.EngineOn = false
+    return nil
+}
+
+func (c Car) GetInfo() string {
+
+    return fmt.Sprintf("Марка машины: %s Состояние двигателя: %t", c.Brand, c.EngineOn)
+}
+
+type Truck struct {
+    Car
+    CargoCapacity float64
+}
+
+func (t Truck) Honk() string {
+    return "Honk Honk!"
+}
+
+func (t Truck) GetCargoCapacity() float64 {
+    return t.CargoCapacity
+}
+
+type ElectricCar struct {
+    Car
+    BatteryLevel int
+}
+
+func (ecar *ElectricCar) StartEngine() error {
+    if ecar.BatteryLevel < 5 {
+        return ErrLowBattery
+    }
+    ecar.EngineOn = true
+    return nil
+}
+
+func (ecar ElectricCar) GetBatteryLevel() int {
+    return ecar.BatteryLevel
+}
+```
 -------------
 
 # 2. Система управления пользователями и ролями (ООП в Go)
