@@ -1071,7 +1071,7 @@ func (ecar ElectricCar) GetBatteryLevel() int {
     - **Обычный пользователь** (`BasicUser`):
         - Может читать данные (`read`), но не может их изменять.
     - **Модератор** (`Moderator`):
-        - Наследует права `BasicUser`.
+	        - Наследует права `BasicUser`.
         - Добавляет право `edit` (редактирование данных).
         - Может банить пользователей (`ban_user`).
     - **Администратор** (`Admin`):
@@ -1083,7 +1083,7 @@ func (ecar ElectricCar) GetBatteryLevel() int {
 - Поля, хранящие права доступа, должны быть **инкапсулированы**.
 - Используйте **композицию** для наследования прав.
 - Для каждого типа пользователя реализуйте:
-    - Конструктор `NewAdmin(username string)`,`NewModerator(username string)`,`NewBasicUser(username string)`.
+	    - Конструктор `NewAdmin(username string)`,`NewModerator(username string)`,`NewBasicUser(username string)`.
     - Уникальные права доступа.
 
 ```
@@ -1094,6 +1094,77 @@ type User interface {
 	GetUsername() string
 	HasPermission(permission string) bool
 	GetRole() string
+}
+```
+
+```
+type User interface {
+    GetUsername() string
+    HasPermission(permission string) bool
+    GetRole() string
+}
+
+type BasicUser struct {
+    username   string
+    role       string
+    permission map[string]struct{}
+}
+
+type Moderator struct {
+    BasicUser
+}
+
+type Admin struct {
+    Moderator
+}
+
+func NewBasicUser(username string) BasicUser {
+    return BasicUser{
+        username: username,
+        role:     "User",
+        permission: map[string]struct{}{
+            "read": {},
+        },
+    }
+}
+
+func (b BasicUser) GetUsername() string {
+    return b.username
+}
+  
+func (b BasicUser) HasPermission(permission string) bool {
+    _, ok := b.permission[permission]
+    return ok
+}
+
+func (b BasicUser) GetRole() string {
+    return b.role
+}
+
+func NewModerator(username string) Moderator {
+    moderator := NewBasicUser(username)
+    
+    moderator.role = "Moderator"
+    
+    moderator.permission["edit"] = struct{}{}
+    moderator.permission["ban_user"] = struct{}{}
+
+    return Moderator{
+        BasicUser: moderator,
+    }
+}
+
+func NewAdmin(username string) Admin {
+    admin := NewModerator(username)
+
+    admin.BasicUser.role = "admin"
+    
+    admin.BasicUser.permission["delete"] = struct{}{}
+    admin.BasicUser.permission["manage_roles"] = struct{}{}
+
+    return Admin{
+        Moderator: admin,
+    }
 }
 ```
 ---------------------------------------------------------------

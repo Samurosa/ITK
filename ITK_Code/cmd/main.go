@@ -1,134 +1,97 @@
 package main
 
-import (
-	"errors"
-	"fmt"
-)
+import "fmt"
 
-var (
-	ErrEngineAlreadyRunning = errors.New("двигатель уже работает")
-	ErrEngineOff            = errors.New("двигатель не запущен")
-	ErrLowBattery           = errors.New("низкий заряд батареи")
-)
-
-type Vehicle interface {
-	StartEngine() error
-	StopEngine() error
-	GetInfo() string
+// Базовый интерфейс
+type User interface {
+	GetUsername() string
+	HasPermission(permission string) bool
+	GetRole() string
 }
 
-type Car struct {
-	Brand    string
-	EngineOn bool
+type BasicUser struct {
+	username   string
+	role       string
+	permission map[string]struct{}
 }
 
-func (c Car) Honk() string {
-	return "Beep beep!"
+type Moderator struct {
+	BasicUser
 }
 
-func (c Car) GetEngineStatus() bool {
-	return c.EngineOn
+type Admin struct {
+	Moderator
 }
 
-func (c *Car) StartEngine() error {
-	if c.EngineOn == true {
-		return ErrEngineAlreadyRunning
+func NewBasicUser(username string) BasicUser {
+	return BasicUser{
+		username: username,
+		role:     "User",
+		permission: map[string]struct{}{
+			"read": {},
+		},
 	}
-	c.EngineOn = true
-	return nil
 }
-func (c *Car) StopEngine() error {
-	if c.EngineOn == false {
-		return ErrEngineOff
+
+func (b BasicUser) GetUsername() string {
+	return b.username
+}
+
+func (b BasicUser) HasPermission(permission string) bool {
+	_, ok := b.permission[permission]
+	return ok
+}
+
+func (b BasicUser) GetRole() string {
+	return b.role
+}
+
+func NewModerator(username string) Moderator {
+	moderator := NewBasicUser(username)
+
+	moderator.role = "Moderator"
+	moderator.permission["edit"] = struct{}{}
+	moderator.permission["ban_user"] = struct{}{}
+
+	return Moderator{
+		BasicUser: moderator,
 	}
-	c.EngineOn = false
-	return nil
-}
-func (c Car) GetInfo() string {
-	return fmt.Sprintf("Марка машины: %s Состояние двигателя: %t", c.Brand, c.EngineOn)
 }
 
-type Truck struct {
-	Car
-	CargoCapacity float64
-}
+func NewAdmin(username string) Admin {
+	admin := NewModerator(username)
 
-func (t Truck) Honk() string {
-	return "Honk Honk!"
-}
+	admin.BasicUser.role = "admin"
+	admin.BasicUser.permission["delete"] = struct{}{}
+	admin.BasicUser.permission["manage_roles"] = struct{}{}
 
-func (t Truck) GetCargoCapacity() float64 {
-	return t.CargoCapacity
-}
-
-type ElectricCar struct {
-	Car
-	BatteryLevel int
-}
-
-func (ecar *ElectricCar) StartEngine() error {
-	if ecar.BatteryLevel < 5 {
-		return ErrLowBattery
+	return Admin{
+		Moderator: admin,
 	}
-	ecar.EngineOn = true
-	return nil
-}
-
-func (ecar ElectricCar) GetBatteryLevel() int {
-	return ecar.BatteryLevel
 }
 
 func main() {
-
-	// ===== Car =====
-	car := &Car{Brand: "Lada"}
-
-	err := car.StartEngine()
-	fmt.Println("Car start:", err == nil, car.GetEngineStatus())
-
-	err = car.StartEngine()
-	fmt.Println("Car double start error:", err == ErrEngineAlreadyRunning)
-
-	err = car.StopEngine()
-	fmt.Println("Car stop:", err == nil, !car.GetEngineStatus())
-
-	err = car.StopEngine()
-	fmt.Println("Car double stop error:", err == ErrEngineOff)
-
-	fmt.Println("Car honk:", car.Honk())
-
-	// ===== Truck =====
-	truck := &Truck{
-		Car:           Car{Brand: "Sitrak"},
-		CargoCapacity: 20,
+	users := []User{
+		NewBasicUser("user1"),
+		NewModerator("mod1"),
+		NewAdmin("admin1"),
 	}
 
-	fmt.Println("Truck honk:", truck.Honk())
-	fmt.Println("Truck capacity:", truck.GetCargoCapacity())
-
-	// ===== ElectricCar =====
-	tesla := &ElectricCar{
-		Car:          Car{Brand: "Tesla"},
-		BatteryLevel: 3,
+	permissionsToCheck := []string{
+		"read",
+		"edit",
+		"ban_user",
+		"delete",
+		"manage_roles",
 	}
 
-	err = tesla.StartEngine()
-	fmt.Println("Electric low battery error:", err == ErrLowBattery)
+	for _, u := range users {
+		fmt.Println("------")
+		fmt.Println("Username:", u.GetUsername())
+		fmt.Println("Role:", u.GetRole())
 
-	tesla.BatteryLevel = 10
-	err = tesla.StartEngine()
-	fmt.Println("Electric start success:", err == nil, tesla.GetEngineStatus())
-
-	// ===== Полиморфизм =====
-	vehicles := []Vehicle{
-		&Car{Brand: "BMW"},
-		&Truck{Car: Car{Brand: "MAN"}},
-		&ElectricCar{Car: Car{Brand: "Tesla"}, BatteryLevel: 10},
-	}
-
-	for _, v := range vehicles {
-		err := v.StartEngine()
-		fmt.Println("Start via interface:", err == nil)
-		fmt.Println(v.GetInfo())
+		for _, p := range permissionsToCheck {
+			fmt.Printf("Has %-15s: %t\n", p, u.HasPermission(p))
+		}
 	}
 }
