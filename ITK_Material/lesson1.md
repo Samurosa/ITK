@@ -375,7 +375,7 @@ type Device interface {
 }
 _________
 
-```golang
+```go
 package main
 
   
@@ -724,7 +724,7 @@ func main() {
 ```
 
 
-```golang
+```go
 package main
 
 import "fmt"
@@ -796,7 +796,7 @@ func main() {
     - Принимает `map[string]int` с данными о частоте слов.
     - Выводит слова и их количество, отсортированные по убыванию частоты.
 
-```
+```go
 package main
 
 import (
@@ -863,7 +863,7 @@ func main() {
 - Исходная map не должна изменяться.
 - Эффективная проверка значений (используйте set для оптимизации)`make(map[string]struct{}`.
 
-```
+```go
 package main
 
 import (
@@ -970,7 +970,7 @@ type Vehicle interface {
 }
 ```
 
-```golang
+```go
 package main
 
 import (
@@ -1097,7 +1097,7 @@ type User interface {
 }
 ```
 
-```
+```go
 type User interface {
     GetUsername() string
     HasPermission(permission string) bool
@@ -1184,15 +1184,20 @@ type account struct {
 }
 
 func main() {
+// инициилизуруем срез с длиной 0 и емкостью 2
 	s1 := make([]account, 0, 2)
+// добавлеяем в s1 срез структуру
 	s1 = append(s1, account{})
+// создаем новую переменную копирующую срез s1 и добавлем в скопираванный срез s2 еще одну структуру
 	s2 := append(s1, account{})
+// создаем переменную которая ссылается на первый объект в срезе s1 (account{})
 	acc := &s2[0]
+// задаем значение 
 	acc.value = 100
-	fmt.Println(s1, s2) //
+	fmt.Println(s1, s2) //[{100}] [{100} {0}]
 	s1 = append(s1, account{})
 	acc.value += 100
-	fmt.Println(s1, s2) //
+	fmt.Println(s1, s2) ////[{200} {0}] [{200} {0}]
 }
 ```
 -----
@@ -1205,17 +1210,17 @@ import "fmt"
 func main() {
 	slice := make([]string, 0, 5)
 	slice = append(slice, "0", "1", "2", "3")
-	fmt.Println(slice, len(slice), cap(slice)) //
+	fmt.Println(slice, len(slice), cap(slice)) //[0 1 2 3] 4 5
 	addToSlice1(slice)
-	fmt.Println(slice, len(slice), cap(slice)) //
+	fmt.Println(slice, len(slice), cap(slice)) //[0 1 2 one] 4 5
 	addToSlice2(slice)
-	fmt.Println(slice, len(slice), cap(slice)) //
+	fmt.Println(slice, len(slice), cap(slice)) //[0 1 2 one] 4 5
 }
-
+// создает срез слайса [1 2] добавляет one но не возвращает его и поэтому 3 заменяет его на one, длина и капасити не меняется
 func addToSlice1(slice []string) {
 	slice = append(slice[1:3], "one")
 }
-
+//  ничего не делает
 func addToSlice2(slice []string) {
 	slice = append(slice, "two")
 }
@@ -1232,7 +1237,8 @@ func main() {
 	a1 = append(a1, []int{1, 2, 3, 4, 5}...)
 	a2 := append(a1, 6)
 	a3 := append(a1, 7)
-	fmt.Println(a1, a2, a3) //
+	fmt.Println(a1, a2, a3) //[0 1 2 3 4 5] [0 1 2 3 4 5 7] 
+	[0 1 2 3 4 5 7]
 }
 ```
 ---
@@ -1246,8 +1252,8 @@ func main() {
 	a := []int{1, 2, 3}
 	b := a[:2]
 	b = append(b, 4)
-	fmt.Println(b) //
-	fmt.Println(a) //
+	fmt.Println(b) //[1 2 4]
+	fmt.Println(a) //[1 2 4]
 }
 ```
 -----
@@ -1261,8 +1267,8 @@ func main() {
 	arr := []int{1, 2, 3}
 	src := arr[:1]
 	foo(src)
-	fmt.Println(src) //
-	fmt.Println(arr) //
+	fmt.Println(src) //[1]
+	fmt.Println(arr) //[1 5 3]
 }
 
 func foo(src []int) {
@@ -1280,7 +1286,7 @@ func main() {
 	arr := [5]int{1, 2, 3, 4, 5}
 	bar := arr[1:3]
 	bar = append(bar, 10, 11, 12, 13)
-	fmt.Println(arr, bar) //
+	fmt.Println(arr, bar) //[1 2 3 4 5] [2 3 10 11 12 13]
 }
 ```
 -----
@@ -1293,9 +1299,9 @@ import "fmt"
 func main() {
 	a := []string{"a", "b", "c"}
 	b := a[1:2]
-	fmt.Println(b, cap(b), len(b)) //
+	fmt.Println(b, cap(b), len(b)) //[b] 2 1
 	b[0] = "q"
-	fmt.Println(a) //
+	fmt.Println(a) //[a q c]
 }
 ```
 ---
@@ -1309,13 +1315,13 @@ import (
 
 func main() {
 	nums := make([]int, 1, 3)
-	fmt.Println(nums) //
+	fmt.Println(nums) //[0]
 	appendSlice(nums, 1)
-	fmt.Println(nums) //
+	fmt.Println(nums) //[0]
 	copySlice(nums, []int{2, 3})
-	fmt.Println(nums) //
+	fmt.Println(nums) //[2]
 	mutateSlice(nums, 1, 4)
-	fmt.Println(nums) //
+	fmt.Println(nums) //out of range
 }
 
 func appendSlice(sl []int, val int) {
@@ -1342,7 +1348,7 @@ import (
 func main() {
 	slice := make([]int, 3, 4)
 	appendingSlice(slice[:1])
-	fmt.Println(slice) //
+	fmt.Println(slice) //[0 1 0]
 }
 
 func appendingSlice(slice []int) {
@@ -1377,6 +1383,10 @@ func main() {
 	}
 }
 ```
+не понял что тут нужно исправлять
+сначала мы создаем слайс с указателями типа инт 
+после чего заполняем данными и выводим
+
 ----
 ### 2.
 ```
@@ -1402,6 +1412,36 @@ func main() {
 	fmt.Println(strings.Join(someSlice, ""))
 }
 ```
+
+```go
+func chengeSlice(arr []string) {
+
+    arr[0] = "Goodbye"
+
+}
+
+  
+
+func appendSomeData(arr []string) []string {
+
+    return append(arr, "!")
+
+}
+
+  
+
+func main() {
+
+    someSlice := []string{"Hello", "World"}
+
+    chengeSlice(someSlice)
+
+    someSlice = appendSomeData(someSlice)
+
+    fmt.Println(strings.Join(someSlice, " "))
+
+}
+```
 ----
 ### 3.
 ```
@@ -1420,6 +1460,28 @@ func main() {
 	fmt.Println(testSlice)
 }
 ```
+
+```go
+func test(testSlice []string) []string {
+
+    return append(testSlice, "Пока")
+
+}
+
+func main() {
+
+    testSlice := make([]string, 0, 3)
+
+    testSlice = append(testSlice, "Привет")
+
+    testSlice = append(testSlice, "Привет")
+
+    testSlice = test(testSlice)
+
+    fmt.Println(strings.Join(testSlice, " "))
+
+}
+```
 ----
 ### 4.
 ```
@@ -1434,6 +1496,43 @@ func main() {
 		second[i] = &v
 	}
 	fmt.Println(*second[0], *second[1])
+}
+```
+```go
+func main() {
+
+    first := []int{10, 20, 30, 40}
+
+    second := make([]*int, len(first))
+
+    for i, v := range first {
+
+        second[i] = &v
+
+    }
+
+    fmt.Println(DerefSlice(second))
+
+}
+
+  
+
+func DerefSlice(sl []*int) []int {
+
+    res := make([]int, 0, len(sl))
+
+    for _, v := range sl {
+
+        if v != nil {
+
+            res = append(res, *v)
+
+        }
+
+    }
+
+    return res
+
 }
 ```
 ----
@@ -1463,6 +1562,45 @@ func mutareSlice(slice []string) {
 	slice[0] = "vasya"
 }
 ```
+
+```go
+func main() {
+
+    slice := make([]string, 3, 4)
+
+    fmt.Println(slice) //["" "" ""_]
+
+    slice2 := slice[:1]
+
+    appendSlice(slice2)
+
+    fmt.Println(slice) //["" "privet" ""_]
+
+  
+
+    mutareSlice(slice)
+
+    fmt.Println(slice) //["vasya" "" ""_]
+
+  
+
+}
+
+  
+
+func appendSlice(slice []string) {
+
+    slice = append(slice, "privet")
+
+}
+
+func mutareSlice(slice []string) {
+
+    slice[0] = "vasya"
+
+}
+```
+
 -----------------------------
 ### SLICE TASK 3
 # 1. Курс Go: Удаление элементов из слайса
@@ -1546,6 +1684,265 @@ func main() {
 	//реализовать
 }
 ```
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+)
+
+  
+
+// RemoveUnordered удаляет элемент по индексу без сохранения порядка.
+
+// Если индекс выходит за границы слайса, возвращает исходный слайс.
+
+func RemoveUnordered[T any](s []T, i int) []T {
+
+    //[1 2 3 4 5 6] -> [1 2 6 4 5]
+
+    if i < 0 || i >= len(s) {
+
+        return s
+
+    }
+
+    lstElmnt := len(s) - 1
+
+    s[i] = s[lstElmnt]
+
+    return s[:lstElmnt]
+
+}
+
+  
+
+// RemoveOrdered удаляет элемент по индексу с сохранением порядка.
+
+// Если индекс выходит за границы слайса, возвращает исходный слайс.
+
+func RemoveOrdered[T any](s []T, i int) []T {
+
+    // [1 2 3 4 5 6] -> [1 2 4 5 6]
+
+    return append(s[:i], s[i+1:]...)
+
+}
+
+  
+
+// RemoveAllByValue удаляет все вхождения указанного значения.
+
+func RemoveAllByValue[T comparable](s []T, value T) []T {
+
+    res := make([]T, 0, len(s))
+
+  
+
+    for i, j := range s {
+
+        if s[i] == value {
+
+            continue
+
+        }
+
+        res = append(res, j)
+
+    }
+
+  
+
+    return res
+
+}
+
+  
+
+// RemoveDuplicates оставляет только уникальные элементы (сохраняет порядок).
+
+func RemoveDuplicates[T comparable](s []T) []T {
+
+    m := make(map[T]struct{})
+
+    res := make([]T, 0, len(s))
+
+  
+
+    for _, sl := range s {
+
+        if _, ok := m[sl]; !ok {
+
+            res = append(res, sl)
+
+        }
+
+        m[sl] = struct{}{}
+
+    }
+
+    return res
+
+}
+
+  
+
+// RemoveIf удаляет элементы, удовлетворяющие условию predicate.
+
+func RemoveIf[T any](s []T, predicate func(T) bool) []T {
+
+    res := make([]T, 0, len(s))
+
+    for _, sl := range s {
+
+        if !predicate(sl) {
+
+            res = append(res, sl)
+
+        }
+
+    }
+
+    return res
+
+}
+
+  
+
+// RemoveOrderedWithNil удаляет элемент по индексу (для слайса указателей),
+
+// обнуляя удаляемый элемент для предотвращения утечек памяти.
+
+func RemoveOrderedWithNil[T any](s []*T, i int) []*T {
+
+    copy(s[i:], s[i+1:])
+
+    s[len(s)-1] = nil
+
+    return s[:len(s)-1]
+
+}
+
+  
+
+// ShrinkCapacity сокращает вместимость слайса, если она превышает
+
+// удвоенную длину после удаления элементов.
+
+func ShrinkCapacity[T any](s []T) []T {
+
+    if cap(s) < 2*len(s) {
+
+        return s
+
+    }
+
+    res := make([]T, len(s))
+
+    copy(res, s)
+
+    return res
+
+}
+
+  
+
+func main() {
+
+    slice := []int{1, 2, 3, 4, 5, 6}
+
+    res := RemoveUnordered(slice, 2)
+
+    fmt.Println(res)
+
+  
+
+    res = RemoveOrdered(slice, 2)
+
+    fmt.Println(res)
+
+  
+
+    slice = []int{1, 2, 2, 4, 2, 6}
+
+    res = RemoveAllByValue(slice, 2)
+
+    fmt.Println(res)
+
+  
+
+    res = RemoveDuplicates(slice)
+
+    fmt.Println(res)
+
+  
+
+    res = RemoveIf(slice, func(i int) bool { return i/2 != 0 })
+
+    fmt.Println(res)
+
+  
+
+    var slice2 []*string
+
+    for _, n := range []string{"en", "ru", "uk", "bg", "tt"} {
+
+        slice2 = append(slice2, &n)
+
+    }
+
+    slice2 = RemoveOrderedWithNil(slice2, 2)
+
+    fmt.Println(DerefSlice(slice2))
+
+  
+
+    res = ShrinkCapacity(slice)
+
+    fmt.Println(res)
+
+}
+
+  
+
+func DerefSlice[T any](sl []*T) []T {
+
+  
+
+    res := make([]T, 0, len(sl))
+
+  
+
+    for _, v := range sl {
+
+  
+
+        if v != nil {
+
+  
+
+            res = append(res, *v)
+
+  
+
+        }
+
+  
+
+    }
+
+  
+
+    return res
+
+  
+
+}
+```
 ------------------------------
 # SLICE TASK 4
 ### Работа со слайсами в Go
@@ -1562,27 +1959,28 @@ import (
 )
 
 func main() {
-	//1
+	//1 first: [] : 0 : 5
 	first := []int{1, 2, 3, 4, 5}
 	first = nil
 	fmt.Println("first:", first, ":", len(first), ":", cap(first))
 
-	//2
+	//2 second: [] : 0 : 5
 	second := []int{1, 2, 3, 4, 5}
 	second = second[:0]
 	fmt.Println("second:", second, ":", len(second), ":", cap(second))
 
-	//3
+	//3 third: [0 0 0 0 0] : 5 : 5
 	third := []int{1, 2, 3, 4, 5}
 	clear(third)
 	fmt.Println("third:", third, ":", len(third), ":", cap(third))
 
-	//4
+	//4 fourth: [1 0 0 4 5] : 5 : 5
 	fourth := []int{1, 2, 3, 4, 5}
 	clear(fourth[1:3])
 	fmt.Println("fourth:", fourth, ":", len(fourth), ":", cap(fourth))
 
-	//5
+	//5 slice = [10 0 0] 3 6
+	//array =[0 0 0] 3 3
 	slice := make([]int, 3, 6)
 	array := [3]int(slice[:3])
 	slice[0] = 10
@@ -1591,27 +1989,30 @@ func main() {
 	fmt.Println("array =", array, len(array), cap(array))
 
 	//6 В каких случаях Slice пустой или нулевой
-	//1
+	//1 var data []string: nil
+	//tempty= true nil= false size=0 data=nil pointer\n", data == nil, unsafe.Sizeof(data), unsafe.SliceData(data)
 	var data []string
 	fmt.Println("var data []string:")
 	fmt.Printf("\tempty=%t nil=%t size=%d data=%p\n", len(data) == 0, data == nil, unsafe.Sizeof(data), unsafe.SliceData(data))
-	//2
+	//2 true true 0 nil
 	data = []string(nil)
 	fmt.Println("data = []string(nil):")
 	fmt.Printf("\tempty=%t nil=%t size=%d data=%p\n", len(data) == 0, data == nil, unsafe.Sizeof(data), unsafe.SliceData(data))
-	//3
+	//3 true false 0 addres
 	data = []string{}
 	fmt.Println("data = []string{}")
 	fmt.Printf("\tempty=%t nil=%t size=%d data=%p\n", len(data) == 0, data == nil, unsafe.Sizeof(data), unsafe.SliceData(data))
-	//4
+	//4 true false 0 addres
 	data = make([]string, 0)
 	fmt.Println("data =make([]string,0)")
 	fmt.Printf("\tempty=%t nil=%t size=%d data=%p\n", len(data) == 0, data == nil, unsafe.Sizeof(data), unsafe.SliceData(data))
-
+	//addres
 	empty := struct{}{}
 	fmt.Println("empty struct address ", unsafe.Pointer(&empty))
 }
 ```
+
+
 ---------------------
 # SLICE TASK 5
 ### Задача
@@ -1710,4 +2111,58 @@ func New() *stack {
 
 
 
+```go
+package main
 
+  
+
+type Stacker interface {
+
+    Push(v int)
+
+    Pop() int
+
+}
+
+  
+
+type stack struct {
+
+    slice []int
+
+}
+
+  
+
+func (s *stack) Push(v int) {
+
+    s.slice = append(s.slice, v)
+
+}
+
+  
+
+func (s *stack) Pop() int {
+
+    if len(s.slice) == 0 || s.slice == nil {
+
+        panic("стек пуст")
+
+    }
+
+    res := s.slice[len(s.slice)-1]
+
+    s.slice = s.slice[:len(s.slice)-1]
+
+    return res
+
+}
+
+  
+
+func New() *stack {
+
+    return &stack{slice: make([]int, 0)}
+
+}
+```
