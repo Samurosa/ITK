@@ -899,6 +899,7 @@ func main() {
 	fmt.Println("err2 == nil:", err2 == nil)//false
 
 }
+```
 
 --------------------------------------------------------
 PANICS
@@ -921,6 +922,57 @@ PANICS
     - В `main()` вызовите `CausePanic()` напрямую и посмотрите, что произойдет.
     - Затем вызовите `HandlePanic()` и убедитесь, что паника обработана.
 
+
+```go   
+import (
+
+    "fmt"
+
+)
+
+  
+
+func CausePanic() {
+
+    panic("что-то пошло не так!")
+
+}
+
+  
+
+func HandlePanic() {
+
+    defer func() {
+
+        err := recover()
+
+        if err != nil {
+
+            fmt.Println("Паника перехвачена: ", err)
+
+        }
+
+    }()
+
+  
+
+    CausePanic()
+
+}
+
+  
+
+func main() {
+
+  
+
+    HandlePanic()
+
+}
+```
+```
+```
+
 2.# Обработка паники при делении на ноль
 
 В этом задании вы научитесь использовать `panic` и `recover` для безопасного выполнения кода.
@@ -932,10 +984,54 @@ PANICS
     - Обрабатывает панику с `recover()` и возвращает `0` вместо аварийного завершения.
 
 2. В `main()` протестируйте вызовы:
-   ```go
+
    SafeDivide(10, 2) // Ожидаемый результат: 5
    SafeDivide(10, 0) // Ожидаемый результат: 0 (без паники)
+
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+)
+
+  
+
+func SafeDivide(a, b int) int {
+
+    defer func() {
+
+        err := recover()
+
+        if err != nil {
+
+            fmt.Println(0)
+
+        }
+
+    }()
+
+  
+
+    return a / b
+
+}
+
+  
+
+func main() {
+
+  
+
+    SafeDivide(10, 0)
+
+}
 ```
+
 
 3.# Обработка паники в многоуровневых вызовах функций
 
@@ -954,3 +1050,64 @@ PANICS
 3.  В `Level2()` добавьте `defer`, который печатает `"Завершаем Level2"`, чтобы убедиться, что `defer` выполняется даже при панике.
 
 4. В `main()` вызовите `Level1()` и убедитесь, что программа не завершилась аварийно.
+
+
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+)
+
+  
+
+func Level1() {
+
+    defer func() {
+
+        err := recover()
+
+        if err != nil {
+
+            fmt.Println("Паника обработана на уровне 1: ошибка в Level3")
+
+        }
+
+    }()
+
+    Level2()
+
+}
+
+  
+
+func Level2() {
+
+    Level3()
+
+    defer fmt.Println("Завершаем Level2")
+
+}
+
+  
+
+func Level3() {
+
+    panic("ошибка в Level3")
+
+}
+
+  
+
+func main() {
+
+  
+
+    Level1()
+
+}
+```
