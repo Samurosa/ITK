@@ -15,6 +15,7 @@ func main() {
     }  
     fmt.Println("end")  
 }
+// start end 1 2 3
 2.
 # Задание: Анализ кода на Go  
   
@@ -32,6 +33,18 @@ func main() {
 func changeValue(value *int) {  
     *value = 456  
 }
+//123
+import "fmt"  
+  
+func main() {  
+    value := 123 
+    changeValue(&value)   
+    defer fmt.Println(value)  
+}  
+func changeValue(value *int) {  
+    *value = 456  
+}
+//456
 3.
 **Ваша задача:** Определить вывод программы и зафиксировать ответы **в сообщениях коммитов** с кратким объяснением логики.
 package main
@@ -46,16 +59,22 @@ func main() {
     case1()
     println()
     println()
-
+    // Case 1 \n without: n\ nil n\ default error \n with: n\ nil n\ default error
+    // extra error не выводиться так как метод возвращает ошибку быстрее чем срабатывает defer, поэтому ошибка все еще буде дефолтной
+    
     println("Case 2")
     case2()
     println()
     println()
+    // case 2 nil default error extra error extra error
+    // если возвращаемое значение именновоное то defer может изменять возвращаемое значение
 
     println("Case 3")
     case3()
     println()
     println()
+    // Case 3 nil default error first error first error
+    // возвращается первая ошибка так как дефер работает по принципу LIFO
 
 }
 
@@ -153,6 +172,7 @@ func case3() {
     fmt.Println(helperWithDefer(false))
     fmt.Println(helperWithDefer(true))
 }
+
 -------------------------------------------------------------
 
 
@@ -168,7 +188,37 @@ ERRORS
 1. Функция `handle()` должна возвращать тип `error`.  
 2. Запрещено подключать пакеты, кроме `fmt`.  
 3. Ошибка должна содержать текст (не `nil`).
+```go
+import (
 
+    "fmt"
+
+)
+
+  
+
+func handle() error {
+
+    return fmt.Errorf("ошибка ошибка")
+
+  
+
+}
+
+func main() {
+
+  
+
+    err := handle()
+
+    if err != nil {
+
+        fmt.Println(handle())
+
+    }
+
+}
+```
 2.
 # Кастомные ошибки в Go  
   
@@ -189,6 +239,60 @@ ERRORS
    - Реализуйте метод `Error() string`.  
    - Добавьте поле `Code int` для кода ошибки.  
    - Создайте функцию `StructError() error`, возвращающую `MyError{Code: 404, Msg: "не найдено"}`.
+```go
+import (
+
+    "errors"
+
+    "fmt"
+
+)
+
+  
+
+type MyError struct {
+
+    Code int
+
+    Msg  string
+
+}
+
+  
+
+func (m MyError) Error() string {
+
+    return fmt.Sprintf("code error: %d message: %s", m.Code, m.Msg)
+
+}
+
+  
+
+func SimpleError() error {
+
+    return errors.New("default error")
+
+}
+
+  
+
+func FormattedError(age int) error {
+
+    return fmt.Errorf("ошибка: возраст %d недопустим", age)
+
+}
+
+  
+
+func StructError() error {
+
+    m := MyError{Code: 404, Msg: "не найдено"}
+
+    return m
+
+}
+```
+
 
 3.
 # Анализ цепочек ошибок в Go error.Is
@@ -207,23 +311,88 @@ ERRORS
        ErrNotFound   = errors.New("ресурс не найден")
        TimeoutError = errors.New("таймаут операции")
    )
+   ```
+   
 2. Создайте функцию SimulateRequest() error, которая:
    - В 50% случаев возвращает TimeoutError, обёрнутую в fmt.Errorf("запрос не выполнен: %w", TimeoutError).
    - В 30% случаев возвращает ErrNotFound, обёрнутую в fmt.Errorf("ошибка: %w", ErrNotFound).
    - В 20% случаев возвращает новую ошибку "неизвестная ошибка".
    - Реализуйте логику анализа ошибок в ProcessError.
 3. Реализуйте логику анализа ошибок в ProcessError.
+```go
+import (
 
-4.## Требования  
-1. Определите кастомные ошибки:  
-   ```go  
-   var (  
-       ErrNotFound   = errors.New("ресурс не найден")       TimeoutError = errors.New("таймаут операции")   )2. Создайте функцию SimulateRequest() error, которая:  
-   - В 50% случаев возвращает TimeoutError, обёрнутую в fmt.Errorf("запрос не выполнен: %w", TimeoutError).  
-   - В 30% случаев возвращает ErrNotFound, обёрнутую в fmt.Errorf("ошибка: %w", ErrNotFound).  
-   - В 20% случаев возвращает новую ошибку "неизвестная ошибка".  
-   - Реализуйте логику анализа ошибок в ProcessError.  
-3. Реализуйте логику анализа ошибок в ProcessError.
+    "errors"
+
+    "fmt"
+
+    "math/rand"
+
+)
+
+  
+
+var (
+
+    ErrNotFound  = errors.New("ресурс не найден")
+
+    TimeoutError = errors.New("таймаут операции")
+
+)
+
+  
+
+func ProcessError(err error) {
+
+    switch {
+
+    case errors.Is(err, TimeoutError):
+
+        fmt.Println("Требуется повторная попытка", err)
+
+    case errors.Is(err, TimeoutError):
+
+        fmt.Println("Требуется повторная попытка", err)
+
+    default:
+
+        fmt.Println(err)
+
+    }
+
+}
+
+  
+
+func SimulateRequest() error {
+
+    rnd := rand.Float64()
+
+    if rnd <= 0.5 {
+
+        return fmt.Errorf("запрос не выполнен: %w", TimeoutError)
+
+    }
+
+    if rnd <= 0.8 {
+
+        return fmt.Errorf("ошибка: %w", ErrNotFound)
+
+    }
+
+    return fmt.Errorf("неизвестная ошибка")
+
+}
+
+  
+
+func main() {
+
+    ProcessError(SimulateRequest())
+
+}
+```
+
 -------------------------------------------------------
 
 
@@ -247,6 +416,96 @@ GENERICS
 2. **Дополнительно**:  
    - Гарантировать безопасность операций (например, `Pop` на пустом стеке возвращает `false`).  
    - Использовать слайс для эффективного добавления/удаления элементов.
+
+```go
+import (
+
+    "fmt"
+
+)
+
+  
+
+type Stack[T any] struct {
+
+    elements []T
+
+}
+
+  
+
+func NewStack[T any]() *Stack[T] {
+
+    return &Stack[T]{
+
+        elements: make([]T, 0),
+
+    }
+
+}
+
+  
+
+func (s *Stack[T]) Push(value T) {
+
+    s.elements = append(s.elements, value)
+
+}
+
+  
+
+func (s *Stack[T]) Pop() (T, bool) {
+
+    var zero T
+
+    if len(s.elements) == 0 {
+
+        return zero, false
+
+    }
+
+  
+
+    element := s.elements[len(s.elements)-1]
+
+    s.elements[len(s.elements)-1] = zero
+
+    s.elements = s.elements[:len(s.elements)-1]
+
+    return element, true
+
+}
+
+  
+
+func (s Stack[T]) Peek() (T, bool) {
+
+    var zero T
+
+    if len(s.elements) == 0 {
+
+        return zero, false
+
+    }
+
+    return s.elements[len(s.elements)-1], true
+
+}
+
+  
+
+func (s Stack[T]) IsEmpty() bool {
+
+    if len(s.elements) == 0 {
+
+        return true
+
+    }
+
+    return false
+
+}
+```
 ----------------------------------------------------
 Interface
 1.
@@ -297,6 +556,249 @@ func main() {
     // Сериализация в JSON    jsonData, _ := cache.ToJSON()    fmt.Println(string(jsonData))    // {"temp_data":42,"user":{"Name":"Alice"}}  
   
     // Очистка кэша    cache.Clear()    fmt.Println("Exists (user):", cache.Exists("user")) // false}
+```
+
+```go
+package main
+
+  
+
+import (
+
+    "encoding/json"
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type Storage struct {
+
+    mu     sync.RWMutex
+
+    caches map[string]Cache
+
+}
+
+  
+
+type Cache struct {
+
+    val   interface{}
+
+    tlive time.Time
+
+}
+
+  
+
+type User struct {
+
+    Name string
+
+}
+
+  
+
+type Item struct {
+
+    Key   string      `json:"key"`
+
+    Value interface{} `json:"value"`
+
+}
+
+  
+
+func NewCache() *Storage {
+
+    return &Storage{
+
+        caches: make(map[string]Cache),
+
+    }
+
+}
+
+  
+
+func (c *Storage) Set(key string, value interface{}, ttl time.Duration) {
+
+    c.mu.Lock()
+
+    defer c.mu.Unlock()
+
+  
+
+    cache := Cache{val: value, tlive: time.Now().Add(ttl)}
+
+    c.caches[key] = cache
+
+}
+
+  
+
+func (c *Storage) Get(key string) (interface{}, bool) {
+
+    c.mu.RLock()
+
+    cache, ok := c.caches[key]
+
+    c.mu.RUnlock()
+
+  
+
+    if !ok {
+
+        return nil, false
+
+    }
+
+  
+
+    if time.Now().After(cache.tlive) {
+
+        c.mu.Lock()
+
+        delete(c.caches, key)
+
+        c.mu.Unlock()
+
+        return nil, false
+
+    }
+
+    return cache.val, true
+
+}
+
+  
+
+func (c *Storage) Delete(key string) {
+
+    c.mu.Lock()
+
+    defer c.mu.Unlock()
+
+  
+
+    delete(c.caches, key)
+
+}
+
+  
+
+func (c *Storage) Exists(key string) bool {
+
+    _, ok := c.Get(key)
+
+    return ok
+
+}
+
+  
+
+func (c *Storage) Clear() {
+
+    c.mu.Lock()
+
+    defer c.mu.Unlock()
+
+  
+
+    c.caches = make(map[string]Cache)
+
+}
+
+  
+
+func (c *Storage) ToJSON() ([]byte, error) {
+
+    res := make([]Item, 0, len(c.caches))
+
+  
+
+    c.mu.RLock()
+
+    for key, cache := range c.caches {
+
+        res = append(res, Item{Key: key, Value: cache.val})
+
+    }
+
+    c.mu.RUnlock()
+
+  
+
+    return json.Marshal(res)
+
+}
+
+  
+
+func GetAs[T any](c *Storage, key string) (T, error) {
+
+    var zero T
+
+    value, ok := c.Get(key)
+
+    if ok {
+
+        c.mu.Lock()
+
+        defer c.mu.Unlock()
+
+  
+
+        value, ok := value.(T)
+
+        if !ok {
+
+            return zero, fmt.Errorf("неправильный формат")
+
+        }
+
+  
+
+        return value, nil
+
+    }
+
+    return zero, fmt.Errorf("неправильный формат")
+
+}
+
+  
+
+func main() {
+
+    cache := NewCache()
+
+  
+
+    cache.Set("user", User{Name: "Alice"}, time.Hour) // Хранится 1 час
+
+    cache.Set("temp_data", 42, time.Minute)           // Хранится 1 минуту
+
+  
+
+    jsonData, _ := cache.ToJSON()
+
+    fmt.Println(string(jsonData)) // {"temp_data":42,"user":{"Name":"Alice"}}
+
+  
+
+    cache.Clear()
+
+    fmt.Println("Exists (user):", cache.Exists("user")) //false
+
+}
+```
 
 --------------------
 # Задание: Анализ кода на Go
@@ -304,6 +806,7 @@ func main() {
 Это задание направлено на глубокое понимание работы срезов (interface), их модификации и передачи в функциях Go.  
 **Ваша задача:** Определить вывод каждой из предложенных программ и зафиксировать ответы **в сообщениях коммитов** с кратким объяснением логики.
 1.
+```go
 package main  
   
 import (  
@@ -332,6 +835,7 @@ func main() {
        fmt.Println("ok")  
     }  
 }
+// fmt.Println("oops")
 
 2.
 package main  
@@ -354,16 +858,16 @@ func checkErr(err error) {
   
 func main() {  
     var e1 error  
-    checkErr(e1)  
+    checkErr(e1)  //true
   
     var e *errorString  
-    checkErr(e)  
+    checkErr(e)  //false
   
     e = &errorString{}  
-    checkErr(e)  
+    checkErr(e)  //false
   
     e = nil  
-    checkErr(e)  
+    checkErr(e)  //true
 }
 
 3.
@@ -391,8 +895,8 @@ func main() {
 	err1 := returnError(true)
 	err2 := returnError(false)
 
-	fmt.Println("err1 == nil:", err1 == nil)
-	fmt.Println("err2 == nil:", err2 == nil)
+	fmt.Println("err1 == nil:", err1 == nil)//false
+	fmt.Println("err2 == nil:", err2 == nil)//false
 
 }
 
