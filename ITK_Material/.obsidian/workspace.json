@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "lesson2.md",
+                "file": "lesson3.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "lesson2"
+              "title": "lesson3"
             }
           }
         ]
@@ -185,8 +185,9 @@
   },
   "active": "d8290f6f57fa9e0e",
   "lastOpenFiles": [
-    "lesson1.md",
     "lesson2.md",
+    "lesson3.md",
+    "lesson1.md",
     "Добро пожаловать.md"
   ]
 }
