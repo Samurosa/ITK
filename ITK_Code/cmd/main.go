@@ -2,60 +2,50 @@ package main
 
 import (
 	"fmt"
-	"sync"
-	"time"
 )
 
-var wg sync.WaitGroup
-
-// Реплика БД (имитация)
-func dbReplica(name string, in <-chan int) {
-	defer wg.Done()
-	for data := range in {
-		fmt.Printf("Запись в %s: %d\n", name, data)
-		time.Sleep(100 * time.Millisecond) // Имитация задержки записи
-	}
-	fmt.Printf("Реплика %s закрыта\n", name)
+type ServerMetric struct {
+	Name  string  // Название метрики (например, "memory_usage")
+	Value float64 // Значение в байтах
 }
 
-func tee(in <-chan int, replicas []chan int) {
+func generate(nameMetric string, value float64) <-chan ServerMetric {
+	serverMetricObject := ServerMetric{Name: nameMetric, Value: value}
 
-	for n := range in {
-		for _, channel := range replicas {
-			channel <- n
-		}
-	}
-
-	for _, channel := range replicas {
-		close(channel)
-	}
-}
-
-func main() {
-	input := make(chan int) // Канал для входящих данных
-	replicas := []chan int{ // Реплики БД (каналы)
-		make(chan int),
-		make(chan int),
-		make(chan int),
-	}
-	data := [6]int{1, 2, 3, 4, 5, 6}
-
-	for i, replica := range replicas {
-
-		wg.Add(1)
-		go dbReplica(fmt.Sprintf("replica %d", i+1),
-			replica,
-		)
-	}
-
-	go tee(input, replicas)
+	out := make(chan ServerMetric)
 
 	go func() {
-		defer close(input)
-		for _, i := range data {
-			input <- i
+		defer close(out)
+		out <- serverMetricObject
+	}()
+	return out
+}
+
+func ConvertBytesToMB(in <-chan ServerMetric) <-chan ServerMetric {
+	out := make(chan ServerMetric)
+
+	go func() {
+		defer close(out)
+		for n := range in {
+			n.Value /= 1024 * 1024
+			out <- n
 		}
 	}()
 
-	wg.Wait()
+	return out
+}
+
+func main() {
+
+	inputData := generate("memory_usage", 1024)
+
+	transformResult := ConvertBytesToMB(inputData)
+
+	for result := range transformResult {
+		fmt.Printf("Metric name: %s\nMetric value: %f",
+			result.Name,
+			result.Value,
+		)
+	}
+
 }
