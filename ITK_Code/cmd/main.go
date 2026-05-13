@@ -1,64 +1,61 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"os"
-	"runtime"
 	"sync"
+	"time"
 )
 
-const FilePath string = "../files/"
+var wg sync.WaitGroup
 
-func worker(id int, jobs <-chan string, results chan<- string, wg *sync.WaitGroup) {
+// Реплика БД (имитация)
+func dbReplica(name string, in <-chan int) {
 	defer wg.Done()
+	for data := range in {
+		fmt.Printf("Запись в %s: %d\n", name, data)
+		time.Sleep(100 * time.Millisecond) // Имитация задержки записи
+	}
+	fmt.Printf("Реплика %s закрыта\n", name)
+}
 
-	for fileName := range jobs {
+func tee(in <-chan int, replicas []chan int) {
 
-		fileDirectory := fmt.Sprintf("%s%s", FilePath, fileName)
-		text, err := os.ReadFile(fileDirectory)
-		if err != nil {
-			fmt.Printf("file %s is not valid error: %v", fileDirectory, err)
+	for n := range in {
+		for _, channel := range replicas {
+			channel <- n
 		}
+	}
 
-		countWordsInFiles := len(bytes.Fields(text))
-
-		results <- fmt.Sprintf("File name: %s Count worlds in file: %d", fileName, countWordsInFiles)
+	for _, channel := range replicas {
+		close(channel)
 	}
 }
 
 func main() {
-	files, err := os.ReadDir(FilePath)
-	if err != nil {
-		fmt.Printf("directory is not valid: %v", err)
+	input := make(chan int) // Канал для входящих данных
+	replicas := []chan int{ // Реплики БД (каналы)
+		make(chan int),
+		make(chan int),
+		make(chan int),
 	}
-	workers := runtime.NumCPU()
+	data := [6]int{1, 2, 3, 4, 5, 6}
 
-	wg := sync.WaitGroup{}
+	for i, replica := range replicas {
 
-	results := make(chan string)
-	jobs := make(chan string)
+		wg.Add(1)
+		go dbReplica(fmt.Sprintf("replica %d", i+1),
+			replica,
+		)
+	}
+
+	go tee(input, replicas)
 
 	go func() {
-		defer close(jobs)
-		for _, f := range files {
-
-			jobs <- f.Name()
+		defer close(input)
+		for _, i := range data {
+			input <- i
 		}
 	}()
 
-	for i := 0; i < workers; i++ {
-		wg.Add(1)
-		go worker(i, jobs, results, &wg)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	for n := range results {
-		fmt.Println(n)
-	}
-
+	wg.Wait()
 }
