@@ -891,6 +891,213 @@ func main() {
 Но если что мы с тобой и так пройдем эти темы. А если хочешь прям догнать,то вот ресурсы и пиши по вопросам. Можем отдельно встречу организовать по вопросам:
 https://www.youtube.com/watch?v=luQlkud-jKE&t=5s
 https://habr.com/ru/companies/pt/articles/764850/
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+    "sync"
+
+)
+
+  
+
+func generate(data []string) <-chan string {
+
+    out := make(chan string)
+
+  
+
+    go func() {
+
+        defer close(out)
+
+        for _, d := range data {
+
+            out <- d
+
+        }
+
+    }()
+
+    return out
+
+}
+
+  
+
+// - Принимает канал сырых данных (`<-chan string`).
+
+// - Добавляет к каждой строке префикс "parsed - ".
+
+// - Возвращает канал обработанных данных.
+
+func parse(in <-chan string) <-chan string {
+
+    out := make(chan string)
+
+    go func() {
+
+        defer close(out)
+
+        for n := range in {
+
+            out <- fmt.Sprintln("parsed - ", n)
+
+        }
+
+    }()
+
+    return out
+
+}
+
+  
+
+// - Принимает канал данных и число `N` (количество выходных каналов).
+
+// - Распределяет данные между `N` каналами в порядке round-robin.
+
+// - Возвращает слайс каналов (`[]<-chan string`).
+
+func split(in <-chan string, amountChannels int) []chan string {
+
+    channels := make([]chan string, 0, amountChannels)
+
+    var wg sync.WaitGroup
+
+    wg.Add(1)
+
+  
+
+    for i := 0; i < amountChannels; i++ {
+
+        channels = append(channels, make(chan string))
+
+    }
+
+  
+
+    go func() {
+
+        defer wg.Done()
+
+        i := 0
+
+        for n := range in {
+
+            channels[i] <- n
+
+            i++
+
+            if i >= amountChannels {
+
+                i = 0
+
+            }
+
+        }
+
+    }()
+
+  
+
+    go func() {
+
+        wg.Wait()
+
+        for i := 0; i < amountChannels; i++ {
+
+            close(channels[i])
+
+        }
+
+    }()
+
+    return channels
+
+}
+
+  
+
+// - Принимает слайс каналов и запускает `N` горутин.
+
+// - Каждая горутина добавляет к данным префикс "sent - ".
+
+// - Возвращает объединенный канал результатов.
+
+func send(channelsArray []chan string) <-chan string {
+
+    out := make(chan string)
+
+    var wg sync.WaitGroup
+
+    wg.Add(len(channelsArray))
+
+  
+
+    for _, channel := range channelsArray {
+
+        go func(chan string) {
+
+            defer wg.Done()
+
+            for n := range channel {
+
+                out <- fmt.Sprintln("sent - ", n)
+
+            }
+
+        }(channel)
+
+    }
+
+  
+
+    go func() {
+
+        wg.Wait()
+
+        close(out)
+
+    }()
+
+    return out
+
+}
+
+  
+
+func main() {
+
+    inputData := generate([]string{"qwe", "asd", "zxc", "ewq", "dsa", "cxz"})
+
+  
+
+    result := send(
+
+        split(parse(inputData),
+
+            4,
+
+        ),
+
+    )
+
+  
+
+    for n := range result {
+
+        fmt.Println(n)
+
+    }
+
+}
+```
 --------------------------------------------
 # CONCURRENCY
 ## Реализация потокобезопасного кеша 
@@ -907,7 +1114,79 @@ https://habr.com/ru/companies/pt/articles/764850/
 
 
 
+```go
+package main
 
+  
+
+import (
+
+    "sync"
+
+)
+
+  
+
+type storage struct {
+
+    caches map[string]string
+
+    mu     sync.RWMutex
+
+}
+
+  
+
+type SafeCache struct {
+
+    key   string
+
+    value string
+
+}
+
+  
+
+func NewSafeCache() storage {
+
+    return storage{caches: make(map[string]string), mu: sync.RWMutex{}}
+
+}
+
+  
+
+func (s *storage) Set(keyInput string, valueInput string) {
+
+    s.mu.Lock()
+
+    s.caches[keyInput] = valueInput
+
+    s.mu.Unlock()
+
+}
+
+  
+
+func (s *storage) Get(keyInput string) (string, bool) {
+
+    s.mu.RLock()
+
+    result, ok := s.caches[keyInput]
+
+    s.mu.RUnlock()
+
+    if !ok {
+
+        return "key is not valid", ok
+
+    }
+
+  
+
+    return result, true
+
+}
+```
 # Параллельная загрузка данных из нескольких источников
 ---
 ## Описание задачи
@@ -928,6 +1207,432 @@ https://habr.com/ru/companies/pt/articles/764850/
 5. Синхронизировать все операции перед завершением
 Но если что мы с тобой и так пройдем эти темы. А если хочешь прям догнать,то вот дополнительные ресурсы. Можем отдельно встречу организовать по вопросам::
 https://victoriametrics.com/blog/go-sync-once/
+
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+    "math/rand"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+var newSessionInfo sessionInfo
+
+var once sync.Once
+
+  
+
+type sessionInfo struct {
+
+    session
+
+    amountSpectators []amountSpectatorsOnTime
+
+    comments         []comment
+
+    users            []User
+
+}
+
+  
+
+type session struct {
+
+    sessionID   int
+
+    sessioName  string
+
+    sessionTime time.Duration
+
+}
+
+  
+
+type amountSpectatorsOnTime struct {
+
+    time   time.Duration
+
+    amount int
+
+}
+
+  
+
+type comment struct {
+
+    value string
+
+    time  time.Duration
+
+    User
+
+}
+
+  
+
+type User struct {
+
+    userID   int
+
+    userName string
+
+}
+
+  
+
+func NewSession(id int, name string, timesession time.Duration) sessionInfo {
+
+    return sessionInfo{
+
+        session: session{
+
+            sessionID:   id,
+
+            sessioName:  name,
+
+            sessionTime: timesession * time.Second,
+
+        },
+
+        amountSpectators: make([]amountSpectatorsOnTime, 0),
+
+        comments:         make([]comment, 0),
+
+        users:            make([]User, 0),
+
+    }
+
+}
+
+  
+
+func (s *sessionInfo) SetSpectatorInfo(maxAmountSpectator int) {
+
+  
+
+    for i := 0; i < int(s.session.sessionTime.Seconds()); i++ {
+
+        randAmount := rand.Intn(maxAmountSpectator) + 1
+
+  
+
+        s.amountSpectators = append(s.amountSpectators,
+
+            amountSpectatorsOnTime{
+
+                time:   time.Duration(i) * time.Second,
+
+                amount: randAmount,
+
+            },
+
+        )
+
+    }
+
+}
+
+  
+
+func (s *sessionInfo) SetUsers(usersAmount int) {
+
+    for i := 0; i < usersAmount; i++ {
+
+        s.users = append(s.users, User{userName: "bot", userID: i + 1})
+
+    }
+
+}
+
+  
+
+func (s *sessionInfo) SetComment() {
+
+    exampleComments := [7]string{
+
+        "4:11.2.0-1ubuntu1",
+
+        "sing /usr/bin/g++ to provide ",
+
+        "randAmount",
+
+        "spectators",
+
+        "wsl -u root",
+
+        "Hello world",
+
+        "looozer",
+
+    }
+
+  
+
+    len := int(s.session.sessionTime.Seconds())
+
+    for i := 0; i <= len; {
+
+        s.comments = append(s.comments,
+
+            comment{value: exampleComments[rand.Intn(6)],
+
+                time: time.Duration(i) * time.Second,
+
+                User: User{
+
+                    userID:   rand.Intn(1000),
+
+                    userName: "bot",
+
+                },
+
+            },
+
+        )
+
+        i += rand.Intn(len - len/2)
+
+    }
+
+}
+
+  
+
+func LoadSession(stream sessionInfo) <-chan string {
+
+    out := make(chan string)
+
+  
+
+    stream.SetSpectatorInfo(250)
+
+  
+
+    go func() {
+
+        defer close(out)
+
+        out <- fmt.Sprintf("id session: %d \nName session: %s\n", stream.sessionID,
+
+            stream.sessioName,
+
+        )
+
+  
+
+        for _, spectator := range stream.amountSpectators {
+
+            out <- fmt.Sprintf("time : %s\n amount spectators: %b",
+
+                spectator.time.String(),
+
+                spectator.amount,
+
+            )
+
+        }
+
+    }()
+
+  
+
+    return out
+
+}
+
+  
+
+func LoadComments(stream sessionInfo, wg *sync.WaitGroup) <-chan string {
+
+    out := make(chan string)
+
+  
+
+    stream.SetComment()
+
+  
+
+    if stream.sessionID == 0 {
+
+        return nil
+
+    }
+
+  
+
+    go func() {
+
+        defer wg.Done()
+
+  
+
+        defer close(out)
+
+        for _, com := range stream.comments {
+
+            out <- fmt.Sprintf("time: %s\nuser name: %s\ncomment:\n \"%s\"\n\n",
+
+                com.time.String(),
+
+                com.User.userName,
+
+                com.value,
+
+            )
+
+        }
+
+    }()
+
+    return out
+
+}
+
+  
+
+func LoadUsers(stream sessionInfo) <-chan string {
+
+    out := make(chan string)
+
+  
+
+    stream.SetUsers(310)
+
+  
+
+    go func() {
+
+        defer close(out)
+
+        for _, user := range stream.users {
+
+            out <- fmt.Sprintf(" user ID: %d\nusername: %s\n",
+
+                user.userID,
+
+                user.userName,
+
+            )
+
+        }
+
+    }()
+
+    return out
+
+}
+
+  
+
+func printChannels(channelArray []<-chan string) {
+
+    for _, channel := range channelArray {
+
+  
+
+        go func(ch <-chan string) {
+
+            for n := range ch {
+
+                fmt.Println(n)
+
+            }
+
+        }(channel)
+
+    }
+
+}
+
+  
+
+func printUsers(in <-chan string, wg *sync.WaitGroup) {
+
+    go func() {
+
+        defer wg.Done()
+
+        for n := range in {
+
+            fmt.Println(n)
+
+        }
+
+    }()
+
+}
+
+  
+
+func GetSession(sessionID int, nameSession string, time time.Duration) sessionInfo {
+
+    once.Do(func() {
+
+        newSessionInfo = NewSession(sessionID, nameSession, time)
+
+    })
+
+    return newSessionInfo
+
+}
+
+  
+
+// 1. Загрузка комментариев и данных сессии должна выполняться параллельно
+
+// 2. Загрузка данных пользователей должна стартовать только после получения комментариев
+
+// 3. Загрузка вложений должна выполняться только при наличии session-id
+
+// 4. Использовать минимум 3 горутины для разных этапов
+
+// 5. Синхронизировать все операции перед завершением
+
+func main() {
+
+    wg := sync.WaitGroup{}
+
+  
+
+    GetSession(45, "Minecraft", 250)
+
+  
+
+    wg.Add(1)
+
+    spectatorsInfo := LoadSession(newSessionInfo)
+
+  
+
+    commentsInfo := LoadComments(newSessionInfo, &wg)
+
+  
+
+    printChannels([]<-chan string{spectatorsInfo, commentsInfo})
+
+    wg.Wait()
+
+    users := LoadUsers(newSessionInfo)
+
+    wg.Add(1)
+
+    printUsers(users, &wg)
+
+    wg.Wait()
+
+}
+```
 -----------------------------------------
 
 # SYNC/COND
