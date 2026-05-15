@@ -3580,7 +3580,49 @@ func main() {
 }
 ```
 
+```go
+package main
 
+  
+
+import (
+
+    "fmt"
+
+    "sync"
+
+)
+
+  
+
+func main() {
+
+    var wg sync.WaitGroup
+
+  
+
+    cnt := 100
+
+  
+
+    for i := 0; i < cnt; i++ {
+
+        wg.Add(1)
+
+        go func() {
+
+            defer wg.Done()
+
+            fmt.Println(i)
+
+        }()
+
+        wg.Wait()
+
+    }
+
+}
+```
 ## Задание: Параллельные HTTP-запросы с синхронизацией через `sync.WaitGroup`
 
 **Цель задания**:  
@@ -3623,7 +3665,87 @@ func main() {
 
 ```
 
+```go
+package main
 
+  
+
+import (
+
+    "fmt"
+
+    "net/http"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+func fetchUrl(url string) error {
+
+    _, err := http.Get(url)
+
+    return err
+
+}
+
+func main() {
+
+    var wg sync.WaitGroup
+
+    urls := []string{
+
+        "https://www.lamoda.ru",
+
+        "https://www.yandex.ru",
+
+        "https://www.mail.ru",
+
+        "https://www.google.ru",
+
+    }
+
+  
+
+    for _, url := range urls {
+
+        wg.Add(1)
+
+        go func(url string) {
+
+            defer wg.Done()
+
+            fmt.Printf("Fetching %s....\n", url)
+
+            err := fetchUrl(url)
+
+            if err != nil {
+
+                fmt.Printf("Error feaching %s: %v\n", url, err)
+
+                return
+
+            }
+
+            fmt.Printf("Fetched %s\n", url)
+
+        }(url)
+
+    }
+
+    wg.Wait()
+
+    fmt.Println("All request launched!")
+
+    time.Sleep(400 * time.Millisecond)
+
+    fmt.Println("Program finished")
+
+}
+```
 # Задание: Исправление синхронизации горутин 
 
 **Цель задания**:  
@@ -3689,6 +3811,142 @@ func main() {
 		fmt.Println("Error:", err)
 	}
 	fmt.Println("All items processed")
+}
+```
+
+```go
+package main
+
+  
+
+import (
+
+    "context"
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type logic struct{}
+
+  
+
+var Logic logic
+
+  
+
+func (l *logic) UpdateDB(ctx context.Context, item *Item) error {
+
+    return nil // Заглушка
+
+}
+
+  
+
+func (l *logic) FetchItems(ctx context.Context) ([]*Item, error) {
+
+    return []*Item{
+
+        {Value: 5},
+
+        {Value: 15},
+
+        {Value: 7},
+
+    }, nil // Заглушка
+
+}
+
+  
+
+type Item struct {
+
+    Value int
+
+}
+
+  
+
+func processItem(item *Item, wg *sync.WaitGroup) {
+
+    defer wg.Done()
+
+    time.Sleep(time.Second)
+
+    if item.Value > 10 {
+
+        fmt.Printf("ERROR: item %d can't be more than 10\n", item.Value)
+
+        return
+
+    }
+
+  
+
+    err := Logic.UpdateDB(context.Background(), item)
+
+    if err != nil {
+
+        fmt.Println("ERROR: can't process item")
+
+    }
+
+}
+
+  
+
+func DoBusinessLogic() error {
+
+    var wg sync.WaitGroup
+
+  
+
+    items, err := Logic.FetchItems(context.Background())
+
+    if err != nil {
+
+        return err
+
+    }
+
+  
+
+    for _, item := range items {
+
+        wg.Add(1)
+
+        go processItem(item, &wg)
+
+    }
+
+    wg.Wait()
+
+    return nil
+
+}
+
+  
+
+func main() {
+
+    err := DoBusinessLogic()
+
+  
+
+    if err != nil {
+
+        fmt.Println("Error:", err)
+
+    }
+
+    fmt.Println("All items processed")
+
 }
 ```
 https://dev.to/jpoly1219/waitgroups-in-go-3dkj
