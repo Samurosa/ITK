@@ -1291,9 +1291,9 @@ type User struct {
 
   
 
-func NewSession(id int, name string, timesession time.Duration) sessionInfo {
+func NewSession(id int, name string, timesession time.Duration) *sessionInfo {
 
-    return sessionInfo{
+    return &sessionInfo{
 
         session: session{
 
@@ -1648,8 +1648,6 @@ func main() {
 **Цель:**  
 Реализовать очередь, использующую `sync.Cond` для эффективной синхронизации горутин.
 
----
-
 ### Требования
 1. Реализация методов:
     - `Put(task interface{})` — блокируется, если очередь заполнена.
@@ -1657,9 +1655,228 @@ func main() {
     - `Shutdown()` — завершает работу очереди.
 2. Использование `sync.Cond` и `sync.Mutex` для синхронизации.
 3. Гарантия отсутствия гонок и утечек.
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
 
 
+  
 
+type User struct {
+
+    userID   int
+
+    userName string
+
+}
+
+  
+
+type BoundedQueue struct {
+
+    queue []interface{}
+
+  
+
+    mutex sync.Mutex
+
+    cond  *sync.Cond
+
+  
+
+    capacity int
+
+  
+
+    closed bool
+
+}
+
+  
+
+func NewBoundedQueue(capacityQueue int) *BoundedQueue {
+
+    q := &BoundedQueue{
+
+        queue:    make([]interface{}, 0),
+
+        capacity: capacityQueue,
+
+    }
+
+  
+
+    q.cond = sync.NewCond(&q.mutex)
+
+  
+
+    return q
+
+}
+
+  
+
+func (b *BoundedQueue) Put(task interface{}) {
+
+    b.mutex.Lock()
+
+    defer b.mutex.Unlock()
+
+  
+
+    for b.capacity == len(b.queue) {
+
+        if b.closed {
+
+            fmt.Println("Shutdown")
+
+            return
+
+        }
+
+        fmt.Println("queue full producer waits")
+
+        b.cond.Wait()
+
+    }
+
+  
+
+    b.queue = append(b.queue, task)
+
+  
+
+    b.cond.Signal()
+
+  
+
+}
+
+  
+
+func (b *BoundedQueue) Get() interface{} {
+
+    b.mutex.Lock()
+
+    defer b.mutex.Unlock()
+
+    for len(b.queue) == 0 {
+
+        if b.closed {
+
+            fmt.Println("Shutdown")
+
+            return nil
+
+        }
+
+        fmt.Println("queue empty consumer waits")
+
+        b.cond.Wait()
+
+    }
+
+  
+
+    result := b.queue[0]
+
+  
+
+    b.queue = b.queue[1:]
+
+  
+
+    b.cond.Signal()
+
+  
+
+    return result
+
+}
+
+  
+
+func (b *BoundedQueue) Shutdown() {
+
+    b.mutex.Lock()
+
+    defer b.mutex.Unlock()
+
+    b.closed = true
+
+  
+
+    b.cond.Broadcast()
+
+}
+
+func main() {
+
+  
+
+    usernames := [5]string{
+
+        "Igor",
+
+        "Ruslan",
+
+        "Jo",
+
+        "lenar",
+
+        "jey",
+
+    }
+
+    boundedQueue := NewBoundedQueue(4)
+
+  
+
+    go func() {
+
+        for i, name := range usernames {
+
+  
+
+            boundedQueue.Put(User{userID: i, userName: name})
+
+        }
+
+    }()
+
+  
+
+    go func() {
+
+        for i := 0; i < 8; i++ {
+
+            fmt.Println(boundedQueue.Get())
+
+        }
+
+    }()
+
+    time.Sleep(1 * time.Second)
+
+    boundedQueue.Shutdown()
+
+    time.Sleep(5 * time.Second)
+
+}
+```
+
+---
 ## Моделирование работы ресторана с использованием `sync.Cond`
 
 ### Описание задачи
@@ -1672,7 +1889,6 @@ func main() {
 **Цель:**  
 Научиться синхронизировать горутины с помощью `sync.Cond`, моделируя реальный сценарий с ограниченными ресурсами.
 
----
 
 ### Требования
 1. Реализовать структуру `Restaurant` с методами:
@@ -1680,8 +1896,208 @@ func main() {
     - `ReleaseTable()` — освобождает столик и уведомляет ожидающих.
 2. Использовать `sync.Cond` для управления очередью ожидания.
 
+```go
+package main
 
+  
 
+import (
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type visitor struct {
+
+    Id    int
+
+    value chan struct{}
+
+}
+
+type Restaurant struct {
+
+    numberOfoccupiedTables int
+
+  
+
+    visitors []visitor
+
+  
+
+    mutex sync.Mutex
+
+    cond  *sync.Cond
+
+  
+
+    numberOfTables int
+
+  
+
+    closed bool
+
+}
+
+  
+
+func NewRestaurant(capacityQueue int) *Restaurant {
+
+    q := &Restaurant{
+
+        visitors:               make([]visitor, 0),
+
+        numberOfoccupiedTables: 0,
+
+        numberOfTables:         capacityQueue,
+
+    }
+
+  
+
+    q.cond = sync.NewCond(&q.mutex)
+
+  
+
+    return q
+
+}
+
+  
+
+func (r *Restaurant) OccupyTable() {
+
+    r.mutex.Lock()
+
+  
+
+    if r.numberOfoccupiedTables >= r.numberOfTables {
+
+        fmt.Println("no free tables")
+
+        v := visitor{value: make(chan struct{})}
+
+        r.visitors = append(r.visitors, v)
+
+        r.mutex.Unlock()
+
+        <-v.value
+
+        return
+
+    }
+
+    r.numberOfoccupiedTables++
+
+    r.mutex.Unlock()
+
+    fmt.Println("1 table is busy")
+
+  
+
+}
+
+  
+
+func (r *Restaurant) ReleaseTable() {
+
+    r.mutex.Lock()
+
+  
+
+    if len(r.visitors) == 0 {
+
+        fmt.Println("no visitors")
+
+        r.mutex.Unlock()
+
+        return
+
+    }
+
+  
+
+    r.numberOfoccupiedTables--
+
+    fmt.Println("1 table is free")
+
+    result := r.visitors[0]
+
+  
+
+    r.visitors = r.visitors[1:]
+
+  
+
+    r.mutex.Unlock()
+
+    close(result.value)
+
+  
+
+}
+
+  
+
+func main() {
+
+  
+
+    restaurant := NewRestaurant(4)
+
+  
+
+    for i := 10; i > 0; i-- {
+
+        go restaurant.OccupyTable()
+
+    }
+
+  
+
+    for i := 0; i < 4; i++ {
+
+        go restaurant.ReleaseTable()
+
+    }
+
+  
+
+    time.Sleep(2 * time.Second)
+
+  
+
+    for i := 0; i < 4; i++ {
+
+        go restaurant.ReleaseTable()
+
+    }
+
+  
+
+    time.Sleep(2 * time.Second)
+
+  
+
+    for i := 0; i < 4; i++ {
+
+        go restaurant.ReleaseTable()
+
+    }
+
+  
+
+    time.Sleep(2 * time.Second)
+
+}
+```
+---
 
 ## Пул подключений к БД с использованием `sync.Cond`
 
@@ -1723,6 +2139,211 @@ https://ubiklab.net/posts/go-sync-cond/
 https://dev.to/func25/go-synccond-the-most-overlooked-sync-mechanism-1fgd
 https://wcademy.ru/go-multithreading-sync-cond/
 
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+    "math/rand/v2"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type Connection struct {
+
+    ID           int
+
+    path         string
+
+    valuestorage float64
+
+}
+
+  
+
+func CreatePool() Connection {
+
+    c := Connection{
+
+        ID:           rand.IntN(100),
+
+        path:         "./",
+
+        valuestorage: rand.ExpFloat64(),
+
+    }
+
+  
+
+    fmt.Println("create pool")
+
+    time.Sleep(2 * time.Second)
+
+    return c
+
+}
+
+  
+
+type Pool struct {
+
+    connections   []Connection
+
+    maxConnection int
+
+    mutex         sync.Mutex
+
+    cond          *sync.Cond
+
+    closed        bool
+
+}
+
+  
+
+func NewConnectionPool(connectionAmount int) *Pool {
+
+    q := &Pool{
+
+        connections:   make([]Connection, 0),
+
+        maxConnection: connectionAmount,
+
+    }
+
+  
+
+    q.cond = sync.NewCond(&q.mutex)
+
+  
+
+    return q
+
+}
+
+  
+
+func (r *Pool) Get() *Connection {
+
+    r.mutex.Lock()
+
+    defer r.mutex.Unlock()
+
+    defer r.cond.Signal()
+
+    for len(r.connections) >= r.maxConnection {
+
+        fmt.Println("no free connections")
+
+        r.cond.Wait()
+
+    }
+
+  
+
+    c := CreatePool()
+
+  
+
+    r.connections = append(r.connections, c)
+
+  
+
+    fmt.Println("1 connection is busy")
+
+  
+
+    return &c
+
+}
+
+  
+
+func (r *Pool) Release(conn *Connection) {
+
+    r.mutex.Lock()
+
+    defer r.mutex.Unlock()
+
+    defer r.cond.Signal()
+
+    amountConnections := len(r.connections)
+
+  
+
+    for amountConnections == 0 {
+
+        fmt.Println("no current pool")
+
+        r.cond.Wait()
+
+    }
+
+  
+
+    for i := 0; i < amountConnections; i++ {
+
+        if r.connections[i].ID == conn.ID {
+
+  
+
+            fmt.Println("release the next connection: ", r.connections[i])
+
+            r.connections = append(r.connections[:i], r.connections[i+1:]...)
+
+  
+
+            return
+
+        }
+
+    }
+
+    fmt.Println("connection is not found")
+
+}
+
+  
+
+func main() {
+
+    pool := NewConnectionPool(3) // Пул на 3 подключения
+
+  
+
+    for i := 0; i < 10; i++ {
+
+        go func(id int) {
+
+            conn := pool.Get()
+
+            defer pool.Release(conn)
+
+  
+
+            fmt.Printf("Горутина %d: подключение %d получено\n", id, conn.ID)
+
+            time.Sleep(2 * time.Second) // Имитация работы
+
+        }(i)
+
+    }
+
+  
+
+    time.Sleep(20 * time.Second)
+
+}
+```
 -----------------------------------------
 
 # SYNC/ONCE
@@ -1745,8 +2366,102 @@ https://wcademy.ru/go-multithreading-sync-cond/
 3. Убедитесь, что код потокобезопасен (нет гонок данных).
 
 
+```go
+package main
 
+  
 
+import (
+
+    "fmt"
+
+    "math/rand/v2"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type Connection struct {
+
+    ID           int
+
+    path         string
+
+    valuestorage float64
+
+}
+
+  
+
+func CreatePool() Connection {
+
+    c := Connection{
+
+        ID:           rand.IntN(100),
+
+        path:         "./",
+
+        valuestorage: rand.ExpFloat64(),
+
+    }
+
+  
+
+    fmt.Println("create pool")
+
+    time.Sleep(2 * time.Second)
+
+    return c
+
+}
+
+  
+
+type Database struct {
+
+    connections Connection
+
+    onse        sync.Once
+
+}
+
+  
+
+func (d *Database) GetConnection() Connection {
+
+    d.onse.Do(func() {
+
+        d.connections = CreatePool()
+
+  
+
+    })
+
+    return d.connections
+
+}
+
+func main() {
+
+    d := Database{}
+
+  
+
+    for i := 0; i < 10; i++ {
+
+        conn := d.GetConnection()
+
+        fmt.Println(conn)
+
+    }
+
+}
+```
+---
 ## Конфигуратор приложения с `sync.Once`
 
 **Описание**
@@ -1781,7 +2496,91 @@ func main() {
 ```
 
 
+```go
+package main
 
+  
+
+import (
+
+    "fmt"
+
+    "sync"
+
+)
+
+  
+
+type ConfigManager struct {
+
+    config map[string]string
+
+    id     int
+
+    onse   sync.Once
+
+}
+
+  
+
+func (cm *ConfigManager) GetConnection() map[string]string {
+
+    cm.onse.Do(func() {
+
+        cm.config = map[string]string{
+
+            "app_name":  "MyApp",
+
+            "port":      "8080",
+
+            "log_level": "debug",
+
+        }
+
+  
+
+    })
+
+    return cm.config
+
+}
+
+  
+
+func (cm *ConfigManager) Get(key string) string {
+
+    return cm.config[key]
+
+}
+
+  
+
+func (cm *ConfigManager) PrintConfig() {
+
+    fmt.Println(cm.config)
+
+}
+
+func main() {
+
+    keys := []string{"app_name", "port", "log_level"}
+
+    configManage := ConfigManager{}
+
+    configManage.GetConnection()
+
+    for _, key := range keys {
+
+        fmt.Println(configManage.Get(key))
+
+    }
+
+    configManage.PrintConfig()
+
+}
+```
+
+---
 ## Инициализация плагинов с `sync.Once`
 
 **Цель задания**
@@ -1790,7 +2589,7 @@ func main() {
 - Инициализация потокобезопасна
 - Ошибки при инициализации корректно обрабатываются
 - Плагины доступны для использования из разных компонентов
----
+
 
 **Требования**
 1. **Структура `PluginManager`**:
@@ -1909,6 +2708,230 @@ https://victoriametrics.com/blog/go-sync-once/
 https://dev.to/jones_charles_ad50858dbc0/a-developers-guide-to-synconce-your-go-concurrency-lifesaver-3kf2
 https://backendinterview.ru/goLang/concurrency/sync.html
 
+```go
+package main
+
+  
+
+import (
+
+    "fmt"
+
+    "log"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+// Интерфейс для всех плагинов
+
+type Plugin interface {
+
+    Execute() string
+
+}
+
+  
+
+// Управляет инициализацией и доступом к плагинам
+
+type PluginManager struct {
+
+    plugins map[string]*pluginEntry
+
+    mu      sync.RWMutex
+
+}
+
+  
+
+type pluginEntry struct {
+
+    once   sync.Once
+
+    plugin Plugin
+
+    err    error
+
+    initFn func() (Plugin, error)
+
+}
+
+  
+
+// NewPluginManager создает новый менеджер плагинов
+
+func NewPluginManager() *PluginManager {
+
+    return &PluginManager{
+
+        plugins: make(map[string]*pluginEntry),
+
+    }
+
+}
+
+  
+
+// RegisterPlugin регистрирует новый плагин
+
+func (pm *PluginManager) RegisterPlugin(name string, initFn func() (Plugin, error)) {
+
+    pm.mu.Lock()
+
+    defer pm.mu.Unlock()
+
+    pm.plugins[name] = &pluginEntry{
+
+        initFn: initFn,
+
+    }
+
+}
+
+  
+
+// GetPlugin возвращает инициализированный плагин
+
+func (pm *PluginManager) GetPlugin(name string) (Plugin, error) {
+
+    // Реализовать:
+
+    var getCurrentPlugin *pluginEntry
+
+    var ok bool
+
+    pm.mu.RLock()
+
+    if getCurrentPlugin, ok = pm.plugins[name]; !ok {
+
+        return nil, fmt.Errorf("not emplimented")
+
+    }
+
+    pm.mu.RUnlock()
+
+    getCurrentPlugin.once.Do(func() {
+
+        getCurrentPlugin.plugin, getCurrentPlugin.err = getCurrentPlugin.initFn()
+
+    })
+
+  
+
+    return getCurrentPlugin.plugin, getCurrentPlugin.err
+
+}
+
+  
+
+// DemoPlugin реализация плагина
+
+type DemoPlugin struct{}
+
+  
+
+func (p *DemoPlugin) Execute() string {
+
+    return "DemoPlugin executed successfully!"
+
+}
+
+  
+
+func initDemo() (Plugin, error) {
+
+    // Имитация длительной инициализации
+
+    time.Sleep(500 * time.Millisecond)
+
+    return &DemoPlugin{}, nil
+
+}
+
+  
+
+func main() {
+
+    pm := NewPluginManager()
+
+  
+
+    pm.RegisterPlugin("demo", initDemo)
+
+    pm.RegisterPlugin("broken", func() (Plugin, error) {
+
+        return nil, fmt.Errorf("simulated error")
+
+    })
+
+  
+
+    var wg sync.WaitGroup
+
+  
+
+    // Тестирование рабочего плагина
+
+    for i := 0; i < 5; i++ {
+
+        wg.Add(1)
+
+        go func(id int) {
+
+            defer wg.Done()
+
+            p, err := pm.GetPlugin("demo")
+
+            if err != nil {
+
+                log.Printf("Goroutine %d error: %v", id, err)
+
+                return
+
+            }
+
+            log.Printf("Goroutine %d: %s", id, p.Execute())
+
+        }(i)
+
+    }
+
+  
+
+    // Тестирование плагина с ошибкой
+
+    for i := 5; i < 7; i++ {
+
+        wg.Add(1)
+
+        go func(id int) {
+
+            defer wg.Done()
+
+            _, err := pm.GetPlugin("broken")
+
+            if err != nil {
+
+                log.Printf("Goroutine %d error: %v", id, err)
+
+            }
+
+        }(i)
+
+    }
+
+  
+
+    wg.Wait()
+
+}
+```
+
 --------------------------------
 # SYNC/POOL
 ## Оптимизация обработки строк с sync.Pool
@@ -1936,7 +2959,91 @@ func main() {
 }
 ```
 
+```go
+package main
 
+  
+
+import (
+
+    "fmt"
+
+    "sync"
+
+)
+
+  
+
+var bytePool = sync.Pool{
+
+    New: func() any {
+
+        bytes := make([]byte, 0, 1024)
+
+        return &bytes
+
+    },
+
+}
+
+  
+
+func ProcessString(s string) string {
+
+    buffer := bytePool.Get().(*[]byte)
+
+    *buffer = (*buffer)[:0]
+
+  
+
+    *buffer = append(*buffer, s...)
+
+    for i := range *buffer {
+
+        if (*buffer)[i] >= 'a' && (*buffer)[i] <= 'z' {
+
+            (*buffer)[i] -= 32
+
+        }
+
+    }
+
+    result := string(*buffer)
+
+  
+
+    bytePool.Put(buffer)
+
+    return result
+
+}
+
+  
+
+func main() {
+
+    examples := []string{
+
+        "hello, world!",
+
+        "gopher",
+
+        "lorem ipsum dolor sit amet",
+
+    }
+
+  
+
+    for _, s := range examples {
+
+        processed := ProcessString(s)
+
+        fmt.Printf("Original: %q\nProcessed: %q\n\n", s, processed)
+
+    }
+
+}
+```
 
 ## Оптимизация HTTP-обработчика с sync.Pool
 
@@ -1973,7 +3080,131 @@ func main() {
 }
 ```
 
+```go
+package main
 
+  
+
+import (
+
+    "encoding/json"
+
+    "fmt"
+
+    "net/http"
+
+    "sync"
+
+)
+
+  
+
+type RequestData struct {
+
+    ID          int               `json:"user_id"`
+
+    Name        string            `json:"user_name"`
+
+    Tags        []string          `json:"tags"`
+
+    Directories map[string]string `json:"directories"`
+
+}
+
+  
+
+func (r *RequestData) Reset() {
+
+  
+
+    r.ID = 0
+
+    r.Name = ""
+
+    r.Tags = r.Tags[:0]
+
+  
+
+    for key := range r.Directories {
+
+        delete(r.Directories, key)
+
+    }
+
+}
+
+  
+
+var requestDataPool = sync.Pool{
+
+    New: func() any {
+
+        return &RequestData{
+
+            Tags:        make([]string, 0, 16),
+
+            Directories: make(map[string]string),
+
+        }
+
+    },
+
+}
+
+  
+
+func handleRequest(w http.ResponseWriter, req *http.Request) {
+
+    data := requestDataPool.Get().(*RequestData)
+
+    defer func() {
+
+        data.Reset()
+
+  
+
+        requestDataPool.Put(data)
+
+    }()
+
+  
+
+    err := json.NewDecoder(req.Body).Decode(data)
+
+    if err != nil {
+
+        http.Error(w, err.Error(), http.StatusBadRequest)
+
+        return
+
+    }
+
+    fmt.Printf("UserID: %d\n", data.ID)
+
+    fmt.Printf("Name: %s\n", data.Name)
+
+    fmt.Printf("Tags: %+v\n", data.Tags)
+
+    fmt.Printf("Meta: %+v\n", data.Directories)
+
+    w.WriteHeader(http.StatusOK)
+
+    w.Write([]byte("ok"))
+
+}
+
+  
+
+func main() {
+
+    http.HandleFunc("/", handleRequest)
+
+    fmt.Println("Server started at :8080")
+
+    http.ListenAndServe(":8080", nil)
+
+}
+```
 
 ## JSON-кэш с `sync.Pool` и `map + RWMutex`
 
@@ -2037,6 +3268,295 @@ https://leapcell.io/blog/boost-go-performance-sync-pool
 https://www.sobyte.net/post/2022-06/go-sync-pool/
 https://goperf.dev/01-common-patterns/object-pooling/
 
+```go
+package main
+
+  
+
+import (
+
+    "bytes"
+
+    "encoding/json"
+
+    "fmt"
+
+    "sync"
+
+    "time"
+
+)
+
+  
+
+type item struct {
+
+    value     interface{}
+
+    expiresAt time.Time
+
+}
+
+  
+
+type ObjectCache struct {
+
+    mu      sync.RWMutex
+
+    items   map[string]item
+
+    ttl     time.Duration
+
+    closed  chan struct{}
+
+    bufPool sync.Pool
+
+}
+
+  
+
+func NewObjectCache(ttl time.Duration) *ObjectCache {
+
+    c := &ObjectCache{
+
+        items:  make(map[string]item),
+
+        ttl:    ttl,
+
+        closed: make(chan struct{}),
+
+    }
+
+  
+
+    c.bufPool.New = func() any {
+
+        return new(bytes.Buffer)
+
+    }
+
+  
+
+    go c.startGC()
+
+  
+
+    return c
+
+}
+
+  
+
+func (c *ObjectCache) Set(key string, value interface{}) {
+
+    c.mu.Lock()
+
+    defer c.mu.Unlock()
+
+  
+
+    c.items[key] = item{
+
+        value:     value,
+
+        expiresAt: time.Now().Add(c.ttl),
+
+    }
+
+}
+
+  
+
+func (c *ObjectCache) Get(key string) (interface{}, bool) {
+
+    c.mu.RLock()
+
+    it, ok := c.items[key]
+
+    c.mu.RUnlock()
+
+  
+
+    if !ok {
+
+        return nil, false
+
+    }
+
+  
+
+    if time.Now().After(it.expiresAt) {
+
+        c.mu.Lock()
+
+        delete(c.items, key)
+
+        c.mu.Unlock()
+
+        return nil, false
+
+    }
+
+  
+
+    return it.value, true
+
+}
+
+  
+
+func (c *ObjectCache) Delete(key string) {
+
+    c.mu.Lock()
+
+    delete(c.items, key)
+
+    c.mu.Unlock()
+
+}
+
+  
+
+func (c *ObjectCache) ToJSON() ([]byte, error) {
+
+    buf := c.bufPool.Get().(*bytes.Buffer)
+
+    buf.Reset()
+
+  
+
+    c.mu.RLock()
+
+    defer c.mu.RUnlock()
+
+  
+
+    enc := json.NewEncoder(buf)
+
+    err := enc.Encode(c.items)
+
+  
+
+    data := make([]byte, buf.Len())
+
+    copy(data, buf.Bytes())
+
+  
+
+    c.bufPool.Put(buf)
+
+  
+
+    return data, err
+
+}
+
+  
+
+func (c *ObjectCache) startGC() {
+
+    ticker := time.NewTicker(time.Second)
+
+    defer ticker.Stop()
+
+  
+
+    for {
+
+        select {
+
+        case <-ticker.C:
+
+            c.cleanup()
+
+        case <-c.closed:
+
+            return
+
+        }
+
+    }
+
+}
+
+  
+
+func (c *ObjectCache) cleanup() {
+
+    now := time.Now()
+
+  
+
+    c.mu.Lock()
+
+    defer c.mu.Unlock()
+
+  
+
+    for k, v := range c.items {
+
+        if now.After(v.expiresAt) {
+
+            delete(c.items, k)
+
+        }
+
+    }
+
+}
+
+  
+
+func (c *ObjectCache) Close() {
+
+    close(c.closed)
+
+}
+
+  
+
+func main() {
+
+    cache := NewObjectCache(5 * time.Second)
+
+  
+
+    // Добавляем данные в кэш
+
+    cache.Set("user:1", map[string]string{"name": "Alice", "role": "admin"})
+
+    cache.Set("user:2", map[string]string{"name": "Bob", "role": "user"})
+
+  
+
+    // Получаем объект
+
+    if user, found := cache.Get("user:1"); found {
+
+        fmt.Println("Найден:", user)
+
+    }
+
+  
+
+    // Выводим JSON
+
+    jsonData, _ := cache.ToJSON()
+
+    fmt.Println("Кэш в JSON:", string(jsonData))
+
+  
+
+    // Ждём истечения TTL и проверяем снова
+
+    time.Sleep(6 * time.Second)
+
+    _, found := cache.Get("user:1")
+
+    fmt.Println("После TTL, user:1 найден?", found)
+
+}
+```
 --------------------
 
 # SYNC/WAIT

@@ -1,212 +1,144 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 )
 
-var newSessionInfo sessionInfo
-var once sync.Once
-
-type sessionInfo struct {
-	session
-	amountSpectators []amountSpectatorsOnTime
-	comments         []comment
-	users            []User
+type item struct {
+	value     interface{}
+	expiresAt time.Time
 }
 
-type session struct {
-	sessionID   int
-	sessioName  string
-	sessionTime time.Duration
+type ObjectCache struct {
+	mu      sync.RWMutex
+	items   map[string]item
+	ttl     time.Duration
+	closed  chan struct{}
+	bufPool sync.Pool
 }
 
-type amountSpectatorsOnTime struct {
-	time   time.Duration
-	amount int
+func NewObjectCache(ttl time.Duration) *ObjectCache {
+	c := &ObjectCache{
+		items:  make(map[string]item),
+		ttl:    ttl,
+		closed: make(chan struct{}),
+	}
+
+	c.bufPool.New = func() any {
+		return new(bytes.Buffer)
+	}
+
+	go c.startGC()
+
+	return c
 }
 
-type comment struct {
-	value string
-	time  time.Duration
-	User
-}
+func (c *ObjectCache) Set(key string, value interface{}) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-type User struct {
-	userID   int
-	userName string
-}
-
-func NewSession(id int, name string, timesession time.Duration) sessionInfo {
-	return sessionInfo{
-		session: session{
-			sessionID:   id,
-			sessioName:  name,
-			sessionTime: timesession * time.Second,
-		},
-		amountSpectators: make([]amountSpectatorsOnTime, 0),
-		comments:         make([]comment, 0),
-		users:            make([]User, 0),
+	c.items[key] = item{
+		value:     value,
+		expiresAt: time.Now().Add(c.ttl),
 	}
 }
 
-func (s *sessionInfo) SetSpectatorInfo(maxAmountSpectator int) {
+func (c *ObjectCache) Get(key string) (interface{}, bool) {
+	c.mu.RLock()
+	it, ok := c.items[key]
+	c.mu.RUnlock()
 
-	for i := 0; i < int(s.session.sessionTime.Seconds()); i++ {
-		randAmount := rand.Intn(maxAmountSpectator) + 1
-
-		s.amountSpectators = append(s.amountSpectators,
-			amountSpectatorsOnTime{
-				time:   time.Duration(i) * time.Second,
-				amount: randAmount,
-			},
-		)
+	if !ok {
+		return nil, false
 	}
+
+	if time.Now().After(it.expiresAt) {
+		c.mu.Lock()
+		delete(c.items, key)
+		c.mu.Unlock()
+		return nil, false
+	}
+
+	return it.value, true
 }
 
-func (s *sessionInfo) SetUsers(usersAmount int) {
-	for i := 0; i < usersAmount; i++ {
-		s.users = append(s.users, User{userName: "bot", userID: i + 1})
-	}
+func (c *ObjectCache) Delete(key string) {
+	c.mu.Lock()
+	delete(c.items, key)
+	c.mu.Unlock()
 }
 
-func (s *sessionInfo) SetComment() {
-	exampleComments := [7]string{
-		"4:11.2.0-1ubuntu1",
-		"sing /usr/bin/g++ to provide ",
-		"randAmount",
-		"spectators",
-		"wsl -u root",
-		"Hello world",
-		"looozer",
-	}
+func (c *ObjectCache) ToJSON() ([]byte, error) {
+	buf := c.bufPool.Get().(*bytes.Buffer)
+	buf.Reset()
 
-	len := int(s.session.sessionTime.Seconds())
-	for i := 0; i <= len; {
-		s.comments = append(s.comments,
-			comment{value: exampleComments[rand.Intn(6)],
-				time: time.Duration(i) * time.Second,
-				User: User{
-					userID:   rand.Intn(1000),
-					userName: "bot",
-				},
-			},
-		)
-		i += rand.Intn(len - len/2)
-	}
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	enc := json.NewEncoder(buf)
+	err := enc.Encode(c.items)
+
+	data := make([]byte, buf.Len())
+	copy(data, buf.Bytes())
+
+	c.bufPool.Put(buf)
+
+	return data, err
 }
 
-func LoadSession(stream sessionInfo) <-chan string {
-	out := make(chan string)
+func (c *ObjectCache) startGC() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-	stream.SetSpectatorInfo(250)
-
-	go func() {
-		defer close(out)
-		out <- fmt.Sprintf("id session: %d \nName session: %s\n", stream.sessionID,
-			stream.sessioName,
-		)
-
-		for _, spectator := range stream.amountSpectators {
-			out <- fmt.Sprintf("time : %s\n amount spectators: %b",
-				spectator.time.String(),
-				spectator.amount,
-			)
+	for {
+		select {
+		case <-ticker.C:
+			c.cleanup()
+		case <-c.closed:
+			return
 		}
-	}()
-
-	return out
-}
-
-func LoadComments(stream sessionInfo, wg *sync.WaitGroup) <-chan string {
-	out := make(chan string)
-
-	stream.SetComment()
-
-	if stream.sessionID == 0 {
-		return nil
-	}
-
-	go func() {
-		defer wg.Done()
-
-		defer close(out)
-		for _, com := range stream.comments {
-			out <- fmt.Sprintf("time: %s\nuser name: %s\ncomment:\n \"%s\"\n\n",
-				com.time.String(),
-				com.User.userName,
-				com.value,
-			)
-		}
-	}()
-	return out
-}
-
-func LoadUsers(stream sessionInfo) <-chan string {
-	out := make(chan string)
-
-	stream.SetUsers(310)
-
-	go func() {
-		defer close(out)
-		for _, user := range stream.users {
-			out <- fmt.Sprintf(" user ID: %d\nusername: %s\n",
-				user.userID,
-				user.userName,
-			)
-		}
-	}()
-	return out
-}
-
-func printChannels(channelArray []<-chan string) {
-	for _, channel := range channelArray {
-
-		go func(ch <-chan string) {
-			for n := range ch {
-				fmt.Println(n)
-			}
-		}(channel)
 	}
 }
 
-func printUsers(in <-chan string, wg *sync.WaitGroup) {
-	go func() {
-		defer wg.Done()
-		for n := range in {
-			fmt.Println(n)
+func (c *ObjectCache) cleanup() {
+	now := time.Now()
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for k, v := range c.items {
+		if now.After(v.expiresAt) {
+			delete(c.items, k)
 		}
-	}()
+	}
 }
 
-func GetSession(sessionID int, nameSession string, time time.Duration) sessionInfo {
-	once.Do(func() {
-		newSessionInfo = NewSession(sessionID, nameSession, time)
-	})
-	return newSessionInfo
+func (c *ObjectCache) Close() {
+	close(c.closed)
 }
 
-// 1. Загрузка комментариев и данных сессии должна выполняться параллельно
-// 2. Загрузка данных пользователей должна стартовать только после получения комментариев
-// 3. Загрузка вложений должна выполняться только при наличии session-id
-// 4. Использовать минимум 3 горутины для разных этапов
-// 5. Синхронизировать все операции перед завершением
 func main() {
-	wg := sync.WaitGroup{}
+	cache := NewObjectCache(5 * time.Second)
 
-	GetSession(45, "Minecraft", 250)
+	// Добавляем данные в кэш
+	cache.Set("user:1", map[string]string{"name": "Alice", "role": "admin"})
+	cache.Set("user:2", map[string]string{"name": "Bob", "role": "user"})
 
-	wg.Add(1)
-	spectatorsInfo := LoadSession(newSessionInfo)
+	// Получаем объект
+	if user, found := cache.Get("user:1"); found {
+		fmt.Println("Найден:", user)
+	}
 
-	commentsInfo := LoadComments(newSessionInfo, &wg)
+	// Выводим JSON
+	jsonData, _ := cache.ToJSON()
+	fmt.Println("Кэш в JSON:", string(jsonData))
 
-	printChannels([]<-chan string{spectatorsInfo, commentsInfo})
-	wg.Wait()
-	users := LoadUsers(newSessionInfo)
-	wg.Add(1)
-	printUsers(users, &wg)
-	wg.Wait()
+	// Ждём истечения TTL и проверяем снова
+	time.Sleep(6 * time.Second)
+	_, found := cache.Get("user:1")
+	fmt.Println("После TTL, user:1 найден?", found)
 }
