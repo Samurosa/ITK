@@ -49,13 +49,9 @@ package main
   
 
 import (
-
     "fmt"
-
     "math/rand"
-
     "sync"
-
 )
 
   
@@ -63,31 +59,18 @@ import (
 func main() {
 
     alreadyStored := make(map[int]struct{})
-
     capacity := 1000
-
     doubles := make([]int, 0, capacity)
-
     for i := 0; i < capacity; i++ {
-
         doubles = append(doubles, rand.Intn(10))
-
     }
-
     uniqueIDs := make(chan int, capacity)
-
     wg := sync.WaitGroup{}
-
     var mu sync.RWMutex
-
     for i := 0; i < capacity; i++ {
-
         wg.Add(1)
-
         go func() {
-
             defer wg.Done()
-
             mu.RLock()
 
             _, ok := alreadyStored[doubles[i]]
@@ -197,6 +180,7 @@ func main() {
     println(int(time.Since(timeStart).Seconds()))
 }
 ```
+FAN IN
 ---
 ## Задание: Конвейер чисел на Go
 
@@ -734,6 +718,9 @@ func main() {
 
 }
 ```
+параллельно контекст 
+
+
 ---
 ## Задание: Реализация декоратора для преобразования метрик в реальном времени
 
@@ -1177,7 +1164,7 @@ func (s *storage) Get(keyInput string) (string, bool) {
 
     if !ok {
 
-        return "key is not valid", ok
+        return "", ok
 
     }
 
@@ -2097,6 +2084,9 @@ func main() {
 
 }
 ```
+
+sync.cond 
+
 ---
 
 ## Пул подключений к БД с использованием `sync.Cond`
@@ -2344,6 +2334,7 @@ func main() {
 
 }
 ```
+указатели
 -----------------------------------------
 
 # SYNC/ONCE
@@ -2397,7 +2388,7 @@ type Connection struct {
 
   
 
-func CreatePool() Connection {
+func CreatePool() *Connection {
 
     c := Connection{
 
@@ -2415,7 +2406,7 @@ func CreatePool() Connection {
 
     time.Sleep(2 * time.Second)
 
-    return c
+    return &c
 
 }
 
@@ -2431,7 +2422,7 @@ type Database struct {
 
   
 
-func (d *Database) GetConnection() Connection {
+func (d *Database) GetConnection() *Connection {
 
     d.onse.Do(func() {
 
@@ -2461,6 +2452,9 @@ func main() {
 
 }
 ```
+
+указатели добавить ошибку в структуре бд
+
 ---
 ## Конфигуратор приложения с `sync.Once`
 
@@ -2579,6 +2573,8 @@ func main() {
 
 }
 ```
+
+доделать проверку слайса и убрать указатель потому что можно поменять конфиг
 
 ---
 ## Инициализация плагинов с `sync.Once`
@@ -2818,7 +2814,7 @@ func (pm *PluginManager) GetPlugin(name string) (Plugin, error) {
     getCurrentPlugin.once.Do(func() {
 
         getCurrentPlugin.plugin, getCurrentPlugin.err = getCurrentPlugin.initFn()
-
+		
     })
 
   
@@ -2931,6 +2927,8 @@ func main() {
 
 }
 ```
+
+исправить инициализацию
 
 --------------------------------
 # SYNC/POOL
