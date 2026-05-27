@@ -25,10 +25,19 @@ func main() {
 		log.Fatal(err)
 	}
 
+	userConn, err := grpc.NewClient(
+		"localhost:50051",
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	spotClient := pb.NewSpotInstrumentServiceClient(spotConn)
+	userClient := pb.NewUserServiceClient(userConn)
 
 	grpcServer := grpc.NewServer()
-	orderService := handler.NewOrderService(spotClient)
+	orderService := handler.NewOrderService(spotClient, userClient)
 	pb.RegisterOrderServiceServer(
 		grpcServer,
 		orderService,
