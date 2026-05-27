@@ -11,15 +11,15 @@ import (
 )
 
 func main() {
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
-		log.Fatal("error listen port 50051: ", err)
+		log.Fatal("error listen port 50052: ", err)
 	}
 	grpcServer := grpc.NewServer()
-	userService := handler.NewUserService()
-	pb.RegisterUserServiceServer(
+	spotService := handler.NewSpotService()
+	pb.RegisterSpotInstrumentServiceServer(
 		grpcServer,
-		userService,
+		spotService,
 	)
 	log.Println("server starting")
 	grpcServer.Serve(lis)

@@ -1,19 +1,24 @@
 package handler
 
 import (
+	mapper "ITK_Code/m/v2/internal/mapper"
 	db "ITK_Code/m/v2/internal/storage"
-	pb "ITK_Code/m/v2/proto"
 	"context"
-	"fmt"
 	"sync"
+	"time"
+
+	pb "github.com/Truncklin/exchange-contract/generated"
 
 	"github.com/google/uuid"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type UserService struct {
 	pb.UnimplementedUserServiceServer
 	mu   sync.RWMutex
-	data *db.UserData
+	data *db.UserRepository
 }
 
 func NewUserService() *UserService {
@@ -26,29 +31,25 @@ func (h *UserService) Create(
 	ctx context.Context,
 	req *pb.CreateUserRequest,
 ) (*pb.CreateUserResponse, error) {
-	if _, err := fmt.Printf("Name: %s\nEmail: %s\nPassword: %s\n PasswordConfirm: %s\nRole: %s\n",
-		req.Name,
-		req.Email,
-		req.Password,
-		req.PasswordConfirm,
-		req.Role.String(),
-	); err != nil {
-		return nil, err
-	}
 
 	id := uuid.New().String()
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	h.data.Data[id] = db.User{
-		ID:              id,
-		Name:            req.Name,
-		Email:           req.Email,
-		Password:        req.Password,
-		PasswordConfirm: req.PasswordConfirm,
-		Role:            req.Role,
+	now := time.Now()
+
+	user := db.User{
+		ID:         id,
+		Name:       req.Name,
+		Login:      req.Login,
+		Balances:   make(map[string]*db.Balance),
+		Password:   req.Password,
+		Role:       db.Role(req.Role),
+		CreateTime: now,
+		UpdateTime: now,
 	}
+	h.data.Create(user)
+
 	return &pb.CreateUserResponse{
-		Id: id,
+		User:      mapper.ToProto(user),
+		CreatedAt: timestamppb.New(now),
 	}, nil
 }
 
@@ -56,48 +57,64 @@ func (h *UserService) Get(
 	ctx context.Context,
 	req *pb.GetRequest,
 ) (*pb.GetResponse, error) {
-	h.mu.RLock()
-	obj, ok := h.data.Data[req.Id]
-	h.mu.RUnlock()
+
+	user, ok := h.data.Get(req.Id)
 	if !ok {
-		return nil, fmt.Errorf("user not found")
+		return nil, status.Error(
+			codes.NotFound,
+			"user not found",
+		)
 	}
 
 	return &pb.GetResponse{
-		Id:    req.Id,
-		Name:  obj.Name,
-		Email: obj.Email,
-		Role:  obj.Role,
+		Id:        user.ID,
+		Name:      user.Name,
+		Login:     user.Login,
+		Balances:  mapper.ToProtoBalances(user.Balances),
+		Role:      mapper.ToProtoRole(user.Role),
+		CreatedAt: timestamppb.New(user.CreateTime),
+		UpdatedAt: timestamppb.New(user.UpdateTime),
 	}, nil
-}
-
-func (h *UserService) Update(
-	ctx context.Context,
-	req *pb.UpdateRequest,
-) (*pb.UpdateResponse, error) {
-
-	if _, err := fmt.Println("ID user updated: ", req.Id); err != nil {
-		return nil, err
-	}
-
-	return &pb.UpdateResponse{}, nil
 }
 
 func (h *UserService) Delete(
 	ctx context.Context,
 	req *pb.DeleteRequest,
 ) (*pb.DeleteResponse, error) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if _, ok := h.data.Data[req.Id]; !ok {
-		return nil, fmt.Errorf("object not found, deletion error")
-	}
 
-	delete(h.data.Data, req.Id)
-
-	if _, err := fmt.Println("ID user deleted: ", req.Id); err != nil {
-		return nil, err
+	ok := h.data.Delete(req.Id)
+	if !ok {
+		return nil, status.Error(
+			codes.NotFound,
+			"user not found",
+		)
 	}
 
 	return &pb.DeleteResponse{}, nil
+}
+
+func (h *UserService) Deposit(
+	ctx context.Context,
+	req *pb.DepositRequest,
+) (*pb.DepositResponse,
+	error,
+) {
+	bal, ok := h.data.Deposit(
+		req.UserId,
+		req.Asset,
+		req.Amount,
+	)
+	if !ok {
+		return nil, status.Error(
+			codes.NotFound,
+			"user not found",
+		)
+	}
+	return &pb.DepositResponse{
+		Balance: &pb.Balance{
+			Asset:     bal.Asset,
+			Available: bal.Available,
+			Locked:    bal.Locked,
+		},
+	}, nil
 }
