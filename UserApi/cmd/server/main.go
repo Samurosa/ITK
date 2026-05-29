@@ -20,21 +20,38 @@ func main() {
 		log.Fatal("error listen port 50051: ", err)
 	}
 
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Sync()
+
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(
 			grpc_middleware.ChainUnaryServer(
 				commonInterceptor.RequestID(),
-				commonInterceptor.NewLogger(&zap.Logger{}).Unary(),
-				commonInterceptor.Recovery(),
+				commonInterceptor.NewLogger(logger).Unary(),
+				commonInterceptor.Recovery(logger),
 				metrics.Prometheus(),
 			),
 		),
 	)
+
 	userService := handler.NewUserService()
+
 	pb.RegisterUserServiceServer(
 		grpcServer,
 		userService,
 	)
-	log.Println("server starting")
-	grpcServer.Serve(lis)
+
+	logger.Info(
+		"grpc server started",
+		zap.String("port", ":50051"),
+	)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		logger.Fatal("grpc server failed",
+			zap.Error(err),
+		)
+	}
 }

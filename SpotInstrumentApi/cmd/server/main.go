@@ -5,7 +5,11 @@ import (
 	"log"
 	"net"
 
+	commonInterceptor "github.com/Truncklin/exchange-common/interceptor"
+	metrics "github.com/Truncklin/exchange-common/metrics"
 	pb "github.com/Truncklin/exchange-contract/generated"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	"go.uber.org/zap"
 
 	"google.golang.org/grpc"
 )
@@ -15,12 +19,39 @@ func main() {
 	if err != nil {
 		log.Fatal("error listen port 50052: ", err)
 	}
-	grpcServer := grpc.NewServer()
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Sync()
+
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(
+			grpc_middleware.ChainUnaryServer(
+				commonInterceptor.RequestID(),
+				commonInterceptor.NewLogger(logger).Unary(),
+				commonInterceptor.Recovery(logger),
+				metrics.Prometheus(),
+			),
+		),
+	)
+
 	spotService := handler.NewSpotService()
+
 	pb.RegisterSpotInstrumentServiceServer(
 		grpcServer,
 		spotService,
 	)
-	log.Println("server starting")
-	grpcServer.Serve(lis)
+
+	logger.Info(
+		"grpc server started",
+		zap.String("port", ":50052"),
+	)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		logger.Fatal("grpc server failed",
+			zap.Error(err),
+		)
+	}
 }
