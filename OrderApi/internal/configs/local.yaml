@@ -1,0 +1,9 @@
+grpc:
+  host: localhost
+  port: 50053
+
+clients:
+  user:
+    addr: localhost:50051
+  spot:
+    addr: loaclhost:50052

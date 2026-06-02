@@ -1,7 +1,9 @@
 package main
 
 import (
+	configs "ITK_Code/m/v2/internal/configs"
 	"ITK_Code/m/v2/internal/handler"
+	"fmt"
 	"log"
 	"net"
 
@@ -16,10 +18,6 @@ import (
 )
 
 func main() {
-	lis, err := net.Listen("tcp", ":50053")
-	if err != nil {
-		log.Fatal("error listen port 50051: ", err)
-	}
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -27,8 +25,23 @@ func main() {
 	}
 	defer logger.Sync()
 
+	cfg, err := configs.Load("ITK_Code/m/v2/internal/configs/local.yaml")
+	if err != nil {
+		logger.Fatal(
+			"config not load",
+			zap.Error(err),
+		)
+	}
+
+	orderAddr := fmt.Sprintf("%s:%d", cfg.GRPC.Host, cfg.GRPC.Port)
+
+	lis, err := net.Listen("tcp", orderAddr)
+	if err != nil {
+		log.Fatal("error listen port 50051: ", err)
+	}
+
 	spotConn, err := grpc.NewClient(
-		"localhost:50052",
+		cfg.Clients.User.Addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
@@ -37,9 +50,8 @@ func main() {
 	defer spotConn.Close()
 
 	userConn, err := grpc.NewClient(
-		"localhost:50051",
+		cfg.Clients.Spot.Addr,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
-		grpc.WithTransportCredentials(commonInterceptor.RequestID()),
 	)
 	if err != nil {
 		log.Fatal(err)
