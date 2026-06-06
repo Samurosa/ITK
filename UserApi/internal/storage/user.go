@@ -28,10 +28,10 @@ type Balance struct {
 }
 
 type User struct {
-	ID         string
-	Name       string
-	Login      string
-	Password   string
+	ID    string
+	Name  string
+	Login string
+	//Password   string
 	Balances   map[string]*Balance
 	Role       Role
 	CreateTime time.Time
