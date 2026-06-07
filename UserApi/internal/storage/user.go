@@ -8,15 +8,17 @@ import (
 type UserRepository struct {
 	mu sync.RWMutex
 
-	users map[string]User
+	users map[string]*User
 }
 
 type Role string
 
 const (
-	UserRole Role = "USER"
+	UnspecifiedRole = "ROLE_UNSPECIFIED"
 
-	AdminRole Role = "ADMIN"
+	UserRole Role = "ROLE_USER"
+
+	AdminRole Role = "ROLE_ADMIN"
 )
 
 type Balance struct {
@@ -28,19 +30,18 @@ type Balance struct {
 }
 
 type User struct {
-	ID    string
-	Name  string
-	Login string
-	//Password   string
-	Balances   map[string]*Balance
-	Role       Role
-	CreateTime time.Time
-	UpdateTime time.Time
+	ID         string              //
+	Name       string              //
+	Login      string              //
+	Balances   map[string]*Balance //
+	Role       Role                //
+	CreateTime time.Time           //
+	UpdateTime time.Time           //
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]User),
+		users: make(map[string]*User),
 	}
 }
 
@@ -48,11 +49,11 @@ func (r *UserRepository) Create(user User) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.users[user.ID] = user
+	r.users[user.ID] = &user
 }
 
 func (r *UserRepository) Get(id string) (
-	User,
+	*User,
 	bool,
 ) {
 
@@ -64,6 +65,34 @@ func (r *UserRepository) Get(id string) (
 		r.users[id]
 
 	return user, ok
+}
+
+func (r *UserRepository) Update(
+	id string,
+	name *string,
+	login *string,
+	password *string,
+) (
+	string,
+	bool,
+) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user, ok := r.users[id]
+	if !ok {
+		return "", false
+	}
+
+	if name != nil {
+		user.Name = *name
+	}
+
+	if login != nil {
+		user.Login = *login
+	}
+
+	return id, true
 }
 
 func (r *UserRepository) Delete(id string) bool {
