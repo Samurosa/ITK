@@ -1,0 +1,53 @@
+package grpsApp
+
+import (
+	"ITK_Code/m/v2/internal/grps/user"
+	"fmt"
+	"net"
+
+	"go.uber.org/zap"
+	"google.golang.org/grpc"
+)
+
+type App struct {
+	log        *zap.Logger
+	grpcServer *grpc.Server
+	port       int
+}
+
+func New(
+	log *zap.Logger,
+	port int,
+) *App {
+	grpcServer := grpc.NewServer()
+
+	user.NewServer(grpcServer)
+
+	return &App{
+		log:        log,
+		grpcServer: grpcServer,
+		port:       port,
+	}
+}
+
+func (a *App) Run() {
+
+	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
+	if err != nil {
+		a.log.Fatal("error accessing port:", zap.Error(err))
+	}
+
+	a.log.Info(
+		"grpc server started",
+		zap.Any("port", a.port),
+	)
+
+	if err := a.grpcServer.Serve(l); err != nil {
+		a.log.Fatal("grpc server failed", zap.Error(err))
+	}
+}
+
+func (a *App) Stop() {
+	a.log.Info("grpc server stopped")
+	a.grpcServer.GracefulStop()
+}

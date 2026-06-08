@@ -1,19 +1,22 @@
-package configs
+package config
 
 import (
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
+	Env     string        `yaml:"env"`
 	GRPC    GRPCConfig    `yaml:"grpc"`
 	Clients ClientsConfig `yaml:"clients"`
 }
 
 type GRPCConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host    string        `yaml:"host"`
+	Port    int           `yaml:"port"`
+	Timeout time.Duration `yaml:"timeout"`
 }
 
 type ClientsConfig struct {

@@ -1,7 +1,7 @@
 package main
 
 import (
-	configs "ITK_Code/m/v2/internal/configs"
+	config "ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/handler"
 	"fmt"
 	"log"
@@ -25,7 +25,7 @@ func main() {
 	}
 	defer logger.Sync()
 
-	cfg, err := configs.Load("ITK_Code/m/v2/internal/configs/local.yaml")
+	cfg, err := config.Load("ITK_Code/m/v2/internal/config/local.yaml")
 	if err != nil {
 		logger.Fatal(
 			"config not load",

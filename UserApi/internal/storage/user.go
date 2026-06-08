@@ -30,13 +30,13 @@ type Balance struct {
 }
 
 type User struct {
-	ID         string              //
-	Name       string              //
-	Login      string              //
-	Balances   map[string]*Balance //
-	Role       Role                //
-	CreateTime time.Time           //
-	UpdateTime time.Time           //
+	ID         string
+	Name       string
+	Login      string
+	Balances   map[string]*Balance
+	Role       Role
+	CreateTime time.Time
+	UpdateTime time.Time
 }
 
 func NewUserStorage() *UserRepository {

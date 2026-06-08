@@ -1,61 +1,61 @@
 package mapper
 
-import (
-	db "ITK_Code/m/v2/internal/storage"
+// import (
+// 	db "ITK_Code/m/v2/internal/storage"
 
-	pb "github.com/Truncklin/exchange-contract/generated"
+// 	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
 
-	"google.golang.org/protobuf/types/known/timestamppb"
-)
+// 	"google.golang.org/protobuf/types/known/timestamppb"
+// )
 
-func ToProto(
-	user db.User,
-) *pb.User {
-	return &pb.User{
-		Id:    user.ID,
-		Name:  user.Name,
-		Login: user.Login,
+// func ToProto(
+// 	user db.User,
+// ) *pb.User {
+// 	return &pb.User{
+// 		Id:    user.ID,
+// 		Name:  user.Name,
+// 		Login: user.Login,
 
-		Balances: ToProtoBalances(user.Balances),
+// 		Balances: ToProtoBalances(user.Balances),
 
-		Role: ToProtoRole(user.Role),
+// 		Role: ToProtoRole(user.Role),
 
-		CreatedAt: timestamppb.New(
-			user.CreateTime,
-		),
-		UpdatedAt: timestamppb.New(
-			user.UpdateTime,
-		),
-	}
-}
+// 		CreatedAt: timestamppb.New(
+// 			user.CreateTime,
+// 		),
+// 		UpdatedAt: timestamppb.New(
+// 			user.UpdateTime,
+// 		),
+// 	}
+// }
 
-func ToProtoBalances(
-	balance map[string]*db.Balance,
-) []*pb.Balance {
-	result := make(
-		[]*pb.Balance,
-		0,
-		len(balance),
-	)
+// func ToProtoBalances(
+// 	balance map[string]*db.Balance,
+// ) []*pb.Balance {
+// 	result := make(
+// 		[]*pb.Balance,
+// 		0,
+// 		len(balance),
+// 	)
 
-	for assets, b := range balance {
-		result = append(result,
-			&pb.Balance{
-				Asset:     assets,
-				Available: b.Available,
-				Locked:    b.Locked,
-			},
-		)
-	}
-	return result
-}
+// 	for assets, b := range balance {
+// 		result = append(result,
+// 			&pb.Balance{
+// 				Asset:     assets,
+// 				Available: b.Available,
+// 				Locked:    b.Locked,
+// 			},
+// 		)
+// 	}
+// 	return result
+// }
 
-func ToProtoRole(role db.Role) pb.Role {
-	switch role {
-	case db.AdminRole:
-		return pb.Role_ADMIN
-	default:
-		return pb.Role_USER
-	}
+// func ToProtoRole(role db.Role) pb.Role {
+// 	switch role {
+// 	case db.AdminRole:
+// 		return pb.Role_ADMIN
+// 	default:
+// 		return pb.Role_USER
+// 	}
 
-}
+// }

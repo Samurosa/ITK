@@ -1,6 +1,8 @@
+env: "local"
 grpc:
   host: localhost
   port: 50053
+  timeout: 1h
 
 clients:
   user:
