@@ -1,61 +1,48 @@
 package mapper
 
-// import (
-// 	db "ITK_Code/m/v2/internal/storage"
+import (
+	db "ITK_Code/m/v2/internal/storage"
 
-// 	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
+	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
+)
 
-// 	"google.golang.org/protobuf/types/known/timestamppb"
-// )
+func ToProtoBalances(
+	balance map[string]*db.Balance,
+) []*pb.Balance {
+	result := make(
+		[]*pb.Balance,
+		0,
+		len(balance),
+	)
 
-// func ToProto(
-// 	user db.User,
-// ) *pb.User {
-// 	return &pb.User{
-// 		Id:    user.ID,
-// 		Name:  user.Name,
-// 		Login: user.Login,
+	for assets, b := range balance {
+		result = append(result,
+			&pb.Balance{
+				Asset:     assets,
+				Available: b.Available,
+				Locked:    b.Locked,
+			},
+		)
+	}
+	return result
+}
 
-// 		Balances: ToProtoBalances(user.Balances),
+func ToProtoBalance(balance *db.Balance) *pb.Balance {
+	return &pb.Balance{
+		Asset:     balance.Asset,
+		Available: balance.Available,
+		Locked:    balance.Locked,
+	}
+}
 
-// 		Role: ToProtoRole(user.Role),
+func ToProtoRole(role db.Role) pb.Role {
+	switch role {
+	case db.UserRole:
+		return pb.Role_ROLE_USER
+	case db.AdminRole:
+		return pb.Role_ROLE_ADMIN
+	default:
+		return pb.Role_ROLE_UNSPECIFIED
+	}
 
-// 		CreatedAt: timestamppb.New(
-// 			user.CreateTime,
-// 		),
-// 		UpdatedAt: timestamppb.New(
-// 			user.UpdateTime,
-// 		),
-// 	}
-// }
-
-// func ToProtoBalances(
-// 	balance map[string]*db.Balance,
-// ) []*pb.Balance {
-// 	result := make(
-// 		[]*pb.Balance,
-// 		0,
-// 		len(balance),
-// 	)
-
-// 	for assets, b := range balance {
-// 		result = append(result,
-// 			&pb.Balance{
-// 				Asset:     assets,
-// 				Available: b.Available,
-// 				Locked:    b.Locked,
-// 			},
-// 		)
-// 	}
-// 	return result
-// }
-
-// func ToProtoRole(role db.Role) pb.Role {
-// 	switch role {
-// 	case db.AdminRole:
-// 		return pb.Role_ADMIN
-// 	default:
-// 		return pb.Role_USER
-// 	}
-
-// }
+}
