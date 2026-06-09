@@ -1,51 +1,23 @@
 package storage
 
 import (
+	models "ITK_Code/m/v2/internal/domain/models"
 	"sync"
-	"time"
 )
 
 type UserRepository struct {
 	mu sync.RWMutex
 
-	users map[string]*User
-}
-
-type Role string
-
-const (
-	UnspecifiedRole = "ROLE_UNSPECIFIED"
-
-	UserRole Role = "ROLE_USER"
-
-	AdminRole Role = "ROLE_ADMIN"
-)
-
-type Balance struct {
-	Asset string
-
-	Available string
-
-	Locked string
-}
-
-type User struct {
-	ID         string
-	Name       string
-	Login      string
-	Balances   map[string]*Balance
-	Role       Role
-	CreateTime time.Time
-	UpdateTime time.Time
+	users map[string]*models.User
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*User),
+		users: make(map[string]*models.User),
 	}
 }
 
-func (r *UserRepository) Create(user User) {
+func (r *UserRepository) Create(user models.User) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -53,7 +25,7 @@ func (r *UserRepository) Create(user User) {
 }
 
 func (r *UserRepository) Get(id string) (
-	*User,
+	*models.User,
 	bool,
 ) {
 
@@ -114,7 +86,7 @@ func (r *UserRepository) Deposit(
 	asset string,
 	amount string,
 ) (
-	Balance,
+	models.Balance,
 	bool,
 ) {
 	r.mu.Lock()
@@ -122,16 +94,16 @@ func (r *UserRepository) Deposit(
 
 	user, ok := r.users[user_id]
 	if !ok {
-		return Balance{}, false
+		return models.Balance{}, false
 	}
 
 	if user.Balances == nil {
-		user.Balances = make(map[string]*Balance)
+		user.Balances = make(map[string]*models.Balance)
 	}
 
 	userbalance, ok := user.Balances[asset]
 	if !ok {
-		userbalance = &Balance{
+		userbalance = &models.Balance{
 			Asset:     asset,
 			Available: "0",
 			Locked:    "0",

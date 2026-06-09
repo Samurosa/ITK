@@ -1,13 +1,13 @@
 package mapper
 
 import (
-	db "ITK_Code/m/v2/internal/storage"
-
 	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
+
+	models "ITK_Code/m/v2/internal/domain/models"
 )
 
 func ToProtoBalances(
-	balance map[string]*db.Balance,
+	balance map[string]*models.Balance,
 ) []*pb.Balance {
 	result := make(
 		[]*pb.Balance,
@@ -27,7 +27,7 @@ func ToProtoBalances(
 	return result
 }
 
-func ToProtoBalance(balance *db.Balance) *pb.Balance {
+func ToProtoBalance(balance *models.Balance) *pb.Balance {
 	return &pb.Balance{
 		Asset:     balance.Asset,
 		Available: balance.Available,
@@ -35,11 +35,11 @@ func ToProtoBalance(balance *db.Balance) *pb.Balance {
 	}
 }
 
-func ToProtoRole(role db.Role) pb.Role {
+func ToProtoRole(role models.Role) pb.Role {
 	switch role {
-	case db.UserRole:
+	case models.UserRole:
 		return pb.Role_ROLE_USER
-	case db.AdminRole:
+	case models.AdminRole:
 		return pb.Role_ROLE_ADMIN
 	default:
 		return pb.Role_ROLE_UNSPECIFIED

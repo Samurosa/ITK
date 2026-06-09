@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
+	models "ITK_Code/m/v2/internal/domain/models"
 	mapper "ITK_Code/m/v2/internal/mapper"
-	data "ITK_Code/m/v2/internal/storage"
 
 	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
 
@@ -16,7 +16,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type UserServer interface {
+type User interface {
 	Register(ctx context.Context,
 		login string,
 		password string,
@@ -31,8 +31,8 @@ type UserServer interface {
 	) (
 		name string,
 		login string,
-		balances map[string]*data.Balance,
-		role data.Role,
+		balances map[string]*models.Balance,
+		role models.Role,
 		createdAt time.Time,
 		updatedAt time.Time,
 		err error,
@@ -62,7 +62,7 @@ type UserServer interface {
 		amount string,
 	) (
 		success bool,
-		balance *data.Balance,
+		balance *models.Balance,
 		err error,
 	)
 
@@ -77,11 +77,11 @@ type UserServer interface {
 
 type serverApi struct {
 	pb.UnimplementedUserServiceServer
-	userServer UserServer
+	user User
 }
 
-func NewServer(grps *grpc.Server, userServer UserServer) {
-	pb.RegisterUserServiceServer(grps, &serverApi{userServer: userServer})
+func NewServer(grps *grpc.Server, user User) {
+	pb.RegisterUserServiceServer(grps, &serverApi{user: user})
 }
 
 func (s *serverApi) Register(
@@ -99,7 +99,7 @@ func (s *serverApi) Register(
 		return nil, err
 	}
 
-	id, createdAt, err := s.userServer.Register(ctx, req.Login, req.Password)
+	id, createdAt, err := s.user.Register(ctx, req.Login, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to register user")
 	}
@@ -126,7 +126,7 @@ func (s *serverApi) GetUser(
 	}
 
 	name, login, balances, role, createdAt, updatedAt,
-		err := s.userServer.GetUser(ctx, req.Id)
+		err := s.user.GetUser(ctx, req.Id)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to get user")
 	}
@@ -156,7 +156,7 @@ func (s *serverApi) UpdateUser(
 		return nil, err
 	}
 
-	updated, updatedAt, err := s.userServer.UpdateUser(
+	updated, updatedAt, err := s.user.UpdateUser(
 		ctx,
 		req.Id,
 		req.Name,
@@ -188,7 +188,7 @@ func (s *serverApi) DeleteUser(
 		return nil, err
 	}
 
-	success, err := s.userServer.DeleteUser(ctx, req.Id)
+	success, err := s.user.DeleteUser(ctx, req.Id)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to delete user")
 	}
@@ -209,7 +209,7 @@ func (s *serverApi) Deposit(
 		return nil, err
 	}
 
-	success, balance, err := s.userServer.Deposit(
+	success, balance, err := s.user.Deposit(
 		ctx,
 		req.Id,
 		req.Asset,
@@ -239,7 +239,7 @@ func (s *serverApi) Authorization(
 		return nil, err
 	}
 
-	token, err := s.userServer.Authorization(ctx, req.Login, req.Password)
+	token, err := s.user.Authorization(ctx, req.Login, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to authorize user")
 	}
