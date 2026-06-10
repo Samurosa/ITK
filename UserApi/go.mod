@@ -4,7 +4,6 @@ go 1.25.4
 
 require (
 	github.com/Truncklin/exchange-contract v0.0.3
-	github.com/google/uuid v1.6.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.11
@@ -13,8 +12,10 @@ require (
 
 require (
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/crypto v0.53.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/sys v0.46.0 // indirect
 	golang.org/x/text v0.38.0 // indirect

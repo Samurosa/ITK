@@ -18,7 +18,13 @@ func main() {
 	if err != nil {
 		log.Fatal("error create logger: ", zap.Error(err))
 	}
-	defer log.Sync()
+
+	defer func(log *zap.Logger) {
+		err := log.Sync()
+		if err != nil {
+			log.Fatal("error sync logger: ", zap.Error(err))
+		}
+	}(log)
 
 	application := grpsApp.New(log, cfg.GRPC.Port, cfg.Token_ttl)
 
