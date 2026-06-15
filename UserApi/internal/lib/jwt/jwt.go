@@ -15,9 +15,9 @@ func NewToken(user models.User, secret models.App, duration time.Duration) (stri
 	claims[user.Login] = user.Login
 	claims["exp"] = time.Now().Add(duration).Unix()
 
-	tokenString, err := token.SignedString(secret)
+	tokenString, err := token.SignedString(secret.Secret)
 	if err != nil {
-		return "", err
+		return "token.SignedString, invalid format token", err
 	}
 
 	return tokenString, nil

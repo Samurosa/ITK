@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	models "ITK_Code/m/v2/internal/domain/models"
-	mapper "ITK_Code/m/v2/internal/mapper"
+	"ITK_Code/m/v2/internal/domain/models"
+	"ITK_Code/m/v2/internal/mapper"
 
-	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
+	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,7 +17,7 @@ import (
 )
 
 type User interface {
-	Register(ctx context.Context,
+	Registration(ctx context.Context,
 		login string,
 		password string,
 	) (
@@ -80,11 +80,11 @@ type serverApi struct {
 	user User
 }
 
-func NewServer(grps *grpc.Server, user User) {
-	pb.RegisterUserServiceServer(grps, &serverApi{user: user})
+func RegisterUserService(grpc *grpc.Server, user User) {
+	pb.RegisterUserServiceServer(grpc, &serverApi{user: user})
 }
 
-func (s *serverApi) Register(
+func (s *serverApi) Registration(
 	ctx context.Context,
 	req *pb.RegisterUserRequest,
 ) (
@@ -99,7 +99,7 @@ func (s *serverApi) Register(
 		return nil, err
 	}
 
-	id, createdAt, err := s.user.Register(ctx, req.Login, req.Password)
+	id, createdAt, err := s.user.Registration(ctx, req.Login, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to register user")
 	}

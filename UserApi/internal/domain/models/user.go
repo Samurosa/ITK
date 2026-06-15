@@ -5,7 +5,7 @@ import "time"
 type Role string
 
 const (
-	UnspecifiedRole = "ROLE_UNSPECIFIED"
+	UnspecifiedRole Role = "ROLE_UNSPECIFIED"
 
 	UserRole Role = "ROLE_USER"
 

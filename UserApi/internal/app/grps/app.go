@@ -1,7 +1,7 @@
 package grpsApp
 
 import (
-	"ITK_Code/m/v2/internal/grps/user"
+	usergrps "ITK_Code/m/v2/internal/grps/user"
 	"fmt"
 	"net"
 
@@ -17,11 +17,12 @@ type App struct {
 
 func New(
 	log *zap.Logger,
+	userService usergrps.User,
 	port int,
 ) *App {
 	grpcServer := grpc.NewServer()
 
-	user.NewServer(grpcServer)
+	usergrps.RegisterUserService(grpcServer, userService)
 
 	return &App{
 		log:        log,
@@ -38,7 +39,7 @@ func (a *App) Run() {
 	}
 
 	a.log.Info(
-		"grpc server started",
+		"grpcs server started",
 		zap.Any("port", a.port),
 	)
 

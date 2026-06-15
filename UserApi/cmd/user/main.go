@@ -1,22 +1,33 @@
 package main
 
 import (
-	config "ITK_Code/m/v2/config"
+	"ITK_Code/m/v2/config"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	grpsApp "ITK_Code/m/v2/internal/app"
 
+	"github.com/joho/godotenv"
+
 	"go.uber.org/zap"
 )
 
 func main() {
-	cfg := config.Load("./config/local.yaml")
-
-	log, err := zap.NewProduction()
+	err := godotenv.Load("C:/Users/holli/Documents/ITK/ITK_Code/UserApi/.env")
 	if err != nil {
-		log.Fatal("error create logger: ", zap.Error(err))
+		log.Fatal("Error loading .env file")
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+	configPath := os.Getenv("CONFIG_PATH")
+
+	cfg := config.Load(configPath)
+
+	logger, err := zap.NewProduction()
+	if err != nil {
+		logger.Fatal("error create logger: ", zap.Error(err))
 	}
 
 	defer func(log *zap.Logger) {
@@ -24,9 +35,9 @@ func main() {
 		if err != nil {
 			log.Fatal("error sync logger: ", zap.Error(err))
 		}
-	}(log)
+	}(logger)
 
-	application := grpsApp.New(log, cfg.GRPC.Port, cfg.Token_ttl)
+	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.Token_ttl, secret)
 
 	go application.GrpcApp.Run()
 
@@ -37,6 +48,6 @@ func main() {
 
 	application.GrpcApp.Stop()
 
-	log.Debug("application stop")
+	logger.Debug("application stop")
 
 }

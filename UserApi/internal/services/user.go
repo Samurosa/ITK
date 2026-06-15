@@ -1,8 +1,8 @@
 package services
 
 import (
+	"ITK_Code/m/v2/internal/storage"
 	"context"
-	"errors"
 	"time"
 
 	"ITK_Code/m/v2/internal/domain/models"
@@ -17,7 +17,7 @@ type User struct {
 	log          *zap.Logger
 	userSaver    UserSave
 	userProvider UserProvider
-	app          App
+	app          AppProvider
 	tokenTTL     time.Duration
 }
 
@@ -34,25 +34,29 @@ type UserSave interface {
 		string,
 		error,
 	)
+	IsExistsUserByLogin(ctx context.Context,
+		login string,
+	) bool
 }
 
 type UserProvider interface {
 	GetUser(ctx context.Context, uid string) (models.User, error)
 	GetUserByLogin(ctx context.Context, login string) (models.User, error)
 	GetBalanceUser(ctx context.Context, uid string, asset string) (*models.Balance, error)
+	//TODO: UpdateUser(ctx context.Context, lo)
 	DeleteUser(ctx context.Context, uid string) error
 	IsAdmin(ctx context.Context, uid string) (bool, error)
 }
 
-type App struct {
-	GetSecret func(ctx context.Context, id int8) (models.App, error)
+type AppProvider interface {
+	GetSecret() (models.App, error)
 }
 
 func New(
 	log *zap.Logger,
 	userSaver UserSave,
 	userProvider UserProvider,
-	app App,
+	app AppProvider,
 	tokenTTL time.Duration,
 ) *User {
 	return &User{
@@ -63,7 +67,7 @@ func New(
 		tokenTTL:     tokenTTL,
 	}
 }
-func (u *User) RegisterNewUser(ctx context.Context,
+func (u *User) Registration(ctx context.Context,
 	login string,
 	password string,
 ) (
@@ -73,6 +77,11 @@ func (u *User) RegisterNewUser(ctx context.Context,
 ) {
 	log := u.log.Named("RegisterNewUser")
 	log.Info("registering new user")
+
+	if u.userSaver.IsExistsUserByLogin(ctx, login) {
+		log.Info("user with login already exists")
+		return "", time.Time{}, storage.ErrUserExists
+	}
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -91,7 +100,7 @@ func (u *User) RegisterNewUser(ctx context.Context,
 
 	now := time.Now()
 
-	uid, err := u.userSaver.SaveUser(ctx, login, passHash, defaultUserName, balances, models.UnspecifiedRole, now, now)
+	uid, err := u.userSaver.SaveUser(ctx, login, passHash, defaultUserName, balances, models.UserRole, now, now)
 	if err != nil {
 		log.Error("error saving user", zap.Error(err))
 		return "", time.Time{}, err
@@ -124,7 +133,7 @@ func (u *User) GetUser(ctx context.Context,
 
 	log.Info("got user", zap.String("id", id))
 
-	return user.ID, user.Login, user.Balances, user.Role, user.CreateTime, user.UpdateTime, nil
+	return user.Name, user.Login, user.Balances, user.Role, user.CreateTime, user.UpdateTime, nil
 }
 
 func (u *User) UpdateUser(ctx context.Context,
@@ -146,14 +155,11 @@ func (u *User) UpdateUser(ctx context.Context,
 		return false, time.Time{}, err
 	}
 
-	b, t, err2, done := updateUser(name, user, login, password, log, err)
-	if done {
-		return b, t, err2
-	}
+	done, updatedAt, err := updateUser(name, user, login, password, log, err)
 
 	log.Info("user update", zap.String("id", id))
 
-	return false, time.Time{}, nil
+	return done, updatedAt, err
 }
 
 func (u *User) DeleteUser(ctx context.Context,
@@ -194,8 +200,8 @@ func (u *User) Deposit(ctx context.Context,
 		return false, nil, err
 	}
 
-	balance.Available = amount
-	balance.Locked = amount
+	balance.Available += amount
+	balance.Locked += amount
 
 	log.Info("deposit is successful", zap.String("id", id))
 
@@ -215,19 +221,23 @@ func (u *User) Authorization(ctx context.Context,
 	user, err := u.userProvider.GetUserByLogin(ctx, login)
 	if err != nil {
 		log.Error("login failed", zap.Error(err))
-		return "", errors.New("login failed")
+		return "", storage.ErrUserNotFound
 	}
 
-	app, err := u.app.GetSecret(ctx, 0)
+	secret, err := u.app.GetSecret()
+	if err != nil {
+		log.Error("secret failed", zap.Error(err))
+		return "", storage.ErrUserNotFound
+	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
 		log.Error("login failed", zap.Error(err))
-		return "", errors.New("login failed")
+		return "", storage.ErrUserNotFound
 	}
 
 	log.Info("user is authorized", zap.String("login", login))
 
-	token, err := tokenGenerate.NewToken(user, app, u.tokenTTL)
+	token, err := tokenGenerate.NewToken(user, secret, u.tokenTTL)
 	if err != nil {
 		log.Error("error generating token", zap.Error(err))
 		return "", err
@@ -254,19 +264,26 @@ func (u *User) IsAdmin(ctx context.Context,
 	return isAdmin, nil
 }
 
-func updateUser(name *wrapperspb.StringValue, user models.User, login *wrapperspb.StringValue, password *wrapperspb.StringValue, log *zap.Logger, err error) (bool, time.Time, error, bool) {
+func updateUser(name *wrapperspb.StringValue, user models.User, login *wrapperspb.StringValue, password *wrapperspb.StringValue, log *zap.Logger, err error) (bool, time.Time, error) {
+	updated := false
 	if name.Value != "" {
 		user.Name = name.Value
-	} else if login.Value != "" {
+		updated = true
+	}
+	if login.Value != "" {
 		user.Login = login.Value
-	} else if password.Value != "" {
+		updated = true
+	}
+	if password.Value != "" {
 		passHash, err := bcrypt.GenerateFromPassword([]byte(password.Value), bcrypt.DefaultCost)
 		if err != nil {
 			log.Error("error generating password hash", zap.Error(err))
 		}
 		user.PasswordHash = passHash
-	} else {
-		return false, time.Time{}, err, true
+		updated = true
 	}
-	return false, time.Time{}, nil, false
+	if !updated {
+		return false, time.Time{}, err
+	}
+	return true, time.Now(), nil
 }
