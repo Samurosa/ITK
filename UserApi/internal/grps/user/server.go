@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type User interface {
@@ -40,9 +39,9 @@ type User interface {
 
 	UpdateUser(ctx context.Context,
 		id string,
-		name *wrapperspb.StringValue,
-		login *wrapperspb.StringValue,
-		password *wrapperspb.StringValue,
+		name string,
+		login string,
+		password string,
 	) (
 		updated bool,
 		updatedAt time.Time,
@@ -156,12 +155,25 @@ func (s *serverApi) UpdateUser(
 		return nil, err
 	}
 
+	name := ""
+	login := ""
+	password := ""
+	if req.Name != nil {
+		name = req.Name.Value
+	}
+	if req.Login != nil {
+		login = req.Login.Value
+	}
+	if req.Password != nil {
+		password = req.Password.Value
+	}
+
 	updated, updatedAt, err := s.user.UpdateUser(
 		ctx,
 		req.Id,
-		req.Name,
-		req.Login,
-		req.Password,
+		name,
+		login,
+		password,
 	)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to update user")
@@ -208,6 +220,9 @@ func (s *serverApi) Deposit(
 	if err := ValidateUserId(req.Id); err != nil {
 		return nil, err
 	}
+	if err := ValidateDepositRequest(req); err != nil {
+		return nil, err
+	}
 
 	success, balance, err := s.user.Deposit(
 		ctx,
@@ -241,7 +256,7 @@ func (s *serverApi) Authorization(
 
 	token, err := s.user.Authorization(ctx, req.Login, req.Password)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to authorize user")
+		return nil, status.Error(codes.InvalidArgument, "failed to authorize user")
 	}
 
 	return &pb.AuthorizationResponse{Token: token}, nil

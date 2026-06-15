@@ -35,7 +35,6 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	string,
 	error,
 ) {
-	defer ctx.Done()
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -73,19 +72,29 @@ func (r *UserRepository) IsExistsUserByLogin(ctx context.Context,
 	return isUserExist
 }
 
-func (r *UserRepository) GetUser(ctx context.Context, uid string) (models.User, error) {
+func (r *UserRepository) GetUser(ctx context.Context,
+	uid string,
+) (
+	*models.User,
+	error,
+) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	user, ok := r.users[uid]
 	if !ok {
-		return models.User{}, storage.ErrUserNotFound
+		return &models.User{}, storage.ErrUserNotFound
 	}
 
-	return *user, nil
+	return user, nil
 }
-func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (models.User, error) {
+func (r *UserRepository) GetUserByLogin(ctx context.Context,
+	login string,
+) (
+	*models.User,
+	error,
+) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -99,12 +108,18 @@ func (r *UserRepository) GetUserByLogin(ctx context.Context, login string) (mode
 	}
 
 	if user.ID == "" {
-		return user, storage.ErrUserNotFound
+		return &models.User{}, storage.ErrUserNotFound
 	}
 
-	return user, nil
+	return &user, nil
 }
-func (r *UserRepository) GetBalanceUser(ctx context.Context, uid string, asset string) (*models.Balance, error) {
+func (r *UserRepository) GetBalanceUser(ctx context.Context,
+	uid string,
+	asset string,
+) (
+	*models.Balance,
+	error,
+) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
@@ -116,7 +131,29 @@ func (r *UserRepository) GetBalanceUser(ctx context.Context, uid string, asset s
 
 	return user.Balances[asset], nil
 }
-func (r *UserRepository) DeleteUser(ctx context.Context, uid string) error {
+
+func (r *UserRepository) UpdateUser(ctx context.Context,
+	user *models.User,
+	name string,
+	login string,
+	password []byte,
+) (
+	bool,
+	error,
+) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	user.Name = name
+	user.Login = login
+	user.PasswordHash = []byte(password)
+
+	return true, nil
+}
+
+func (r *UserRepository) DeleteUser(ctx context.Context,
+	uid string,
+) error {
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -128,7 +165,12 @@ func (r *UserRepository) DeleteUser(ctx context.Context, uid string) error {
 	delete(r.users, uid)
 	return nil
 }
-func (r *UserRepository) IsAdmin(ctx context.Context, uid string) (bool, error) {
+func (r *UserRepository) IsAdmin(ctx context.Context,
+	uid string,
+) (
+	bool,
+	error,
+) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
