@@ -10,7 +10,6 @@ import (
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type User struct {
@@ -40,10 +39,10 @@ type UserSave interface {
 }
 
 type UserProvider interface {
-	GetUser(ctx context.Context, uid string) (models.User, error)
-	GetUserByLogin(ctx context.Context, login string) (models.User, error)
+	GetUser(ctx context.Context, uid string) (*models.User, error)
+	GetUserByLogin(ctx context.Context, login string) (*models.User, error)
 	GetBalanceUser(ctx context.Context, uid string, asset string) (*models.Balance, error)
-	//TODO: UpdateUser(ctx context.Context, lo)
+	UpdateUser(ctx context.Context, user *models.User, name string, login string, password []byte) (bool, error)
 	DeleteUser(ctx context.Context, uid string) error
 	IsAdmin(ctx context.Context, uid string) (bool, error)
 }
@@ -138,9 +137,9 @@ func (u *User) GetUser(ctx context.Context,
 
 func (u *User) UpdateUser(ctx context.Context,
 	id string,
-	name *wrapperspb.StringValue,
-	login *wrapperspb.StringValue,
-	password *wrapperspb.StringValue,
+	name string,
+	login string,
+	password string,
 ) (
 	updated bool,
 	updatedAt time.Time,
@@ -155,7 +154,17 @@ func (u *User) UpdateUser(ctx context.Context,
 		return false, time.Time{}, err
 	}
 
-	done, updatedAt, err := updateUser(name, user, login, password, log, err)
+	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("error generating password hash", zap.Error(err))
+		return false, time.Time{}, err
+	}
+
+	done, err := u.userProvider.UpdateUser(ctx, user, name, login, passHash)
+	if err != nil {
+		log.Error("user not found", zap.String("id", id), zap.Error(err))
+		return false, time.Time{}, err
+	}
 
 	log.Info("user update", zap.String("id", id))
 
@@ -237,7 +246,7 @@ func (u *User) Authorization(ctx context.Context,
 
 	log.Info("user is authorized", zap.String("login", login))
 
-	token, err := tokenGenerate.NewToken(user, secret, u.tokenTTL)
+	token, err := tokenGenerate.NewToken(*user, secret, u.tokenTTL)
 	if err != nil {
 		log.Error("error generating token", zap.Error(err))
 		return "", err
@@ -262,28 +271,4 @@ func (u *User) IsAdmin(ctx context.Context,
 	}
 
 	return isAdmin, nil
-}
-
-func updateUser(name *wrapperspb.StringValue, user models.User, login *wrapperspb.StringValue, password *wrapperspb.StringValue, log *zap.Logger, err error) (bool, time.Time, error) {
-	updated := false
-	if name.Value != "" {
-		user.Name = name.Value
-		updated = true
-	}
-	if login.Value != "" {
-		user.Login = login.Value
-		updated = true
-	}
-	if password.Value != "" {
-		passHash, err := bcrypt.GenerateFromPassword([]byte(password.Value), bcrypt.DefaultCost)
-		if err != nil {
-			log.Error("error generating password hash", zap.Error(err))
-		}
-		user.PasswordHash = passHash
-		updated = true
-	}
-	if !updated {
-		return false, time.Time{}, err
-	}
-	return true, time.Now(), nil
 }
