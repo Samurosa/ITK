@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/Truncklin/exchange-contract/generated"
+	pb "github.com/Samurosa/exchange-contract/generated"
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"

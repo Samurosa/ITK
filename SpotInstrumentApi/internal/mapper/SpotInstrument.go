@@ -3,7 +3,7 @@ package mapper
 import (
 	db "ITK_Code/m/v2/internal/storage"
 
-	pb "github.com/Truncklin/exchange-contract/generated"
+	pb "github.com/Samurosa/exchange-contract/generated"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

@@ -7,9 +7,9 @@ import (
 	"log"
 	"net"
 
-	commonInterceptor "github.com/Truncklin/exchange-common/interceptor"
-	metrics "github.com/Truncklin/exchange-common/metrics"
-	pb "github.com/Truncklin/exchange-contract/generated"
+	commonInterceptor "github.com/Samurosa/exchange-common/interceptor"
+	metrics "github.com/Samurosa/exchange-common/metrics"
+	pb "github.com/Samurosa/exchange-contract/generated"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	"go.uber.org/zap"
 

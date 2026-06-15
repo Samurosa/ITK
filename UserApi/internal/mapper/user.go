@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	pb "github.com/Truncklin/exchange-contract/protobuf/gen/go/user"
+	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 
 	models "ITK_Code/m/v2/internal/domain/models"
 )
