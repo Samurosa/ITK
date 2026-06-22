@@ -1,13 +1,14 @@
-package mapper
+package user
 
 import (
-	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"ITK_Code/m/v2/internal/core/user/models"
 
-	models "ITK_Code/m/v2/internal/domain/models"
+	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func ToProtoBalances(
-	balance map[string]*models.Balance,
+	balance map[string]models.Balance,
 ) []*pb.Balance {
 	result := make(
 		[]*pb.Balance,
@@ -27,7 +28,7 @@ func ToProtoBalances(
 	return result
 }
 
-func ToProtoBalance(balance *models.Balance) *pb.Balance {
+func ToProtoBalance(balance models.Balance) *pb.Balance {
 	return &pb.Balance{
 		Asset:     balance.Asset,
 		Available: balance.Available,
@@ -44,5 +45,13 @@ func ToProtoRole(role models.Role) pb.Role {
 	default:
 		return pb.Role_ROLE_UNSPECIFIED
 	}
+}
 
+func ToProtoTokens(tokens models.Tokens) *pb.TokenPairResponse {
+	return &pb.TokenPairResponse{
+		AccessToken:      tokens.AccessToken,
+		RefreshToken:     tokens.RefreshToken,
+		AccessExpiresAt:  timestamppb.New(tokens.AccessExpiresAt),
+		RefreshExpiresAt: timestamppb.New(tokens.RefreshExpiresAt),
+	}
 }

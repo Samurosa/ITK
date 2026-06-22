@@ -1,12 +1,13 @@
-package services
+package user
 
 import (
-	"ITK_Code/m/v2/internal/storage"
+	tokenGenerate "ITK_Code/m/v2/internal/adapters/jwt"
+	"ITK_Code/m/v2/internal/adapters/storage"
+	models2 "ITK_Code/m/v2/internal/core/user/models"
 	"context"
 	"time"
 
 	"ITK_Code/m/v2/internal/domain/models"
-	tokenGenerate "ITK_Code/m/v2/internal/lib/jwt"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
@@ -16,39 +17,9 @@ type User struct {
 	log          *zap.Logger
 	userSaver    UserSave
 	userProvider UserProvider
-	app          AppProvider
-	tokenTTL     time.Duration
-}
 
-type UserSave interface {
-	SaveUser(ctx context.Context,
-		login string,
-		passwordHash []byte,
-		name string,
-		balances map[string]*models.Balance,
-		role models.Role,
-		createTime time.Time,
-		updateTime time.Time,
-	) (
-		string,
-		error,
-	)
-	IsExistsUserByLogin(ctx context.Context,
-		login string,
-	) bool
-}
-
-type UserProvider interface {
-	GetUser(ctx context.Context, uid string) (*models.User, error)
-	GetUserByLogin(ctx context.Context, login string) (*models.User, error)
-	GetBalanceUser(ctx context.Context, uid string, asset string) (*models.Balance, error)
-	UpdateUser(ctx context.Context, user *models.User, name string, login string, password []byte) (bool, error)
-	DeleteUser(ctx context.Context, uid string) error
-	IsAdmin(ctx context.Context, uid string) (bool, error)
-}
-
-type AppProvider interface {
-	GetSecret() (models.App, error)
+	app      AppProvider
+	tokenTTL time.Duration
 }
 
 func New(
@@ -90,8 +61,8 @@ func (u *User) Registration(ctx context.Context,
 
 	defaultUserName := "default name"
 
-	balances := map[string]*models.Balance{}
-	balances["USD"] = &models.Balance{
+	balances := map[string]*models2.Balance{}
+	balances["USD"] = &models2.Balance{
 		Asset:     "USD",
 		Available: "0",
 		Locked:    "0",
@@ -99,7 +70,7 @@ func (u *User) Registration(ctx context.Context,
 
 	now := time.Now()
 
-	uid, err := u.userSaver.SaveUser(ctx, login, passHash, defaultUserName, balances, models.UserRole, now, now)
+	uid, err := u.userSaver.SaveUser(ctx, login, passHash, defaultUserName, balances, models2.UserRole, now, now)
 	if err != nil {
 		log.Error("error saving user", zap.Error(err))
 		return "", time.Time{}, err
@@ -113,12 +84,7 @@ func (u *User) Registration(ctx context.Context,
 func (u *User) GetUser(ctx context.Context,
 	id string,
 ) (
-	name string,
-	login string,
-	balances map[string]*models.Balance,
-	role models.Role,
-	createdAt time.Time,
-	updatedAt time.Time,
+	user models2.User,
 	err error,
 ) {
 	log := u.log.Named("GetUser")
@@ -127,12 +93,12 @@ func (u *User) GetUser(ctx context.Context,
 	user, err := u.userProvider.GetUser(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return "", "", nil, "", time.Time{}, time.Time{}, err
+		return models2.User{}, err
 	}
 
 	log.Info("got user", zap.String("id", id))
 
-	return user.Name, user.Login, user.Balances, user.Role, user.CreateTime, user.UpdateTime, nil
+	return user, nil
 }
 
 func (u *User) UpdateUser(ctx context.Context,
@@ -154,13 +120,22 @@ func (u *User) UpdateUser(ctx context.Context,
 		return false, time.Time{}, err
 	}
 
-	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		log.Error("error generating password hash", zap.Error(err))
-		return false, time.Time{}, err
+	passHash := []byte(password)
+	if password != "" {
+		passHash, err = bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			log.Error("error generating password hash", zap.Error(err))
+			return false, time.Time{}, err
+		}
 	}
 
-	done, err := u.userProvider.UpdateUser(ctx, user, name, login, passHash)
+	updateUser := models.Update{
+		Name:     name,
+		Login:    login,
+		Password: passHash,
+	}
+
+	done, err := u.userProvider.UpdateUser(ctx, user, updateUser)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return false, time.Time{}, err
@@ -197,7 +172,7 @@ func (u *User) Deposit(ctx context.Context,
 	amount string,
 ) (
 	bool,
-	*models.Balance,
+	*models2.Balance,
 	error,
 ) {
 	log := u.log.Named("Deposit")

@@ -12,14 +12,6 @@ const (
 	AdminRole Role = "ROLE_ADMIN"
 )
 
-type Balance struct {
-	Asset string
-
-	Available string
-
-	Locked string
-}
-
 type User struct {
 	ID           string
 	Name         string
@@ -29,4 +21,9 @@ type User struct {
 	Role         Role
 	CreateTime   time.Time
 	UpdateTime   time.Time
+}
+type UpdateUser struct {
+	Name     string
+	Login    string
+	Password []byte
 }

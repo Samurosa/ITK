@@ -1,8 +1,10 @@
 package inmemory
 
 import (
+	"ITK_Code/m/v2/internal/adapters/storage"
+	models2 "ITK_Code/m/v2/internal/core/user/models"
 	"ITK_Code/m/v2/internal/domain/models"
-	"ITK_Code/m/v2/internal/storage"
+	"bytes"
 	"context"
 	"time"
 
@@ -14,12 +16,14 @@ import (
 type UserRepository struct {
 	mu sync.RWMutex
 
-	users map[string]*models.User
+	users map[string]*models2.User
+
+	usersLoginById map[string]string
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*models.User),
+		users: make(map[string]*models2.User),
 	}
 }
 
@@ -27,8 +31,8 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	login string,
 	passwordHash []byte,
 	name string,
-	balances map[string]*models.Balance,
-	role models.Role,
+	balances map[string]*models2.Balance,
+	role models2.Role,
 	createTime time.Time,
 	updateTime time.Time,
 ) (
@@ -39,7 +43,7 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	defer r.mu.Unlock()
 
 	id := uuid.New().String()
-	user := models.User{
+	user := models2.User{
 		ID:           id,
 		Name:         name,
 		Login:        login,
@@ -75,7 +79,7 @@ func (r *UserRepository) IsExistsUserByLogin(ctx context.Context,
 func (r *UserRepository) GetUser(ctx context.Context,
 	uid string,
 ) (
-	*models.User,
+	models2.User,
 	error,
 ) {
 
@@ -84,7 +88,7 @@ func (r *UserRepository) GetUser(ctx context.Context,
 
 	user, ok := r.users[uid]
 	if !ok {
-		return &models.User{}, storage.ErrUserNotFound
+		return &models2.User{}, storage.ErrUserNotFound
 	}
 
 	return user, nil
@@ -92,14 +96,14 @@ func (r *UserRepository) GetUser(ctx context.Context,
 func (r *UserRepository) GetUserByLogin(ctx context.Context,
 	login string,
 ) (
-	*models.User,
+	models2.User,
 	error,
 ) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	user := models.User{}
+	user := models2.User{}
 
 	for _, userInRep := range r.users {
 		if userInRep.Login == login {
@@ -108,7 +112,7 @@ func (r *UserRepository) GetUserByLogin(ctx context.Context,
 	}
 
 	if user.ID == "" {
-		return &models.User{}, storage.ErrUserNotFound
+		return &models2.User{}, storage.ErrUserNotFound
 	}
 
 	return &user, nil
@@ -117,7 +121,7 @@ func (r *UserRepository) GetBalanceUser(ctx context.Context,
 	uid string,
 	asset string,
 ) (
-	*models.Balance,
+	models2.Balance,
 	error,
 ) {
 
@@ -133,10 +137,8 @@ func (r *UserRepository) GetBalanceUser(ctx context.Context,
 }
 
 func (r *UserRepository) UpdateUser(ctx context.Context,
-	user *models.User,
-	name string,
-	login string,
-	password []byte,
+	user *models2.User,
+	update models.Update,
 ) (
 	bool,
 	error,
@@ -144,9 +146,16 @@ func (r *UserRepository) UpdateUser(ctx context.Context,
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	user.Name = name
-	user.Login = login
-	user.PasswordHash = []byte(password)
+	var nilByte []byte
+	if update.Name != "" {
+		user.Name = update.Name
+	}
+	if update.Login != "" {
+		user.Login = update.Login
+	}
+	if bytes.Contains(update.Password, nilByte) {
+		user.PasswordHash = update.Password
+	}
 
 	return true, nil
 }
@@ -180,9 +189,12 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		return false, storage.ErrUserNotFound
 	}
 
-	if user.Role != "ROLE_ADMIN" {
+	if user.Role != models2.AdminRole {
 		return false, nil
 	}
 
 	return true, nil
 }
+
+// возвращать только копии
+// переходим на постргрес
