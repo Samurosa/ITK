@@ -1,10 +1,9 @@
 package app
 
 import (
-	grpsApp "ITK_Code/m/v2/internal/app/grps"
-	"ITK_Code/m/v2/internal/secret/authorization"
-	"ITK_Code/m/v2/internal/services"
-	"ITK_Code/m/v2/internal/storage/inmemory"
+	"ITK_Code/m/v2/app/grps"
+	"ITK_Code/m/v2/internal/adapters/storage/inmemory"
+	"ITK_Code/m/v2/internal/application/secret/authorization"
 	"time"
 
 	"go.uber.org/zap"
@@ -25,7 +24,7 @@ func New(
 
 	secretAuthorization := authorization.NewSecret(secret)
 
-	userService := services.New(log, userStorage, userStorage, secretAuthorization, tokenTTL)
+	userService := user.New(log, userStorage, userStorage, secretAuthorization, tokenTTL)
 
 	app := grpsApp.New(log, userService, port)
 	return &App{

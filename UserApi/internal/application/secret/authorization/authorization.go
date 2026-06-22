@@ -1,7 +1,7 @@
 package authorization
 
 import (
-	"ITK_Code/m/v2/internal/domain/models"
+	"ITK_Code/m/v2/internal/core/user/models"
 	"errors"
 )
 

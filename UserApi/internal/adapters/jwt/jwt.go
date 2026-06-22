@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/domain/models"
+	"ITK_Code/m/v2/internal/core/user/models"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,7 +11,7 @@ func NewToken(user models.User, secret models.App, duration time.Duration) (stri
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims[user.ID] = user.ID
+	claims["id"] = user.ID
 	claims[user.Login] = user.Login
 	claims["exp"] = time.Now().Add(duration).Unix()
 
@@ -22,3 +22,5 @@ func NewToken(user models.User, secret models.App, duration time.Duration) (stri
 
 	return tokenString, nil
 }
+
+//исправить

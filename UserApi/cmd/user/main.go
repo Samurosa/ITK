@@ -1,13 +1,12 @@
 package main
 
 import (
+	grpsApp "ITK_Code/m/v2/app"
 	"ITK_Code/m/v2/config"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-
-	grpsApp "ITK_Code/m/v2/internal/app"
 
 	"github.com/joho/godotenv"
 
@@ -15,7 +14,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load("C:/Users/holli/Documents/ITK/ITK_Code/UserApi/.env")
+	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}

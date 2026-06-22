@@ -1,7 +1,7 @@
 package grpsApp
 
 import (
-	usergrps "ITK_Code/m/v2/internal/grps/user"
+	usergrps "ITK_Code/m/v2/internal/adapters/grps/user"
 	"fmt"
 	"net"
 
@@ -52,3 +52,5 @@ func (a *App) Stop() {
 	a.log.Info("grpc server stopped")
 	a.grpcServer.GracefulStop()
 }
+
+// проверять токены
