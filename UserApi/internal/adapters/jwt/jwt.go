@@ -1,26 +1,49 @@
 package jwt
 
 import (
+	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/user/models"
+	"context"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func NewToken(user models.User, secret models.App, duration time.Duration) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-
-	claims := token.Claims.(jwt.MapClaims)
-	claims["id"] = user.ID
-	claims[user.Login] = user.Login
-	claims["exp"] = time.Now().Add(duration).Unix()
-
-	tokenString, err := token.SignedString(secret.Secret)
-	if err != nil {
-		return "token.SignedString, invalid format token", err
-	}
-
-	return tokenString, nil
+type JWT struct {
+	jwtConfig auth.JWTConfig
 }
 
-//исправить
+func NewJWT(jwtConfig auth.JWTConfig) *JWT {
+	return &JWT{jwtConfig: jwtConfig}
+}
+
+func (j *JWT) GenerateTokens(ctx context.Context, user models.User, deviceID string) (auth.TokensModel, error) {
+	refreshTokenString, err := generateRefreshToken()
+	if err != nil {
+		return auth.TokensModel{}, err
+	}
+
+	refreshTokenHash, err := bcrypt.GenerateFromPassword([]byte(refreshTokenString), bcrypt.DefaultCost)
+	if err != nil {
+		return auth.TokensModel{}, err
+	}
+
+	accessTokenString, err := generateAccessToken(j.jwtConfig.Secret, j.jwtConfig.AccessTokenTTL, user)
+	if err != nil {
+		return auth.TokensModel{}, err
+	}
+
+	return auth.TokensModel{
+		AccessToken:  accessTokenString,
+		RefreshToken: refreshTokenString,
+
+		AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
+		RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
+	}, nil
+}
+
+func (j *JWT) RefreshAccessToken(ctx context.Context) (auth.TokensModel, error) {
+
+	return auth.TokensModel{}, nil
+}
