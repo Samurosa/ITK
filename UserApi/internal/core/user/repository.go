@@ -19,7 +19,8 @@ type Save interface {
 		string,
 		error,
 	)
-	IsExistsUserByLogin(ctx context.Context,
+
+	IsExistsUserByEmail(ctx context.Context,
 		login string,
 	) bool
 }
@@ -31,8 +32,4 @@ type Provider interface {
 	UpdateUser(ctx context.Context, user *models.User, update models.UpdateUser) (bool, error)
 	DeleteUser(ctx context.Context, uid string) error
 	IsAdmin(ctx context.Context, uid string) (bool, error)
-}
-
-type AppProvider interface {
-	GetSecret() (models.App, error)
 }

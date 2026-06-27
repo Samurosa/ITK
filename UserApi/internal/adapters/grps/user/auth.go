@@ -24,7 +24,7 @@ func (s *serverApi) Registration(
 		return nil, err
 	}
 
-	id, tokens, createdAt, err := s.user.Registration(ctx, req.Email, req.Password, req.Name)
+	id, tokens, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, "failed to register user")
 	}
@@ -51,7 +51,7 @@ func (s *serverApi) Login(
 		return nil, err
 	}
 
-	tokens, err := s.user.Login(ctx, req.Email, req.Password)
+	tokens, err := s.auth.Login(ctx, req.Email, req.Password)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to authorize user")
 	}
@@ -70,7 +70,7 @@ func (s *serverApi) Logout(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	success, loggedOutAt, err := s.user.Logout(ctx, req.RefreshToken, req.DeviceId)
+	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
 	}
@@ -92,7 +92,7 @@ func (s *serverApi) RefreshToken(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	tokens, err := s.user.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
+	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to refresh token")
 	}

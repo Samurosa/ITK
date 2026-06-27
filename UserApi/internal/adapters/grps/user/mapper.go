@@ -1,6 +1,7 @@
 package user
 
 import (
+	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user/models"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -40,6 +41,10 @@ func ToProtoRole(role models.Role) pb.Role {
 	switch role {
 	case models.UserRole:
 		return pb.Role_ROLE_USER
+	case models.GuestRole:
+		return pb.Role_ROLE_GUEST
+	case models.PremiumRole:
+		return pb.Role_ROLE_PREMIUM
 	case models.AdminRole:
 		return pb.Role_ROLE_ADMIN
 	default:
@@ -47,7 +52,7 @@ func ToProtoRole(role models.Role) pb.Role {
 	}
 }
 
-func ToProtoTokens(tokens models.Tokens) *pb.TokenPairResponse {
+func ToProtoTokens(tokens auth.TokensModel) *pb.TokenPairResponse {
 	return &pb.TokenPairResponse{
 		AccessToken:      tokens.AccessToken,
 		RefreshToken:     tokens.RefreshToken,
