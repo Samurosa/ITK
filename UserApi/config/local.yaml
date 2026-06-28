@@ -1,6 +1,7 @@
-env: "local"
-token_ttl: 1h
+env: ".env"
+token_ttl:
+  refresh_token_ttl: 168h
+  access_token_ttl: 12h
 grpc:
   port: 50051
   timeout: 1h
-envPath:

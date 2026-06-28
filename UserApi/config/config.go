@@ -9,14 +9,19 @@ import (
 )
 
 type Config struct {
-	Env       string        `yaml:"env"`
-	Token_ttl time.Duration `yaml:"token_ttl"`
-	GRPC      GRPCConfig    `yaml:"grpc"`
+	TokenTTl TokensTTL  `yaml:"token_ttl"`
+	GRPC     GRPCConfig `yaml:"grpc"`
+	Env      string     `yaml:"env"`
 }
 
 type GRPCConfig struct {
 	Port    int           `yaml:"port"`
 	Timeout time.Duration `yaml:"timeout"`
+}
+
+type TokensTTL struct {
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
 }
 
 func Load(

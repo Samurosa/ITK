@@ -14,15 +14,13 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
+	cfg := config.Load("config/local.yaml")
+	err := godotenv.Load(cfg.Env)
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatalf("Error loading .env file path:%s", cfg.Env)
 	}
 
 	secret := os.Getenv("JWT_SECRET")
-	configPath := os.Getenv("CONFIG_PATH")
-
-	cfg := config.Load(configPath)
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -36,7 +34,7 @@ func main() {
 		}
 	}(logger)
 
-	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.Token_ttl, secret)
+	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.TokenTTl, secret)
 
 	go application.GrpcApp.Run()
 
