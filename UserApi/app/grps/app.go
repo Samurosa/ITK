@@ -2,6 +2,8 @@ package grpsApp
 
 import (
 	usergrps "ITK_Code/m/v2/internal/adapters/grps/user"
+	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/user"
 	"fmt"
 	"net"
 
@@ -17,12 +19,13 @@ type App struct {
 
 func New(
 	log *zap.Logger,
-	userService usergrps.User,
+	userService user.Service,
+	authService auth.Service,
 	port int,
 ) *App {
 	grpcServer := grpc.NewServer()
 
-	usergrps.RegisterUserService(grpcServer, userService)
+	usergrps.RegisterUserService(grpcServer, userService, authService, log)
 
 	return &App{
 		log:        log,
