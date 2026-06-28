@@ -6,15 +6,15 @@ import (
 	"time"
 )
 
-type JWT struct {
+type Token struct {
 	jwtConfig auth.JWTConfig
 }
 
-func NewJWT(jwtConfig auth.JWTConfig) *JWT {
-	return &JWT{jwtConfig: jwtConfig}
+func NewJWT(jwtConfig auth.JWTConfig) *Token {
+	return &Token{jwtConfig: jwtConfig}
 }
 
-func (j *JWT) GenerateTokens(user models.User) (auth.TokensModel, error) {
+func (j *Token) Generate(user models.User) (auth.TokensModel, error) {
 	refreshTokenString, err := generateRefreshToken()
 	if err != nil {
 		return auth.TokensModel{}, err

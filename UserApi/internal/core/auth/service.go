@@ -12,7 +12,6 @@ type Service interface {
 		name string,
 	) (
 		id string,
-		tokenPairs TokensModel,
 		createdAt time.Time,
 		err error,
 	)
@@ -20,6 +19,7 @@ type Service interface {
 	Login(ctx context.Context,
 		email string,
 		password string,
+		deviceId string,
 	) (
 		tokensPairs TokensModel,
 		err error,
@@ -27,6 +27,7 @@ type Service interface {
 
 	Logout(ctx context.Context,
 		refreshToken string,
+		userId string,
 		deviceID string,
 	) (
 		success bool,
@@ -36,6 +37,7 @@ type Service interface {
 
 	RefreshToken(ctx context.Context,
 		refreshToken string,
+		userId string,
 		deviceID string,
 	) (
 		tokensPairs TokensModel,
