@@ -3,4 +3,4 @@ token_ttl: 1h
 grpc:
   port: 50051
   timeout: 1h
-envPath :
+envPath:

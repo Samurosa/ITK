@@ -3,7 +3,8 @@ package app
 import (
 	"ITK_Code/m/v2/app/grps"
 	"ITK_Code/m/v2/internal/adapters/storage/inmemory"
-	"ITK_Code/m/v2/internal/application/secret/authorization"
+	"ITK_Code/m/v2/internal/adapters/storage/inmemory/user"
+	"ITK_Code/m/v2/internal/application"
 	"time"
 
 	"go.uber.org/zap"
@@ -22,7 +23,7 @@ func New(
 
 	userStorage := inmemory.NewUserStorage()
 
-	secretAuthorization := authorization.NewSecret(secret)
+	secretAuthorization := application.NewSecret(secret)
 
 	userService := user.New(log, userStorage, userStorage, secretAuthorization, tokenTTL)
 

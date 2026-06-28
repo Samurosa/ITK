@@ -1,56 +1,62 @@
-package user
+package application
 
 import (
 	tokenGenerate "ITK_Code/m/v2/internal/adapters/jwt"
 	"ITK_Code/m/v2/internal/adapters/storage"
-	models2 "ITK_Code/m/v2/internal/core/user/models"
+	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
+	"fmt"
 	"time"
 
-	"ITK_Code/m/v2/internal/domain/models"
+	"ITK_Code/m/v2/internal/core/user"
 
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type User struct {
-	log          *zap.Logger
-	userSaver    UserSave
-	userProvider UserProvider
+	log *zap.SugaredLogger
 
-	app      AppProvider
-	tokenTTL time.Duration
+	jwtConfig auth.JWTConfig
+
+	sessionStorage auth.SessionRepository
+
+	userSaver    user.Save
+	userProvider user.Service
 }
 
 func New(
-	log *zap.Logger,
-	userSaver UserSave,
-	userProvider UserProvider,
-	app AppProvider,
-	tokenTTL time.Duration,
+	log *zap.SugaredLogger,
+	jwtConfig auth.JWTConfig,
+	sessionStorage auth.SessionRepository,
+	userSaver user.Save,
+	userProvider user.Service,
 ) *User {
 	return &User{
-		log:          log,
-		userSaver:    userSaver,
-		userProvider: userProvider,
-		app:          app,
-		tokenTTL:     tokenTTL,
+		log:            log,
+		jwtConfig:      jwtConfig,
+		sessionStorage: sessionStorage,
+		userSaver:      userSaver,
+		userProvider:   userProvider,
 	}
 }
 func (u *User) Registration(ctx context.Context,
-	login string,
+	email string,
 	password string,
+	name string,
 ) (
 	id string,
+	tokenPairs auth.TokensModel,
 	createdAt time.Time,
 	err error,
 ) {
 	log := u.log.Named("RegisterNewUser")
 	log.Info("registering new user")
 
-	if u.userSaver.IsExistsUserByLogin(ctx, login) {
-		log.Info("user with login already exists")
-		return "", time.Time{}, storage.ErrUserExists
+	if u.userSaver.IsExistsUserByEmail(ctx, email) {
+		log.Info("user with email already exists")
+		return "", auth.TokensModel{}, time.Time{}, user.ErrUserExists
 	}
 
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -70,7 +76,7 @@ func (u *User) Registration(ctx context.Context,
 
 	now := time.Now()
 
-	uid, err := u.userSaver.SaveUser(ctx, login, passHash, defaultUserName, balances, models2.UserRole, now, now)
+	uid, err := u.userSaver.SaveUser(ctx, email, passHash, defaultUserName, balances, models2.UserRole, now, now)
 	if err != nil {
 		log.Error("error saving user", zap.Error(err))
 		return "", time.Time{}, err
@@ -79,6 +85,37 @@ func (u *User) Registration(ctx context.Context,
 	log.Info("user created", zap.String("uid", uid))
 
 	return uid, now, nil
+}
+
+func (u *User) email(ctx context.Context,
+	email string,
+	password string,
+) (
+	tokensPairs auth.TokensModel,
+	err error,
+) {
+	panic("implement me")
+}
+
+func (u *User) Logout(ctx context.Context,
+	refreshToken string,
+	deviceID string,
+) (
+	success bool,
+	loggedOutAt time.Time,
+	err error,
+) {
+	panic("implement me")
+}
+
+func (u *User) RefreshToken(ctx context.Context,
+	refreshToken string,
+	deviceID string,
+) (
+	tokensPairs auth.TokensModel,
+	err error,
+) {
+	panic("implement me")
 }
 
 func (u *User) GetUser(ctx context.Context,
@@ -104,7 +141,7 @@ func (u *User) GetUser(ctx context.Context,
 func (u *User) UpdateUser(ctx context.Context,
 	id string,
 	name string,
-	login string,
+	email string,
 	password string,
 ) (
 	updated bool,
@@ -131,7 +168,7 @@ func (u *User) UpdateUser(ctx context.Context,
 
 	updateUser := models.Update{
 		Name:     name,
-		Login:    login,
+		email:    email,
 		Password: passHash,
 	}
 
@@ -193,18 +230,18 @@ func (u *User) Deposit(ctx context.Context,
 }
 
 func (u *User) Authorization(ctx context.Context,
-	login string,
+	email string,
 	password string,
 ) (
 	string,
 	error,
 ) {
 	log := u.log.Named("Authorization")
-	log.Info("authorizing user", zap.String("login", login))
+	log.Info("authorizing user", zap.String("email", email))
 
-	user, err := u.userProvider.GetUserByLogin(ctx, login)
+	user, err := u.userProvider.GetUserByemail(ctx, email)
 	if err != nil {
-		log.Error("login failed", zap.Error(err))
+		log.Error("email failed", zap.Error(err))
 		return "", storage.ErrUserNotFound
 	}
 
@@ -215,11 +252,11 @@ func (u *User) Authorization(ctx context.Context,
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		log.Error("login failed", zap.Error(err))
+		log.Error("email failed", zap.Error(err))
 		return "", storage.ErrUserNotFound
 	}
 
-	log.Info("user is authorized", zap.String("login", login))
+	log.Info("user is authorized", zap.String("email", email))
 
 	token, err := tokenGenerate.NewToken(*user, secret, u.tokenTTL)
 	if err != nil {

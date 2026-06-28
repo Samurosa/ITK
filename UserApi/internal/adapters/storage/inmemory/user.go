@@ -46,7 +46,7 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	user := models2.User{
 		ID:           id,
 		Name:         name,
-		Login:        login,
+		Email:        login,
 		PasswordHash: passwordHash,
 		Balances:     balances,
 		Role:         role,
@@ -68,7 +68,7 @@ func (r *UserRepository) IsExistsUserByLogin(ctx context.Context,
 	isUserExist := false
 
 	for _, userInRep := range r.users {
-		if userInRep.Login == login {
+		if userInRep.Email == login {
 			isUserExist = true
 		}
 	}
@@ -106,7 +106,7 @@ func (r *UserRepository) GetUserByLogin(ctx context.Context,
 	user := models2.User{}
 
 	for _, userInRep := range r.users {
-		if userInRep.Login == login {
+		if userInRep.Email == login {
 			user = *userInRep
 		}
 	}
@@ -151,7 +151,7 @@ func (r *UserRepository) UpdateUser(ctx context.Context,
 		user.Name = update.Name
 	}
 	if update.Login != "" {
-		user.Login = update.Login
+		user.Email = update.Login
 	}
 	if bytes.Contains(update.Password, nilByte) {
 		user.PasswordHash = update.Password

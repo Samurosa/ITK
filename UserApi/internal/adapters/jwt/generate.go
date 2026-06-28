@@ -31,7 +31,7 @@ func generateAccessToken(
 	claimsAccessToken["jti"] = uuid.NewString()
 	claimsAccessToken["exp"] = time.Now().Add(accessTokenTTL).Unix()
 
-	accessTokenString, err := accessToken.SignedString(secret)
+	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
 		return "", auth.ErrGenerateAccessToken
 	}
