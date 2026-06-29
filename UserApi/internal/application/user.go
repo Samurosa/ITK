@@ -99,15 +99,25 @@ func (u *User) Deposit(ctx context.Context,
 	balance, err := u.userProvider.GetBalance(ctx, id, asset)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return false, nil, err
+		return false, userModels.Balance{}, err
 	}
 
-	balance.Available += amount
-	balance.Locked += amount
+	err = depositToMoney(balance.Available, amount)
+	if err != nil {
+		log.Error("user not found", zap.String("id", id), zap.Error(err))
+		return false, userModels.Balance{}, err
+	}
+
+	newBalance, err := u.userProvider.Deposit(ctx, balance, amount)
+	if err != nil {
+		log.Error("user not found", zap.String("id", id), zap.Error(err))
+		return false, userModels.Balance{}, err
+	}
+	//добавить персонализованную ошибку под баланс
 
 	log.Info("deposit is successful", zap.String("id", id))
 
-	return true, &balance, nil
+	return true, newBalance, nil
 }
 
 func (u *User) IsAdmin(ctx context.Context,
@@ -167,4 +177,11 @@ func (u *User) GetBalance(ctx context.Context,
 	err error,
 ) {
 	panic("implement me")
+}
+
+func depositToMoney(target userModels.Money, amount userModels.Money) error {
+	target.Currency = target.Currency + amount.Currency
+	target.Units = target.Units + amount.Units
+	target.Nanos = target.Nanos + amount.Nanos
+	return nil
 }

@@ -119,6 +119,11 @@ func (r *UserRepository) GetBalance(ctx context.Context,
 	return user.Balances[asset], nil
 }
 
+func (r *UserRepository) Deposit(ctx context.Context, uid models.Balance, amount models.Money) (models.Balance, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (r *UserRepository) Update(ctx context.Context, user *models.User, update models.UpdateUser) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

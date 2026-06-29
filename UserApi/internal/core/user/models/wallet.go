@@ -3,9 +3,9 @@ package models
 type Balance struct {
 	Asset string
 
-	Available string
+	Available Money
 
-	Locked string
+	Locked Money
 }
 
 type Money struct {
