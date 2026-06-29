@@ -17,12 +17,12 @@ func ToProtoBalances(
 		len(balance),
 	)
 
-	for assets, b := range balance {
+	for assets, _ := range balance {
 		result = append(result,
 			&pb.Balance{
 				Asset:     assets,
-				Available: b.Available,
-				Locked:    b.Locked,
+				Available: "", //заглушка
+				Locked:    "", //заглушка
 			},
 		)
 	}
@@ -32,8 +32,8 @@ func ToProtoBalances(
 func ToProtoBalance(balance models.Balance) *pb.Balance {
 	return &pb.Balance{
 		Asset:     balance.Asset,
-		Available: balance.Available,
-		Locked:    balance.Locked,
+		Available: "", //заглушка
+		Locked:    "", //заглушка
 	}
 }
 

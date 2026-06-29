@@ -102,14 +102,11 @@ func (u *User) Deposit(ctx context.Context,
 		return false, userModels.Balance{}, err
 	}
 
-	err = depositToMoney(balance.Available, amount)
-	if err != nil {
-		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return false, userModels.Balance{}, err
-	}
+	_ = depositLock(true, balance, amount)
 
 	newBalance, err := u.userProvider.Deposit(ctx, balance, amount)
 	if err != nil {
+		_ = depositLock(false, balance, amount)
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return false, userModels.Balance{}, err
 	}
@@ -179,9 +176,21 @@ func (u *User) GetBalance(ctx context.Context,
 	panic("implement me")
 }
 
-func depositToMoney(target userModels.Money, amount userModels.Money) error {
-	target.Currency = target.Currency + amount.Currency
-	target.Units = target.Units + amount.Units
-	target.Nanos = target.Nanos + amount.Nanos
+func depositLock(deposit bool, target userModels.Balance, amount userModels.Money) error {
+	if deposit {
+		target.Asset = amount.Currency
+
+		target.Locked.Currency = amount.Currency
+		target.Locked.Units += amount.Units
+		target.Locked.Nanos += amount.Nanos
+		return nil
+	}
+
+	target.Asset = amount.Currency
+
+	target.Locked.Currency = amount.Currency
+	target.Locked.Units -= amount.Units
+	target.Locked.Nanos -= amount.Nanos
+
 	return nil
 }

@@ -215,8 +215,8 @@ func GetDefaultBalance() map[string]userModels.Balance {
 
 	balance := userModels.Balance{
 		Asset:     "USD",
-		Available: "0",
-		Locked:    "0",
+		Available: userModels.Money{},
+		Locked:    userModels.Money{},
 	}
 
 	wallet[balance.Asset] = balance
