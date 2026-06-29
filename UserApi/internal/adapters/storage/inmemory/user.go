@@ -1,12 +1,9 @@
 package inmemory
 
 import (
-	"ITK_Code/m/v2/internal/adapters/storage"
-	models2 "ITK_Code/m/v2/internal/core/user/models"
-	"ITK_Code/m/v2/internal/domain/models"
-	"bytes"
+	userCore "ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -16,25 +13,19 @@ import (
 type UserRepository struct {
 	mu sync.RWMutex
 
-	users map[string]*models2.User
+	users map[string]*models.User
 
 	usersLoginById map[string]string
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*models2.User),
+		users: make(map[string]*models.User),
 	}
 }
 
 func (r *UserRepository) SaveUser(ctx context.Context,
-	login string,
-	passwordHash []byte,
-	name string,
-	balances map[string]*models2.Balance,
-	role models2.Role,
-	createTime time.Time,
-	updateTime time.Time,
+	user models.User,
 ) (
 	string,
 	error,
@@ -43,23 +34,14 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	defer r.mu.Unlock()
 
 	id := uuid.New().String()
-	user := models2.User{
-		ID:           id,
-		Name:         name,
-		Email:        login,
-		PasswordHash: passwordHash,
-		Balances:     balances,
-		Role:         role,
-		CreateTime:   createTime,
-		UpdateTime:   updateTime,
-	}
+	user.ID = id
 
 	r.users[id] = &user
 
 	return id, nil
 }
 
-func (r *UserRepository) IsExistsUserByLogin(ctx context.Context,
+func (r *UserRepository) IsExistsUserByEmail(ctx context.Context,
 	login string,
 ) bool {
 	r.mu.RLock()
@@ -76,10 +58,10 @@ func (r *UserRepository) IsExistsUserByLogin(ctx context.Context,
 	return isUserExist
 }
 
-func (r *UserRepository) GetUser(ctx context.Context,
+func (r *UserRepository) Get(ctx context.Context,
 	uid string,
 ) (
-	models2.User,
+	models.User,
 	error,
 ) {
 
@@ -88,40 +70,41 @@ func (r *UserRepository) GetUser(ctx context.Context,
 
 	user, ok := r.users[uid]
 	if !ok {
-		return &models2.User{}, storage.ErrUserNotFound
+		return models.User{}, userCore.ErrUserNotFound
 	}
 
-	return user, nil
+	return *user, nil
 }
-func (r *UserRepository) GetUserByLogin(ctx context.Context,
-	login string,
+
+func (r *UserRepository) GetByEmail(ctx context.Context,
+	email string,
 ) (
-	models2.User,
+	models.User,
 	error,
 ) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	user := models2.User{}
+	user := models.User{}
 
 	for _, userInRep := range r.users {
-		if userInRep.Email == login {
+		if userInRep.Email == email {
 			user = *userInRep
 		}
 	}
 
 	if user.ID == "" {
-		return &models2.User{}, storage.ErrUserNotFound
+		return models.User{}, userCore.ErrUserNotFound
 	}
 
-	return &user, nil
+	return user, nil
 }
-func (r *UserRepository) GetBalanceUser(ctx context.Context,
+func (r *UserRepository) GetBalance(ctx context.Context,
 	uid string,
 	asset string,
 ) (
-	models2.Balance,
+	models.Balance,
 	error,
 ) {
 
@@ -130,37 +113,20 @@ func (r *UserRepository) GetBalanceUser(ctx context.Context,
 
 	user, ok := r.users[uid]
 	if !ok {
-		return nil, storage.ErrUserNotFound
+		return models.Balance{}, userCore.ErrUserNotFound
 	}
 
 	return user.Balances[asset], nil
 }
 
-func (r *UserRepository) UpdateUser(ctx context.Context,
-	user *models2.User,
-	update models.Update,
-) (
-	bool,
-	error,
-) {
+func (r *UserRepository) Update(ctx context.Context, user *models.User, update models.UpdateUser) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	var nilByte []byte
-	if update.Name != "" {
-		user.Name = update.Name
-	}
-	if update.Login != "" {
-		user.Email = update.Login
-	}
-	if bytes.Contains(update.Password, nilByte) {
-		user.PasswordHash = update.Password
-	}
-
-	return true, nil
+	panic("implement me")
 }
 
-func (r *UserRepository) DeleteUser(ctx context.Context,
+func (r *UserRepository) Delete(ctx context.Context,
 	uid string,
 ) error {
 
@@ -168,12 +134,13 @@ func (r *UserRepository) DeleteUser(ctx context.Context,
 	defer r.mu.Unlock()
 
 	if _, ok := r.users[uid]; !ok {
-		return storage.ErrUserNotFound
+		return userCore.ErrUserNotFound
 	}
 
 	delete(r.users, uid)
 	return nil
 }
+
 func (r *UserRepository) IsAdmin(ctx context.Context,
 	uid string,
 ) (
@@ -186,10 +153,10 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 
 	user, ok := r.users[uid]
 	if !ok {
-		return false, storage.ErrUserNotFound
+		return false, userCore.ErrUserNotFound
 	}
 
-	if user.Role != models2.AdminRole {
+	if user.Role != models.AdminRole {
 		return false, nil
 	}
 

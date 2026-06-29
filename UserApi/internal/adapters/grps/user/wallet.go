@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (s *serverApi) Deposit(
+func (s *ServerApi) Deposit(
 	ctx context.Context,
 	req *pb.DepositRequest,
 ) (
@@ -19,7 +19,7 @@ func (s *serverApi) Deposit(
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	if err := ValidateUserId(req.Id); err != nil {
+	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if err := ValidateDepositRequest(req); err != nil {
@@ -28,7 +28,7 @@ func (s *serverApi) Deposit(
 
 	success, balance, err := s.user.Deposit(
 		ctx,
-		req.Id,
+		req.UserId,
 		req.Asset,
 		models.Money{
 			Currency: req.Amount.Currency,
@@ -45,7 +45,7 @@ func (s *serverApi) Deposit(
 	}, nil
 }
 
-func (s *serverApi) GetBalance(
+func (s *ServerApi) GetBalance(
 	ctx context.Context,
 	req *pb.UserIDRequest,
 ) (
@@ -56,11 +56,11 @@ func (s *serverApi) GetBalance(
 		return nil, status.Error(codes.InvalidArgument, "invalid user id")
 	}
 
-	if err := ValidateUserId(req.Id); err != nil {
+	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, status.Error(codes.NotFound, "invalid user id")
 	}
 
-	balancesResponse, err := s.user.GetBalance(ctx, req.Id)
+	balancesResponse, err := s.user.GetBalance(ctx, req.UserId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "failed to get balance")
 	}

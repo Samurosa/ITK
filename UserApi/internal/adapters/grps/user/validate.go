@@ -14,7 +14,7 @@ func ValidateUserId(id string) error {
 }
 
 func ValidateDepositRequest(req *pb.DepositRequest) error {
-	if req.GetId() == "" {
+	if req.GetUserId() == "" {
 		return status.Error(codes.InvalidArgument, "UserId is required")
 	}
 	if req.GetAsset() == "" {

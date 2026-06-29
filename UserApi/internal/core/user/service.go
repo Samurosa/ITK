@@ -10,12 +10,14 @@ type Service interface {
 	GetUser(ctx context.Context,
 		id string,
 	) (
-		name string,
+		user models.User,
+		err error,
+	)
+
+	GetUserByEmail(ctx context.Context,
 		email string,
-		balances map[string]models.Balance,
-		role models.Role,
-		createdAt time.Time,
-		updatedAt time.Time,
+	) (
+		user models.User,
 		err error,
 	)
 

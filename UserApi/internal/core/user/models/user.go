@@ -17,12 +17,18 @@ const (
 )
 
 type User struct {
-	ID           string              `json:"id"`
-	Name         string              `json:"name"`
-	Email        string              `json:"email"`
-	PasswordHash []byte              `json:"password_hash"`
-	Balances     map[string]*Balance `json:"balances"`
-	Role         Role                `json:"role"`
-	CreateTime   time.Time           `json:"create_time"`
-	UpdateTime   time.Time           `json:"update_time"`
+	ID           string             `json:"id"`
+	Name         string             `json:"name"`
+	Email        string             `json:"email"`
+	PasswordHash []byte             `json:"password_hash"`
+	Balances     map[string]Balance `json:"balances"`
+	Role         Role               `json:"role"`
+	CreateTime   time.Time          `json:"create_time"`
+	UpdateTime   time.Time          `json:"update_time"`
+}
+
+type UpdateUser struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Role  Role   `json:"role"`
 }
