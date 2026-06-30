@@ -1,7 +1,7 @@
 package user
 
 import (
-	"ITK_Code/m/v2/internal/core/user/models"
+	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -34,14 +34,13 @@ func (s *ServerApi) GetUser(
 		UserId:    req.UserId,
 		Name:      user.Name,
 		Email:     user.Email,
-		Balances:  ToProtoBalances(user.Balances),
 		Role:      ToProtoRole(user.Role),
 		CreatedAt: timestamppb.New(user.CreateTime),
 		UpdatedAt: timestamppb.New(user.UpdateTime),
 	}, nil
 }
 
-func (s *ServerApi) GetUserByEmail(ctx context.Context, email string) (user models.User, err error) {
+func (s *ServerApi) GetUserByEmail(ctx context.Context, email string) (user userCore.User, err error) {
 	//TODO implement me
 	panic("implement me")
 }

@@ -2,7 +2,6 @@ package inmemory
 
 import (
 	userCore "ITK_Code/m/v2/internal/core/user"
-	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
 
 	"github.com/google/uuid"
@@ -13,19 +12,19 @@ import (
 type UserRepository struct {
 	mu sync.RWMutex
 
-	users map[string]*models.User
+	users map[string]*userCore.User
 
 	usersLoginById map[string]string
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*models.User),
+		users: make(map[string]*userCore.User),
 	}
 }
 
 func (r *UserRepository) SaveUser(ctx context.Context,
-	user models.User,
+	user userCore.User,
 ) (
 	string,
 	error,
@@ -61,7 +60,7 @@ func (r *UserRepository) IsExistsUserByEmail(ctx context.Context,
 func (r *UserRepository) Get(ctx context.Context,
 	uid string,
 ) (
-	models.User,
+	userCore.User,
 	error,
 ) {
 
@@ -70,7 +69,7 @@ func (r *UserRepository) Get(ctx context.Context,
 
 	user, ok := r.users[uid]
 	if !ok {
-		return models.User{}, userCore.ErrUserNotFound
+		return userCore.User{}, userCore.ErrUserNotFound
 	}
 
 	return *user, nil
@@ -79,14 +78,14 @@ func (r *UserRepository) Get(ctx context.Context,
 func (r *UserRepository) GetByEmail(ctx context.Context,
 	email string,
 ) (
-	models.User,
+	userCore.User,
 	error,
 ) {
 
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	user := models.User{}
+	user := userCore.User{}
 
 	for _, userInRep := range r.users {
 		if userInRep.Email == email {
@@ -95,36 +94,13 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	}
 
 	if user.ID == "" {
-		return models.User{}, userCore.ErrUserNotFound
+		return userCore.User{}, userCore.ErrUserNotFound
 	}
 
 	return user, nil
 }
-func (r *UserRepository) GetBalance(ctx context.Context,
-	uid string,
-	asset string,
-) (
-	models.Balance,
-	error,
-) {
 
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-
-	user, ok := r.users[uid]
-	if !ok {
-		return models.Balance{}, userCore.ErrUserNotFound
-	}
-
-	return user.Balances[asset], nil
-}
-
-func (r *UserRepository) Deposit(ctx context.Context, uid models.Balance, amount models.Money) (models.Balance, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (r *UserRepository) Update(ctx context.Context, user *models.User, update models.UpdateUser) (bool, error) {
+func (r *UserRepository) Update(ctx context.Context, user *userCore.User, update userCore.UpdateUser) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -161,7 +137,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		return false, userCore.ErrUserNotFound
 	}
 
-	if user.Role != models.AdminRole {
+	if user.Role != userCore.AdminRole {
 		return false, nil
 	}
 

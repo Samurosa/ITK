@@ -3,7 +3,6 @@ package application
 import (
 	authCore "ITK_Code/m/v2/internal/core/auth"
 	userCore "ITK_Code/m/v2/internal/core/user"
-	userModels "ITK_Code/m/v2/internal/core/user/models"
 	"context"
 	"time"
 
@@ -35,12 +34,11 @@ func (u *User) Registration(ctx context.Context,
 		return "", time.Time{}, err
 	}
 
-	newUser := userModels.User{
+	newUser := userCore.User{
 		Email:        email,
 		Name:         name,
 		PasswordHash: passHash,
-		Balances:     GetDefaultBalance(),
-		Role:         userModels.UserRole,
+		Role:         userCore.UserRole,
 		CreateTime:   now,
 		UpdateTime:   now,
 	}
@@ -208,17 +206,4 @@ func authorization(user []byte, currentPassword string) error {
 		return authCore.Unauthorized
 	}
 	return nil
-}
-
-func GetDefaultBalance() map[string]userModels.Balance {
-	wallet := make(map[string]userModels.Balance)
-
-	balance := userModels.Balance{
-		Asset:     "USD",
-		Available: userModels.Money{},
-		Locked:    userModels.Money{},
-	}
-
-	wallet[balance.Asset] = balance
-	return wallet
 }

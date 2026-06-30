@@ -1,7 +1,6 @@
 package user
 
 import (
-	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -25,31 +24,26 @@ func (s *ServerApi) Deposit(
 	if err := ValidateDepositRequest(req); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
-	success, balance, err := s.user.Deposit(
-		ctx,
-		req.UserId,
-		req.Asset,
-		models.Money{
-			Currency: req.Amount.Currency,
-			Units:    req.Amount.Units,
-			Nanos:    req.Amount.Nanos,
-		},
-	)
+	amount, err := ToProtoMoney(req.Amount)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to deposit funds")
 	}
+
 	return &pb.DepositResponse{
 		Success: success,
-		Balance: ToProtoBalance(balance),
+		Balance: ToProtoBalance(balances),
 	}, nil
 }
 
-func (s *ServerApi) GetBalance(
+func (s *ServerApi) GetBalances(
 	ctx context.Context,
 	req *pb.UserIDRequest,
 ) (
-	*pb.UserBalanceInfoResponse,
+	*pb.UserBalancesInfoResponse,
 	error,
 ) {
 	if err := req.Validate(); err != nil {
@@ -60,11 +54,11 @@ func (s *ServerApi) GetBalance(
 		return nil, status.Error(codes.NotFound, "invalid user id")
 	}
 
-	balancesResponse, err := s.user.GetBalance(ctx, req.UserId)
+	balancesResponse, err := s.wallet.GetBalances(ctx, req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "failed to get balance")
+		return nil, status.Error(codes.NotFound, "failed to get wallet")
 	}
-	return &pb.UserBalanceInfoResponse{
+	return &pb.UserBalancesInfoResponse{
 		Balances: ToProtoBalances(balancesResponse),
 	}, nil
 }
