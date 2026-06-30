@@ -45,5 +45,6 @@ type Service interface {
 	) (
 		success bool,
 		userPasswordChangedAt time.Time,
+		err error,
 	)
 }

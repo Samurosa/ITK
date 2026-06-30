@@ -17,7 +17,6 @@ func (u *User) Deposit(ctx context.Context,
 	error,
 ) {
 	log := u.log.Named("Deposit")
-	log.Info("depositing user", zap.String("id", id))
 
 	balance, err := u.balanceRepository.GetOrCreate(ctx, id, asset)
 	if err != nil {

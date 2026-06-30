@@ -100,11 +100,40 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	return user, nil
 }
 
-func (r *UserRepository) Update(ctx context.Context, user *userCore.User, update userCore.UpdateUser) (bool, error) {
+func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) (bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	panic("implement me")
+	current, ok := r.users[userID]
+	if !ok {
+		return false, userCore.ErrUserNotFound
+	}
+
+	if update.Name != nil {
+		current.Name = *update.Name
+	}
+
+	if update.Email != nil {
+		current.Email = *update.Email
+	}
+
+	if update.Role != nil {
+		current.Role = *update.Role
+	}
+
+	return true, nil
+}
+
+func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, update userCore.UpdateUser) (bool, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if update.PassHash != nil {
+		current.PasswordHash = *update.PassHash
+	}
+
+	r.users[current.ID] = &current
+	return true, nil
 }
 
 func (r *UserRepository) Delete(ctx context.Context,

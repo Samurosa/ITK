@@ -1,7 +1,6 @@
 package user
 
 import (
-	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -38,11 +37,6 @@ func (s *ServerApi) GetUser(
 		CreatedAt: timestamppb.New(user.CreateTime),
 		UpdatedAt: timestamppb.New(user.UpdateTime),
 	}, nil
-}
-
-func (s *ServerApi) GetUserByEmail(ctx context.Context, email string) (user userCore.User, err error) {
-	//TODO implement me
-	panic("implement me")
 }
 
 func (s *ServerApi) UpdateUserInfo(
@@ -120,10 +114,13 @@ func (s *ServerApi) ChangePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	isSuccess, userPasswordChangedAt := s.user.ChangePassword(ctx, req.UserId,
+	isSuccess, userPasswordChangedAt, err := s.user.ChangePassword(ctx, req.UserId,
 		req.OldPassword,
 		req.NewPassword,
 	)
+	if err != nil {
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
 
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,

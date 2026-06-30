@@ -27,7 +27,9 @@ type User struct {
 }
 
 type UpdateUser struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
-	Role  Role   `json:"role"`
+	Name  *string `json:"name"`
+	Email *string `json:"email"`
+	Role  *Role   `json:"role"`
+
+	PassHash *[]byte `json:"pass_hash"`
 }
