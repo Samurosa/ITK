@@ -2,7 +2,7 @@ package jwt
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user/models"
+	"ITK_Code/m/v2/internal/core/user"
 	"time"
 )
 
@@ -14,7 +14,7 @@ func NewJWT(jwtConfig auth.JWTConfig) *Token {
 	return &Token{jwtConfig: jwtConfig}
 }
 
-func (j *Token) Generate(user models.User) (auth.TokensModel, error) {
+func (j *Token) Generate(user user.User) (auth.TokensModel, error) {
 	refreshTokenString, err := generateRefreshToken()
 	if err != nil {
 		return auth.TokensModel{}, err

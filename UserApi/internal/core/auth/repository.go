@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"ITK_Code/m/v2/internal/core/user/models"
+	"ITK_Code/m/v2/internal/core/user"
 	"context"
 )
 
@@ -16,5 +16,5 @@ type SessionRepository interface {
 }
 
 type TokenManager interface {
-	Generate(user models.User) (TokensModel, error)
+	Generate(user user.User) (TokensModel, error)
 }

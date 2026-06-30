@@ -24,6 +24,7 @@ func New(
 
 	userStorage := inmemory.NewUserStorage()
 	sessionStorage := inmemory.NewSessionStorage()
+	walletStorage := inmemory.NewBalanceStorage()
 
 	secretAuthorization := jwt.NewJWT(auth.JWTConfig{
 		Secret:          secret,
@@ -31,9 +32,9 @@ func New(
 		RefreshTokenTTL: tokenTTL.RefreshTokenTTL,
 	})
 
-	appService := application.New(log, secretAuthorization, sessionStorage, userStorage, userStorage)
+	appService := application.New(log, secretAuthorization, sessionStorage, userStorage, userStorage, walletStorage)
 
-	app := grpsApp.New(log, appService, appService, port)
+	app := grpsApp.New(log, appService, appService, appService, port)
 	return &App{
 		GrpcApp: app,
 	}

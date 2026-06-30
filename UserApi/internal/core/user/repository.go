@@ -1,20 +1,12 @@
 package user
 
 import (
-	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
-	"time"
 )
 
 type Save interface {
 	SaveUser(ctx context.Context,
-		login string,
-		passwordHash []byte,
-		name string,
-		balances map[string]*models.Balance,
-		role models.Role,
-		createTime time.Time,
-		updateTime time.Time,
+		user User,
 	) (
 		string,
 		error,
@@ -26,10 +18,10 @@ type Save interface {
 }
 
 type Provider interface {
-	GetUser(ctx context.Context, uid string) (*models.User, error)
-	GetUserByLogin(ctx context.Context, login string) (*models.User, error)
-	GetBalanceUser(ctx context.Context, uid string, asset string) (*models.Balance, error)
-	UpdateUser(ctx context.Context, user *models.User, update models.UpdateUser) (bool, error)
-	DeleteUser(ctx context.Context, uid string) error
+	Get(ctx context.Context, uid string) (User, error)
+	GetByEmail(ctx context.Context, email string) (User, error)
+	Update(ctx context.Context, userID string, update UpdateUser) (bool, error)
+	UpdatePassword(ctx context.Context, user User, update UpdateUser) (bool, error)
+	Delete(ctx context.Context, uid string) error
 	IsAdmin(ctx context.Context, uid string) (bool, error)
 }

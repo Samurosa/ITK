@@ -1,7 +1,6 @@
 package user
 
 import (
-	"ITK_Code/m/v2/internal/core/user/models"
 	"context"
 	"time"
 )
@@ -10,12 +9,14 @@ type Service interface {
 	GetUser(ctx context.Context,
 		id string,
 	) (
-		name string,
+		user User,
+		err error,
+	)
+
+	GetUserByEmail(ctx context.Context,
 		email string,
-		balances map[string]models.Balance,
-		role models.Role,
-		createdAt time.Time,
-		updatedAt time.Time,
+	) (
+		user User,
 		err error,
 	)
 
@@ -44,22 +45,6 @@ type Service interface {
 	) (
 		success bool,
 		userPasswordChangedAt time.Time,
-	)
-
-	Deposit(ctx context.Context,
-		id string,
-		asset string,
-		amount models.Money,
-	) (
-		success bool,
-		balance models.Balance,
-		err error,
-	)
-
-	GetBalance(ctx context.Context,
-		id string,
-	) (
-		balances map[string]models.Balance,
 		err error,
 	)
 }

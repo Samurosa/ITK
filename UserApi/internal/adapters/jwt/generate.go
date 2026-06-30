@@ -2,7 +2,7 @@ package jwt
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user/models"
+	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,7 +21,7 @@ func generateRefreshToken() (string, error) {
 func generateAccessToken(
 	secret string,
 	accessTokenTTL time.Duration,
-	user models.User,
+	user user.User,
 ) (string, error) {
 	accessToken := jwt.New(jwt.SigningMethodHS256)
 
