@@ -69,7 +69,7 @@ func (s *ServerApi) Logout(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.UserId, req.DeviceId)
+	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
 	}
@@ -91,7 +91,7 @@ func (s *ServerApi) RefreshToken(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.UserId, req.DeviceId)
+	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to refresh token")
 	}

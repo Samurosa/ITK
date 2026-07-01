@@ -107,7 +107,6 @@ func (u *User) Login(ctx context.Context,
 
 func (u *User) Logout(ctx context.Context,
 	refreshToken string,
-	userId string,
 	deviceID string,
 ) (
 	success bool,
@@ -116,7 +115,9 @@ func (u *User) Logout(ctx context.Context,
 ) {
 	now := time.Now()
 	log := u.log.Named("Logout")
-	sessionInfo, err := u.sessionStorage.GetByUserIdAndDeviceId(ctx, userId, deviceID)
+	//заглушка
+	userID := ""
+	sessionInfo, err := u.sessionStorage.GetByUserIdAndDeviceId(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, authCore.Unauthorized
@@ -128,7 +129,7 @@ func (u *User) Logout(ctx context.Context,
 		return false, time.Time{}, authCore.ErrNoAccess
 	}
 
-	err = u.sessionStorage.DeleteByUserAndDevice(ctx, userId, deviceID)
+	err = u.sessionStorage.DeleteByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
 		return false, time.Time{}, err
@@ -139,23 +140,23 @@ func (u *User) Logout(ctx context.Context,
 
 func (u *User) RefreshToken(ctx context.Context,
 	refreshToken string,
-	userId string,
 	deviceID string,
 ) (
 	tokensPairs authCore.TokensModel,
 	err error,
 ) {
 	log := u.log.Named("Refresh tokens")
-
-	log.Info("searching user with db", zap.String("userId", userId))
-	user, err := u.userProvider.Get(ctx, userId)
+	//заглушка
+	userID := ""
+	log.Info("searching user with db", zap.String("userId", userID))
+	user, err := u.userProvider.Get(ctx, userID)
 	if err != nil {
 		log.Error("error getting user by id", zap.Error(err))
 		return authCore.TokensModel{}, userCore.ErrUserNotFound
 	}
 
-	log.Info("searching session with userId deviceID", zap.String("userId", userId), zap.String("deviceID", deviceID))
-	sessionInfo, err := u.sessionStorage.GetByUserIdAndDeviceId(ctx, userId, deviceID)
+	log.Info("searching session with userId deviceID", zap.String("userId", userID), zap.String("deviceID", deviceID))
+	sessionInfo, err := u.sessionStorage.GetByUserIdAndDeviceId(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return authCore.TokensModel{}, authCore.Unauthorized
@@ -182,6 +183,9 @@ func (u *User) RefreshToken(ctx context.Context,
 
 	log.Info("gen hash token")
 	tokenHash, err := bcrypt.GenerateFromPassword([]byte(newTokens.RefreshToken), bcrypt.DefaultCost)
+	if err != nil {
+		log.Error("error generating tokens", zap.Error(err))
+	}
 
 	newSessionInfo := authCore.SessionModel{
 		UserID:           user.ID,
