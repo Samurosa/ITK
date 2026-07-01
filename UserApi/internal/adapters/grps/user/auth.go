@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *serverApi) Registration(
+func (s *ServerApi) Registration(
 	ctx context.Context,
 	req *pb.RegisterUserRequest,
 ) (
@@ -24,19 +24,18 @@ func (s *serverApi) Registration(
 		return nil, err
 	}
 
-	id, tokens, createdAt, err := s.user.Registration(ctx, req.Email, req.Password, req.Name)
+	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, "failed to register user")
 	}
 
 	return &pb.RegisterUserResponse{
-		Id:        id,
-		Tokens:    ToProtoTokens(tokens),
+		UserId:    id,
 		CreatedAt: timestamppb.New(createdAt),
 	}, nil
 }
 
-func (s *serverApi) Login(
+func (s *ServerApi) Login(
 	ctx context.Context,
 	req *pb.LoginRequest,
 ) (
@@ -51,7 +50,7 @@ func (s *serverApi) Login(
 		return nil, err
 	}
 
-	tokens, err := s.user.Login(ctx, req.Email, req.Password)
+	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to authorize user")
 	}
@@ -59,7 +58,7 @@ func (s *serverApi) Login(
 	return ToProtoTokens(tokens), nil
 }
 
-func (s *serverApi) Logout(
+func (s *ServerApi) Logout(
 	ctx context.Context,
 	req *pb.RefreshTokenRequest,
 ) (
@@ -70,7 +69,7 @@ func (s *serverApi) Logout(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	success, loggedOutAt, err := s.user.Logout(ctx, req.RefreshToken, req.DeviceId)
+	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
 	}
@@ -81,7 +80,7 @@ func (s *serverApi) Logout(
 	}, nil
 }
 
-func (s *serverApi) RefreshToken(
+func (s *ServerApi) RefreshToken(
 	ctx context.Context,
 	req *pb.RefreshTokenRequest,
 ) (
@@ -92,7 +91,7 @@ func (s *serverApi) RefreshToken(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	tokens, err := s.user.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
+	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to refresh token")
 	}

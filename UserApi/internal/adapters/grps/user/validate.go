@@ -14,7 +14,7 @@ func ValidateUserId(id string) error {
 }
 
 func ValidateDepositRequest(req *pb.DepositRequest) error {
-	if req.GetId() == "" {
+	if req.GetUserId() == "" {
 		return status.Error(codes.InvalidArgument, "UserId is required")
 	}
 	if req.GetAsset() == "" {
@@ -29,7 +29,7 @@ func ValidateDepositRequest(req *pb.DepositRequest) error {
 
 func ValidateRegistration(req *pb.RegisterUserRequest) error {
 	if req.GetEmail() == "" {
-		return status.Error(codes.InvalidArgument, "Login is required")
+		return status.Error(codes.InvalidArgument, "Email is required")
 	}
 	if req.GetPassword() == "" {
 		return status.Error(codes.InvalidArgument, "Password is required")
@@ -42,7 +42,7 @@ func ValidateRegistration(req *pb.RegisterUserRequest) error {
 
 func ValidateLogin(req *pb.LoginRequest) error {
 	if req.GetEmail() == "" {
-		return status.Error(codes.InvalidArgument, "Login is required")
+		return status.Error(codes.InvalidArgument, "Email is required")
 	}
 	if req.GetPassword() == "" {
 		return status.Error(codes.InvalidArgument, "Password is required")

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *serverApi) GetUser(
+func (s *ServerApi) GetUser(
 	ctx context.Context,
 	req *pb.UserIDRequest,
 ) (
@@ -20,27 +20,26 @@ func (s *serverApi) GetUser(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := ValidateUserId(req.Id); err != nil {
+	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, err
 	}
 
-	name, email, balances, role, createdAt, updatedAt,
-		err := s.user.GetUser(ctx, req.Id)
+	user, err := s.user.GetUser(ctx, req.UserId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "failed to get user")
 	}
 
 	return &pb.UserInfoResponse{
-		Name:      name,
-		Email:     email,
-		Balances:  ToProtoBalances(balances),
-		Role:      ToProtoRole(role),
-		CreatedAt: timestamppb.New(createdAt),
-		UpdatedAt: timestamppb.New(updatedAt),
+		UserId:    req.UserId,
+		Name:      user.Name,
+		Email:     user.Email,
+		Role:      ToProtoRole(user.Role),
+		CreatedAt: timestamppb.New(user.CreateTime),
+		UpdatedAt: timestamppb.New(user.UpdateTime),
 	}, nil
 }
 
-func (s *serverApi) UpdateUserInfo(
+func (s *ServerApi) UpdateUserInfo(
 	ctx context.Context,
 	req *pb.UpdateUserInfoRequest,
 ) (
@@ -51,7 +50,7 @@ func (s *serverApi) UpdateUserInfo(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := ValidateUserId(req.Id); err != nil {
+	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, err
 	}
 
@@ -66,7 +65,7 @@ func (s *serverApi) UpdateUserInfo(
 
 	updated, updatedAt, err := s.user.UpdateUserInfo(
 		ctx,
-		req.Id,
+		req.UserId,
 		name,
 		email,
 	)
@@ -80,7 +79,7 @@ func (s *serverApi) UpdateUserInfo(
 	}, nil
 }
 
-func (s *serverApi) DeleteUser(
+func (s *ServerApi) DeleteUser(
 	ctx context.Context,
 	req *pb.UserIDRequest,
 ) (
@@ -91,11 +90,11 @@ func (s *serverApi) DeleteUser(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if err := ValidateUserId(req.Id); err != nil {
+	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, err
 	}
 
-	success, deletedUserAt, err := s.user.DeleteUser(ctx, req.Id)
+	success, deletedUserAt, err := s.user.DeleteUser(ctx, req.UserId)
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, "failed to delete user")
 	}
@@ -105,7 +104,7 @@ func (s *serverApi) DeleteUser(
 	}, nil
 }
 
-func (s *serverApi) ChangePassword(
+func (s *ServerApi) ChangePassword(
 	ctx context.Context,
 	req *pb.ChangeUserRequest,
 ) (
@@ -115,10 +114,13 @@ func (s *serverApi) ChangePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	isSuccess, userPasswordChangedAt := s.user.ChangePassword(ctx, req.Id,
+	isSuccess, userPasswordChangedAt, err := s.user.ChangePassword(ctx, req.UserId,
 		req.OldPassword,
 		req.NewPassword,
 	)
+	if err != nil {
+		return nil, status.Error(codes.Aborted, err.Error())
+	}
 
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,

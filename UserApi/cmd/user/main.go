@@ -3,7 +3,6 @@ package main
 import (
 	grpsApp "ITK_Code/m/v2/app"
 	"ITK_Code/m/v2/config"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,15 +13,7 @@ import (
 )
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	secret := os.Getenv("JWT_SECRET")
-	configPath := os.Getenv("CONFIG_PATH")
-
-	cfg := config.Load(configPath)
+	cfg := config.Load("config/local.yaml")
 
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -36,7 +27,14 @@ func main() {
 		}
 	}(logger)
 
-	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.Token_ttl, secret)
+	err = godotenv.Load(cfg.Env)
+	if err != nil {
+		logger.Error("error loading .env file path:%s", zap.String("path cfg:", cfg.Env))
+	}
+
+	secret := os.Getenv("JWT_SECRET")
+
+	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.TokenTTl, secret)
 
 	go application.GrpcApp.Run()
 
