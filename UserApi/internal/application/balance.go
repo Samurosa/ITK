@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (u *User) Deposit(ctx context.Context,
+func (w *Wallet) Deposit(ctx context.Context,
 	id string,
 	asset string,
 	amount wallet.Money,
@@ -16,9 +16,9 @@ func (u *User) Deposit(ctx context.Context,
 	wallet.Balance,
 	error,
 ) {
-	log := u.log.Named("Deposit")
+	log := w.log.Named("Deposit")
 
-	balance, err := u.balanceRepository.GetOrCreate(ctx, id, asset)
+	balance, err := w.balanceRepository.GetOrCreate(ctx, id, asset)
 	if err != nil {
 		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(wallet.ErrBalanceNotFound))
 		return false, wallet.Balance{}, wallet.ErrCreateNewBalance
@@ -27,7 +27,7 @@ func (u *User) Deposit(ctx context.Context,
 	newBalance := balance
 	newBalance.Available = balance.Available.Add(amount.Amount)
 
-	err = u.balanceRepository.Save(ctx, newBalance)
+	err = w.balanceRepository.Save(ctx, newBalance)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
 		return false, wallet.Balance{}, wallet.ErrSaveBalance
@@ -37,13 +37,13 @@ func (u *User) Deposit(ctx context.Context,
 	return true, newBalance, nil
 }
 
-func (u *User) GetBalances(ctx context.Context,
+func (w *Wallet) GetBalances(ctx context.Context,
 	id string,
 ) (
 	[]wallet.Balance,
 	error,
 ) {
-	gotBalances, err := u.balanceRepository.GetAll(ctx, id)
+	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
 		return nil, wallet.ErrBalanceNotFound
 	}

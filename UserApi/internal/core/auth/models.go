@@ -1,6 +1,17 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type ContextKey string
+
+const (
+	UserIDContextKey ContextKey = "user_id"
+	RoleContextKey   ContextKey = "role"
+)
 
 type JWTConfig struct {
 	Secret string
@@ -17,6 +28,8 @@ type SessionModel struct {
 	RefreshTokenHash []byte
 
 	ExpiresAt time.Time
+
+	CreatedAt time.Time
 }
 
 type TokensModel struct {
@@ -25,4 +38,12 @@ type TokensModel struct {
 
 	AccessExpiresAt  time.Time
 	RefreshExpiresAt time.Time
+}
+
+type TokenParse struct {
+	UserID string
+	Role   string
+	Jti    string
+
+	jwt.RegisteredClaims
 }
