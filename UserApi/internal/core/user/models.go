@@ -20,7 +20,7 @@ type User struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
 	Email        string    `json:"email"`
-	PasswordHash []byte    `json:"password_hash"`
+	PasswordHash []byte    `json:"-"`
 	Role         Role      `json:"role"`
 	CreateTime   time.Time `json:"create_time"`
 	UpdateTime   time.Time `json:"update_time"`
@@ -31,5 +31,5 @@ type UpdateUser struct {
 	Email *string `json:"email"`
 	Role  *Role   `json:"role"`
 
-	PassHash *[]byte `json:"pass_hash"`
+	PassHash *[]byte `json:"-"`
 }

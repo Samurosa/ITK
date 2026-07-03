@@ -17,4 +17,6 @@ type SessionRepository interface {
 
 type TokenManager interface {
 	Generate(user user.User) (TokensModel, error)
+
+	ParseAccessToken(accessToken string) (TokenParse, error)
 }

@@ -51,6 +51,7 @@ func (r *UserRepository) IsExistsUserByEmail(ctx context.Context,
 	for _, userInRep := range r.users {
 		if userInRep.Email == login {
 			isUserExist = true
+			break
 		}
 	}
 
@@ -90,6 +91,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	for _, userInRep := range r.users {
 		if userInRep.Email == email {
 			user = *userInRep
+			break
 		}
 	}
 
