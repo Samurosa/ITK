@@ -1,13 +1,13 @@
 package application
 
 import (
+	"ITK_Code/m/v2/internal/adapters/hash"
 	authCore "ITK_Code/m/v2/internal/core/auth"
 	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
 	"time"
 
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (a *Auth) Registration(ctx context.Context,
@@ -28,7 +28,7 @@ func (a *Auth) Registration(ctx context.Context,
 		return "", time.Time{}, userCore.ErrUserExists
 	}
 
-	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return "", time.Time{}, err
@@ -58,8 +58,8 @@ func (a *Auth) Login(ctx context.Context,
 	password string,
 	deviceId string,
 ) (
-	tokensPairs authCore.TokensModel,
-	err error,
+	authCore.TokensModel,
+	error,
 ) {
 	log := a.log.Named("login")
 	log.Info("searching user with email", zap.String("email", email))
@@ -70,10 +70,10 @@ func (a *Auth) Login(ctx context.Context,
 		return authCore.TokensModel{}, userCore.ErrUserNotFound
 	}
 
-	err = authorization(user.PasswordHash, password)
+	err = hash.VerifyPasswordHash(password, user.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return authCore.TokensModel{}, err
+		return authCore.TokensModel{}, authCore.Unauthorized
 	}
 
 	log.Info("search old session")
@@ -86,7 +86,7 @@ func (a *Auth) Login(ctx context.Context,
 		return authCore.TokensModel{}, err
 	}
 
-	tokenHash, err := bcrypt.GenerateFromPassword([]byte(tokens.RefreshToken), bcrypt.DefaultCost)
+	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
 
 	log.Info("session info save")
 	session := authCore.SessionModel{
@@ -126,8 +126,8 @@ func (a *Auth) Logout(ctx context.Context,
 		return false, time.Time{}, authCore.Unauthorized
 	}
 
-	err = bcrypt.CompareHashAndPassword(sessionInfo.RefreshTokenHash, []byte(refreshToken))
-	if err != nil {
+	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
+	if !ok {
 		log.Error("error comparing refresh token", zap.Error(err))
 		return false, time.Time{}, authCore.ErrNoAccess
 	}
@@ -162,8 +162,8 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		return false, time.Time{}, authCore.Unauthorized
 	}
 
-	err = bcrypt.CompareHashAndPassword(sessions.RefreshTokenHash, []byte(refreshToken))
-	if err != nil {
+	ok := hash.CompareHashSHA256(refreshToken, sessions.RefreshTokenHash)
+	if !ok {
 		log.Error("error comparing refresh token", zap.Error(err))
 		return false, time.Time{}, authCore.ErrNoAccess
 	}
@@ -211,8 +211,8 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 
 	log.Info("comparing refresh token")
-	err = bcrypt.CompareHashAndPassword(sessionInfo.RefreshTokenHash, []byte(refreshToken))
-	if err != nil {
+	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
+	if !ok {
 		log.Error("error verifying refresh token", zap.Error(err))
 		return authCore.TokensModel{}, authCore.Unauthorized
 	}
@@ -224,11 +224,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		return authCore.TokensModel{}, err
 	}
 
-	log.Info("gen hash token")
-	tokenHash, err := bcrypt.GenerateFromPassword([]byte(newTokens.RefreshToken), bcrypt.DefaultCost)
-	if err != nil {
-		log.Error("error generating tokens", zap.Error(err))
-	}
+	tokenHash := hash.GenerateHashSHA256(refreshToken)
 
 	newSessionInfo := authCore.SessionModel{
 		UserID:           user.ID,
@@ -245,12 +241,4 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 
 	return newTokens, nil
-}
-
-func authorization(user []byte, currentPassword string) error {
-	err := bcrypt.CompareHashAndPassword(user, []byte(currentPassword))
-	if err != nil {
-		return authCore.Unauthorized
-	}
-	return nil
 }

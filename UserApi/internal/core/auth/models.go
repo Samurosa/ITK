@@ -25,7 +25,7 @@ type SessionModel struct {
 
 	DeviceID string
 
-	RefreshTokenHash []byte
+	RefreshTokenHash [32]byte
 
 	ExpiresAt time.Time
 
