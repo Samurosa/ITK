@@ -37,6 +37,7 @@ func main() {
 	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.TokenTTl, secret)
 
 	go application.GrpcApp.Run()
+	go application.Workers.Run()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -44,6 +45,7 @@ func main() {
 	<-stop
 
 	application.GrpcApp.Stop()
+	application.Workers.Stop()
 
 	logger.Debug("application stop")
 

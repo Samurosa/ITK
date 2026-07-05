@@ -17,6 +17,8 @@ type SessionRepository interface {
 	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error
 
 	DeleteByUser(ctx context.Context, userID string) error
+
+  DeleteExpiredSessions(ctx context.Context) error
 }
 
 type TokenManager interface {
