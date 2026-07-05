@@ -13,6 +13,8 @@ type SessionRepository interface {
 	Update(ctx context.Context, SessionModel SessionModel) error
 
 	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error
+
+	DeleteExpiredSessions(ctx context.Context) error
 }
 
 type TokenManager interface {

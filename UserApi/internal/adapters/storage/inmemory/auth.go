@@ -4,6 +4,7 @@ import (
 	authCore "ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"errors"
+	"time"
 
 	"sync"
 )
@@ -102,5 +103,19 @@ func (s *SessionRepository) DeleteByUserAndDevice(ctx context.Context,
 
 	delete(s.sessions, key)
 
+	return nil
+}
+
+func (s *SessionRepository) DeleteExpiredSessions(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+
+	for key, value := range s.sessions {
+		if value.CreatedAt.After(now) {
+			delete(s.sessions, key)
+		}
+	}
 	return nil
 }

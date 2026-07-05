@@ -2,17 +2,20 @@ package app
 
 import (
 	"ITK_Code/m/v2/app/grps"
+	"ITK_Code/m/v2/app/workers"
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/jwt"
 	"ITK_Code/m/v2/internal/adapters/storage/inmemory"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
+	"context"
 
 	"go.uber.org/zap"
 )
 
 type App struct {
 	GrpcApp *grpsApp.App
+	Workers *workers.App
 }
 
 func New(
@@ -56,7 +59,13 @@ func New(
 		walletService,
 		port,
 	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	workersApp := workers.NewWorker(log, ctx, cancel, sessionStorage)
+
 	return &App{
 		GrpcApp: app,
+		Workers: workersApp,
 	}
 }
