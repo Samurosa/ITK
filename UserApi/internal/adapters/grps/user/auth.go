@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -52,6 +53,7 @@ func (s *ServerApi) Login(
 
 	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
 	if err != nil {
+		s.log.Error("failed to login", zap.Error(err))
 		return nil, status.Error(codes.Unauthenticated, "failed to authorize user")
 	}
 

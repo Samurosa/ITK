@@ -1,12 +1,12 @@
 package application
 
 import (
+	"ITK_Code/m/v2/internal/adapters/hash"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
 	"time"
 
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func (u *User) GetUser(ctx context.Context,
@@ -130,13 +130,13 @@ func (u *User) ChangePassword(ctx context.Context,
 		return false, time.Time{}, user.ErrUserNotFound
 	}
 
-	err = authorization(current.PasswordHash, oldPassword)
+	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(user.ErrComparePassword))
 		return false, time.Time{}, user.ErrComparePassword
 	}
 
-	newPassHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	newPassHash, err := hash.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return false, time.Time{}, err

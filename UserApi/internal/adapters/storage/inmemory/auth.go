@@ -134,6 +134,9 @@ func (s *SessionRepository) DeleteByUser(ctx context.Context, userID string) err
 		}
 	}
 
+	return nil
+}
+
 func (s *SessionRepository) DeleteExpiredSessions(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
