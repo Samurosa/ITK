@@ -113,7 +113,6 @@ func (a *Auth) Logout(ctx context.Context,
 	loggedOutAt time.Time,
 	err error,
 ) {
-	now := time.Now()
 	log := a.log.Named("Logout")
 
 	userID := ctx.Value(authCore.UserIDContextKey).(string)
@@ -121,7 +120,7 @@ func (a *Auth) Logout(ctx context.Context,
 		return false, time.Time{}, authCore.ErrInvalidToken
 	}
 
-	sessionInfo, err := a.sessionStorage.GetByUserIdAndDeviceId(ctx, userID, deviceID)
+	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, authCore.Unauthorized
@@ -139,7 +138,43 @@ func (a *Auth) Logout(ctx context.Context,
 		return false, time.Time{}, err
 	}
 
-	return true, now, nil
+	return true, time.Now(), nil
+}
+
+func (a *Auth) LogoutAllDevices(ctx context.Context,
+	refreshToken string,
+	deviceID string,
+) (
+	success bool,
+	loggedOutAt time.Time,
+	err error,
+) {
+	log := a.log.Named("Logout all devices")
+
+	userID := ctx.Value(authCore.UserIDContextKey).(string)
+	if userID == "" {
+		return false, time.Time{}, authCore.ErrInvalidToken
+	}
+
+	sessions, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
+	if err != nil {
+		log.Error("error getting session info", zap.Error(err))
+		return false, time.Time{}, authCore.Unauthorized
+	}
+
+	err = bcrypt.CompareHashAndPassword(sessions.RefreshTokenHash, []byte(refreshToken))
+	if err != nil {
+		log.Error("error comparing refresh token", zap.Error(err))
+		return false, time.Time{}, authCore.ErrNoAccess
+	}
+
+	err = a.sessionStorage.DeleteByUser(ctx, userID)
+	if err != nil {
+		log.Error("error deleting sessions", zap.Error(err))
+		return false, time.Time{}, err
+	}
+
+	return true, time.Now(), nil
 }
 
 func (a *Auth) RefreshToken(ctx context.Context,
@@ -164,7 +199,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 
 	log.Info("searching session with userId deviceID", zap.String("userId", userID), zap.String("deviceID", deviceID))
-	sessionInfo, err := a.sessionStorage.GetByUserIdAndDeviceId(ctx, userID, deviceID)
+	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return authCore.TokensModel{}, authCore.Unauthorized

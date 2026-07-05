@@ -80,6 +80,28 @@ func (s *ServerApi) Logout(
 	}, nil
 }
 
+func (s *ServerApi) LogoutAllDevices(
+	ctx context.Context,
+	req *pb.RefreshTokenRequest,
+) (
+	*pb.LogoutResponse,
+	error,
+) {
+	if err := req.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+
+	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken, req.DeviceId)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
+	}
+
+	return &pb.LogoutResponse{
+		Success:     success,
+		LoggedOutAt: timestamppb.New(loggedOutAt),
+	}, nil
+}
+
 func (s *ServerApi) RefreshToken(
 	ctx context.Context,
 	req *pb.RefreshTokenRequest,
