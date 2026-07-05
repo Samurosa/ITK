@@ -22,12 +22,6 @@ func (a *Auth) Registration(ctx context.Context,
 	now := time.Now()
 
 	log := a.log.Named("RegisterNewUser")
-
-	if a.userSaver.IsExistsUserByEmail(ctx, email) {
-		log.Info("user with email already exists")
-		return "", time.Time{}, userCore.ErrUserExists
-	}
-
 	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))

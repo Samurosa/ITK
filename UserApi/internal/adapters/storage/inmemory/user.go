@@ -3,10 +3,15 @@ package inmemory
 import (
 	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 
 	"sync"
+)
+
+var (
+	ErrEmailIsExist = errors.New("email is exist")
 )
 
 type UserRepository struct {
@@ -14,12 +19,13 @@ type UserRepository struct {
 
 	users map[string]*userCore.User
 
-	usersLoginById map[string]string
+	emailUsers map[string]struct{}
 }
 
 func NewUserStorage() *UserRepository {
 	return &UserRepository{
-		users: make(map[string]*userCore.User),
+		users:      make(map[string]*userCore.User),
+		emailUsers: make(map[string]struct{}),
 	}
 }
 
@@ -31,6 +37,12 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 ) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	_, ok := r.emailUsers[user.Email]
+	if ok {
+		return "", ErrEmailIsExist
+	}
+	r.emailUsers[user.Email] = struct{}{}
 
 	id := uuid.New().String()
 	user.ID = id
@@ -117,6 +129,8 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 
 	if update.Email != nil {
 		current.Email = *update.Email
+		delete(r.emailUsers, current.Email)
+		r.emailUsers[*update.Email] = struct{}{}
 	}
 
 	if update.Role != nil {
