@@ -4,6 +4,7 @@ import (
 	authCore "ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"errors"
+	"time"
 
 	"sync"
 )
@@ -39,7 +40,7 @@ func (s *SessionRepository) Create(ctx context.Context,
 	return nil
 }
 
-func (s *SessionRepository) GetByUserIdAndDeviceId(ctx context.Context,
+func (s *SessionRepository) GetByUserAndDevice(ctx context.Context,
 	userID string,
 	deviceID string,
 ) (
@@ -60,6 +61,24 @@ func (s *SessionRepository) GetByUserIdAndDeviceId(ctx context.Context,
 	}
 
 	return *sessionModel, nil
+}
+
+func (s *SessionRepository) GetByUser(ctx context.Context, userID string) ([]authCore.SessionModel, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	sessions := make([]authCore.SessionModel, 0)
+
+	for _, sessionModel := range s.sessions {
+		if sessionModel.UserID == userID {
+			sessions = append(sessions, *sessionModel)
+		}
+	}
+	if len(sessions) == 0 {
+		return sessions, errors.New("session not found")
+	}
+
+	return sessions, nil
 }
 
 func (s *SessionRepository) Update(ctx context.Context,
@@ -101,6 +120,34 @@ func (s *SessionRepository) DeleteByUserAndDevice(ctx context.Context,
 	}
 
 	delete(s.sessions, key)
+
+	return nil
+}
+
+func (s *SessionRepository) DeleteByUser(ctx context.Context, userID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for key, value := range s.sessions {
+		if value.UserID == userID {
+			delete(s.sessions, key)
+		}
+	}
+
+	return nil
+}
+
+func (s *SessionRepository) DeleteExpiredSessions(ctx context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+
+	for key, value := range s.sessions {
+		if value.CreatedAt.After(now) {
+			delete(s.sessions, key)
+		}
+	}
 
 	return nil
 }

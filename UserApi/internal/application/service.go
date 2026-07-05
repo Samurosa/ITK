@@ -11,30 +11,61 @@ import (
 type User struct {
 	log *zap.Logger
 
-	tokenManager authCore.TokenManager
+	userSaver    userCore.Save
+	userProvider userCore.Provider
+}
 
+type Auth struct {
+	log *zap.Logger
+
+	tokenManager   authCore.TokenManager
 	sessionStorage authCore.SessionRepository
 
 	userSaver    userCore.Save
 	userProvider userCore.Provider
+}
+
+type Wallet struct {
+	log *zap.Logger
 
 	balanceRepository wallet.Repository
 }
 
-func New(
+func NewUserService(
+	log *zap.Logger,
+	userSaver userCore.Save,
+	userProvider userCore.Provider,
+) *User {
+	return &User{
+		log:          log,
+		userSaver:    userSaver,
+		userProvider: userProvider,
+	}
+}
+
+func NewAuthService(
 	log *zap.Logger,
 	tokenManager authCore.TokenManager,
 	sessionStorage authCore.SessionRepository,
 	userSaver userCore.Save,
 	userProvider userCore.Provider,
+
+) *Auth {
+	return &Auth{
+		log:            log,
+		tokenManager:   tokenManager,
+		sessionStorage: sessionStorage,
+		userSaver:      userSaver,
+		userProvider:   userProvider,
+	}
+}
+
+func NewWalletService(
+	log *zap.Logger,
 	balanceRepository wallet.Repository,
-) *User {
-	return &User{
+) *Wallet {
+	return &Wallet{
 		log:               log,
-		tokenManager:      tokenManager,
-		sessionStorage:    sessionStorage,
-		userSaver:         userSaver,
-		userProvider:      userProvider,
 		balanceRepository: balanceRepository,
 	}
 }

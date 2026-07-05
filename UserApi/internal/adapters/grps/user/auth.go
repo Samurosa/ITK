@@ -4,6 +4,7 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -52,6 +53,7 @@ func (s *ServerApi) Login(
 
 	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
 	if err != nil {
+		s.log.Error("failed to login", zap.Error(err))
 		return nil, status.Error(codes.Unauthenticated, "failed to authorize user")
 	}
 
@@ -69,7 +71,29 @@ func (s *ServerApi) Logout(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.UserId, req.DeviceId)
+	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
+	}
+
+	return &pb.LogoutResponse{
+		Success:     success,
+		LoggedOutAt: timestamppb.New(loggedOutAt),
+	}, nil
+}
+
+func (s *ServerApi) LogoutAllDevices(
+	ctx context.Context,
+	req *pb.RefreshTokenRequest,
+) (
+	*pb.LogoutResponse,
+	error,
+) {
+	if err := req.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+
+	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
 	}
@@ -91,7 +115,7 @@ func (s *ServerApi) RefreshToken(
 		return nil, status.Error(codes.InvalidArgument, "invalid request")
 	}
 
-	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.UserId, req.DeviceId)
+	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to refresh token")
 	}

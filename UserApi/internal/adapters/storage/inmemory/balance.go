@@ -36,6 +36,9 @@ func (b *BalanceRepository) Create(ctx context.Context, userID string, currency 
 		Available: decimal.Zero,
 		Locked:    decimal.Zero,
 	}
+
+	b.balances[BalanceKey{userID, currency}] = &balance
+
 	return balance, nil
 }
 
@@ -51,6 +54,8 @@ func (b *BalanceRepository) Get(ctx context.Context, userID string, currency str
 }
 
 func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, currency string) (wallet.Balance, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
 	gotBalance, ok := b.balances[BalanceKey{userID, currency}]
 	if !ok {
@@ -70,6 +75,7 @@ func (b *BalanceRepository) Save(ctx context.Context, balance wallet.Balance) er
 func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet.Balance, error) {
 	b.mu.RLock()
 	defer b.mu.RUnlock()
+
 	balancesByID := make([]wallet.Balance, 0)
 	for _, balance := range b.balances {
 		if balance.UserID != userID {

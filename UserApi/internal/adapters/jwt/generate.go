@@ -7,13 +7,11 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 func generateRefreshToken() (string, error) {
 	refreshTokenString := uuid.NewString()
-	if refreshTokenString == "" {
-		return "", auth.ErrGenerateRefreshToken
-	}
 
 	return refreshTokenString, nil
 }
@@ -23,18 +21,38 @@ func generateAccessToken(
 	accessTokenTTL time.Duration,
 	user user.User,
 ) (string, error) {
-	accessToken := jwt.New(jwt.SigningMethodHS256)
 
-	claimsAccessToken := accessToken.Claims.(jwt.MapClaims)
-	claimsAccessToken["id"] = user.ID
-	claimsAccessToken["role"] = user.Role
-	claimsAccessToken["jti"] = uuid.NewString()
-	claimsAccessToken["exp"] = time.Now().Add(accessTokenTTL).Unix()
+	claimsAccessToken := auth.TokenParse{
+		UserID: user.ID,
+		Role:   string(user.Role),
+		Jti:    uuid.NewString(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL)),
+		},
+	}
+
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsAccessToken)
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", auth.ErrGenerateAccessToken
+		return "", auth.ErrGenerateToken
 	}
 
 	return accessTokenString, nil
+}
+
+func GetClaimsWithToken(log *zap.Logger, token *jwt.Token) (*auth.TokenParse, error) {
+
+	if !token.Valid {
+		log.Error("token is not valid")
+		return &auth.TokenParse{}, auth.ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*auth.TokenParse)
+	if !ok {
+		log.Error("token claims is not found")
+		return &auth.TokenParse{}, auth.ErrInvalidToken
+	}
+
+	return claims, nil
 }

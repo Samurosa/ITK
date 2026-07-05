@@ -96,7 +96,7 @@ func (s *ServerApi) DeleteUser(
 
 	success, deletedUserAt, err := s.user.DeleteUser(ctx, req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.AlreadyExists, "failed to delete user")
+		return nil, status.Error(codes.NotFound, "failed to delete user")
 	}
 	return &pb.DeleteUserResponse{
 		Success:       success,
@@ -121,7 +121,6 @@ func (s *ServerApi) ChangePassword(
 	if err != nil {
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
-
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,
 		UserPasswordChangedAt: timestamppb.New(userPasswordChangedAt),

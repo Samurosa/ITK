@@ -35,7 +35,7 @@ func ValidateRegistration(req *pb.RegisterUserRequest) error {
 		return status.Error(codes.InvalidArgument, "Password is required")
 	}
 	if req.GetName() == "" {
-		return status.Error(codes.InvalidArgument, "Password is required")
+		return status.Error(codes.InvalidArgument, "Name is required")
 	}
 	return nil
 }
@@ -49,3 +49,5 @@ func ValidateLogin(req *pb.LoginRequest) error {
 	}
 	return nil
 }
+
+//VaLIDATEpASSWORD
