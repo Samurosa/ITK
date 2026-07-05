@@ -121,7 +121,6 @@ func (s *ServerApi) ChangePassword(
 	if err != nil {
 		return nil, status.Error(codes.Aborted, err.Error())
 	}
-
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,
 		UserPasswordChangedAt: timestamppb.New(userPasswordChangedAt),

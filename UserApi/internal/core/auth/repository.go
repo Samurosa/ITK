@@ -8,13 +8,17 @@ import (
 type SessionRepository interface {
 	Create(ctx context.Context, SessionModel SessionModel) error
 
-	GetByUserIdAndDeviceId(ctx context.Context, userID string, deviceID string) (SessionModel, error)
+	GetByUserAndDevice(ctx context.Context, userID string, deviceID string) (SessionModel, error)
+
+	GetByUser(ctx context.Context, userID string) ([]SessionModel, error)
 
 	Update(ctx context.Context, SessionModel SessionModel) error
 
 	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error
 
-	DeleteExpiredSessions(ctx context.Context) error
+	DeleteByUser(ctx context.Context, userID string) error
+
+  DeleteExpiredSessions(ctx context.Context) error
 }
 
 type TokenManager interface {
