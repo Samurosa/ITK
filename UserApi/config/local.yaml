@@ -1,7 +1,9 @@
-env: ".env"
+env: "/.env"
 token_ttl:
   refresh_token_ttl: 168h
   access_token_ttl: 12h
 grpc:
   port: 50051
   timeout: 1h
+storage:
+  link: "postgres://admin:admin@db:5432/db?sslmode=disable"

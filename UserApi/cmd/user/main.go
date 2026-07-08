@@ -34,7 +34,7 @@ func main() {
 
 	secret := os.Getenv("JWT_SECRET")
 
-	application := grpsApp.New(logger, cfg.GRPC.Port, cfg.TokenTTl, secret)
+	application := grpsApp.New(logger, cfg.Storage.Link, cfg.GRPC.Port, cfg.TokenTTl, secret)
 
 	go application.GrpcApp.Run()
 	go application.Workers.Run()
