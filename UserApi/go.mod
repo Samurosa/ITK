@@ -17,6 +17,9 @@ require (
 
 require (
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/pgx/v5 v5.10.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.56.0 // indirect

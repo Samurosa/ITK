@@ -1,0 +1,9 @@
+CREATE TABLE users (
+                       id uuid PRIMARY KEY,
+                       email text NOT NULL UNIQUE,
+                       password_hash bytea NOT NULL,
+                       name text NOT NULL,
+                       role text NOT NULL,
+                       created_at timestamptz NOT NULL,
+                       updated_at timestamptz NOT NULL
+);

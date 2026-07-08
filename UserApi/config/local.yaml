@@ -1,4 +1,4 @@
-env: ".env"
+env: "/.env"
 token_ttl:
   refresh_token_ttl: 168h
   access_token_ttl: 12h
