@@ -1,6 +1,7 @@
 package app
 
 import (
+	"ITK_Code/m/v2/app/contextStatus"
 	"ITK_Code/m/v2/app/grps"
 	"ITK_Code/m/v2/app/workers"
 	"ITK_Code/m/v2/config"
@@ -8,14 +9,16 @@ import (
 	"ITK_Code/m/v2/internal/adapters/storage/postgres"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
-	"context"
 
 	"go.uber.org/zap"
 )
 
 type App struct {
 	GrpcApp *grpsApp.App
+
 	Workers *workers.App
+
+	Context *contextStatus.App
 }
 
 func New(
@@ -26,15 +29,15 @@ func New(
 	secret string,
 ) *App {
 	//TODO: переделать сделать cleaner для контекста и соединения с бд
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctxApp := contextStatus.New()
+	ctx := ctxApp.GetContext()
 
 	postgresStorage, err := postgres.NewPool(ctx, log, storagePath, 10)
 	if err != nil {
 		panic(err)
 	}
+
 	pool := postgresStorage.GetPool()
-	defer pool.Close()
 
 	userStorage := postgres.NewUserStorage(pool)
 
@@ -73,10 +76,13 @@ func New(
 		port,
 	)
 
-	workersApp := workers.NewWorker(log, ctx, cancel, sessionStorage)
+	workersApp := workers.NewWorker(log, ctx, sessionStorage)
 
 	return &App{
 		GrpcApp: app,
+
 		Workers: workersApp,
+
+		Context: ctxApp,
 	}
 }

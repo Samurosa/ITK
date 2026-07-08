@@ -45,7 +45,7 @@ func main() {
 	<-stop
 
 	application.GrpcApp.Stop()
-	application.Workers.Stop()
+	application.Context.Stop()
 
 	logger.Debug("application stop")
 

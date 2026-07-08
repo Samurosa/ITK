@@ -1,11 +1,4 @@
 services:
-  user-api:
-    build:
-      context: ./UserApi
-      dockerfile: Dockerfile
-    ports:
-      - "50051:50051"
-
   db:
     image: postgres:15
     container_name: db
@@ -38,6 +31,16 @@ services:
         "postgres://admin:admin@db:5432/db?sslmode=disable",
         "up"
       ]
+
+  user-api:
+    build:
+      context: ./UserApi
+      dockerfile: Dockerfile
+    ports:
+      - "50051:50051"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   db_data:

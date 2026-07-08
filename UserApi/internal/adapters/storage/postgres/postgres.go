@@ -18,38 +18,57 @@ type Storage struct {
 	log  *zap.Logger
 }
 
-func NewPool(ctx context.Context, logger *zap.Logger, connectionString string, maxConnections int) (*Storage, error) {
-	log := logger.Named("connect to postgres")
+func NewPool(ctx context.Context, logger *zap.Logger, connectionString string, maxRetries int) (*Storage, error) {
+	log := logger.Named("postgres")
 
-	for i := 1; i <= maxConnections; i++ {
-		pool, err := pgxpool.New(ctx, connectionString)
+	config, err := pgxpool.ParseConfig(connectionString)
+	if err != nil {
+		return nil, err
+	}
+	config.MaxConns = 10
+	config.MinConns = 2
+
+	for i := 1; i <= maxRetries; i++ {
+
+		pool, err := pgxpool.NewWithConfig(ctx, config)
 		if err != nil {
+			log.Error("create postgres pool failed", zap.Error(err))
+
 			time.Sleep(time.Duration(i) * time.Second)
 			continue
 		}
 
-		ctxPing, cancelPing := context.WithTimeout(context.Background(), 5*time.Second)
-		err = pool.Ping(ctxPing)
-		cancelPing()
+		pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		err = pool.Ping(pingCtx)
+		cancel()
 
 		if err == nil {
+			log.Info("postgres connected")
+
 			return &Storage{
 				pool: pool,
 				log:  logger,
 			}, nil
 		}
 
-		log.Error("ping to postgres failed", zap.Error(ErrPingDB))
-		pool.Close()
-		time.Sleep(time.Duration(i) * time.Second)
+		log.Error("postgres ping failed", zap.Error(err))
 
-		return nil, ErrPingDB
+		//pool.Close()
+
+		time.Sleep(
+			time.Duration(i) * time.Second,
+		)
 	}
 	return nil, ErrPingDB
 }
 
 func (s *Storage) GetPool() *pgxpool.Pool {
 	return s.pool
+}
+
+func (s *Storage) Close() {
+	s.pool.Close()
 }
 
 //TODO: переделать конект к бд и логи
