@@ -5,7 +5,7 @@ import (
 	"ITK_Code/m/v2/app/workers"
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/jwt"
-	"ITK_Code/m/v2/internal/adapters/storage/inmemory"
+	"ITK_Code/m/v2/internal/adapters/storage/postgres"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
@@ -20,14 +20,27 @@ type App struct {
 
 func New(
 	log *zap.Logger,
+	storagePath string,
 	port int,
 	tokenTTL config.TokensTTL,
 	secret string,
 ) *App {
+	//TODO: переделать сделать cleaner для контекста и соединения с бд
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	userStorage := inmemory.NewUserStorage()
-	sessionStorage := inmemory.NewSessionStorage()
-	walletStorage := inmemory.NewBalanceStorage()
+	postgresStorage, err := postgres.NewPool(ctx, log, storagePath, 10)
+	if err != nil {
+		panic(err)
+	}
+	pool := postgresStorage.GetPool()
+	defer pool.Close()
+
+	userStorage := postgres.NewUserStorage(pool)
+
+	sessionStorage := postgres.NewSessionStorage(pool)
+
+	walletStorage := postgres.NewBalanceStorage(pool)
 
 	secretAuthorization := jwt.NewJWT(log,
 		auth.JWTConfig{
@@ -59,8 +72,6 @@ func New(
 		walletService,
 		port,
 	)
-
-	ctx, cancel := context.WithCancel(context.Background())
 
 	workersApp := workers.NewWorker(log, ctx, cancel, sessionStorage)
 

@@ -21,14 +21,13 @@ type JWTConfig struct {
 }
 
 type SessionModel struct {
-	UserID string
-
+	ID       string
+	UserID   string
 	DeviceID string
 
 	RefreshTokenHash [32]byte
 
 	ExpiresAt time.Time
-
 	CreatedAt time.Time
 }
 

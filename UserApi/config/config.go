@@ -12,6 +12,7 @@ type Config struct {
 	TokenTTl TokensTTL  `yaml:"token_ttl"`
 	GRPC     GRPCConfig `yaml:"grpc"`
 	Env      string     `yaml:"env"`
+	Storage  Storage    `yaml:"storage"`
 }
 
 type GRPCConfig struct {
@@ -22,6 +23,10 @@ type GRPCConfig struct {
 type TokensTTL struct {
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
 	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
+}
+
+type Storage struct {
+	Link string
 }
 
 func Load(

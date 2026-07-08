@@ -10,7 +10,7 @@ type SessionRepository interface {
 
 	GetByUserAndDevice(ctx context.Context, userID string, deviceID string) (SessionModel, error)
 
-	GetByUser(ctx context.Context, userID string) ([]SessionModel, error)
+	GetAllByUser(ctx context.Context, userID string) ([]SessionModel, error)
 
 	Update(ctx context.Context, SessionModel SessionModel) error
 
@@ -18,7 +18,7 @@ type SessionRepository interface {
 
 	DeleteByUser(ctx context.Context, userID string) error
 
-  DeleteExpiredSessions(ctx context.Context) error
+	DeleteExpiredSessions(ctx context.Context) error
 }
 
 type TokenManager interface {

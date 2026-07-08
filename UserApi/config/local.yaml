@@ -5,3 +5,5 @@ token_ttl:
 grpc:
   port: 50051
   timeout: 1h
+storage:
+  link: "postgres://admin:admin@db:5432/db?sslmode=disable"
