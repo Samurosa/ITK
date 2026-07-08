@@ -11,15 +11,13 @@ import (
 type App struct {
 	log               *zap.Logger
 	ctx               context.Context
-	cancel            context.CancelFunc
 	sessionRepository auth.SessionRepository
 }
 
-func NewWorker(log *zap.Logger, ctx context.Context, cancel context.CancelFunc, sessionRepository auth.SessionRepository) *App {
+func NewWorker(log *zap.Logger, ctx context.Context, sessionRepository auth.SessionRepository) *App {
 	return &App{
 		log:               log,
 		ctx:               ctx,
-		cancel:            cancel,
 		sessionRepository: sessionRepository,
 	}
 }
@@ -28,8 +26,4 @@ func (w *App) Run() {
 	cleaner := workers.NewExpiredSessionCleaner(w.log, w.sessionRepository)
 
 	cleaner.Clean(w.ctx)
-}
-
-func (w *App) Stop() {
-	w.cancel()
 }
