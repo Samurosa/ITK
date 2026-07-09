@@ -2,6 +2,7 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/adapters/hash"
+	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
 	"time"
@@ -105,7 +106,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 
 	success, err := u.userProvider.Update(ctx, id, updated)
 	if err != nil {
-		log.Error("error updating user", zap.Error(user.ErrUpdateUser))
+		log.Error("error updating user", zap.Error(err))
 		return false, time.Time{}, user.ErrUpdateUser
 	}
 
@@ -127,19 +128,19 @@ func (u *User) ChangePassword(ctx context.Context,
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
 		log.Error("error getting user by email", zap.String("id", id), zap.Error(user.ErrUserNotFound))
-		return false, time.Time{}, user.ErrUserNotFound
+		return false, time.Time{}, auth.ErrInvalidLoginCredentials
 	}
 
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
-		log.Error("error verifying user by password", zap.Error(user.ErrComparePassword))
-		return false, time.Time{}, user.ErrComparePassword
+		log.Error("error verifying user by password", zap.Error(err))
+		return false, time.Time{}, auth.ErrInvalidLoginCredentials
 	}
 
 	newPassHash, err := hash.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return false, time.Time{}, err
+		return false, time.Time{}, user.ErrPassGenHash
 	}
 
 	updated := user.UpdateUser{}
@@ -147,7 +148,7 @@ func (u *User) ChangePassword(ctx context.Context,
 
 	success, err := u.userProvider.UpdatePassword(ctx, current, updated)
 	if err != nil {
-		log.Error("error updating user", zap.Error(user.ErrUpdateUser))
+		log.Error("error updating user", zap.Error(err))
 		return false, time.Time{}, user.ErrUpdateUser
 	}
 

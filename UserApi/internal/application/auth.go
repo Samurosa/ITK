@@ -2,8 +2,8 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/adapters/hash"
-	authCore "ITK_Code/m/v2/internal/core/auth"
-	userCore "ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/user"
 	"context"
 	"time"
 
@@ -25,14 +25,14 @@ func (a *Auth) Registration(ctx context.Context,
 	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return "", time.Time{}, err
+		return "", time.Time{}, user.ErrPassGenHash
 	}
 
-	newUser := userCore.User{
+	newUser := user.User{
 		Email:        email,
 		Name:         name,
 		PasswordHash: passHash,
-		Role:         userCore.UserRole,
+		Role:         user.UserRole,
 		CreateTime:   now,
 		UpdateTime:   now,
 	}
@@ -52,39 +52,39 @@ func (a *Auth) Login(ctx context.Context,
 	password string,
 	deviceId string,
 ) (
-	authCore.TokensModel,
+	auth.TokensModel,
 	error,
 ) {
 	log := a.log.Named("login")
 	log.Info("searching user with email", zap.String("email", email))
 
-	user, err := a.userProvider.GetByEmail(ctx, email)
+	gotUser, err := a.userProvider.GetByEmail(ctx, email)
 	if err != nil {
-		log.Error("error getting user by email", zap.String("email", email), zap.Error(userCore.ErrUserNotFound))
-		return authCore.TokensModel{}, userCore.ErrUserNotFound
+		log.Error("error getting user by email", zap.String("email", email), zap.Error(err))
+		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
 
-	err = hash.VerifyPasswordHash(password, user.PasswordHash)
+	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return authCore.TokensModel{}, authCore.Unauthorized
+		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
 
 	log.Info("search old session")
-	_ = a.sessionStorage.DeleteByUserAndDevice(ctx, user.ID, deviceId)
+	_ = a.sessionStorage.DeleteByUserAndDevice(ctx, gotUser.ID, deviceId)
 
 	log.Info("create token")
-	tokens, err := a.tokenManager.Generate(user)
+	tokens, err := a.tokenManager.Generate(gotUser)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return authCore.TokensModel{}, err
+		return auth.TokensModel{}, err
 	}
 
 	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
 
 	log.Info("session info save")
-	session := authCore.SessionModel{
-		UserID:           user.ID,
+	session := auth.SessionModel{
+		UserID:           gotUser.ID,
 		DeviceID:         deviceId,
 		RefreshTokenHash: tokenHash,
 		ExpiresAt:        tokens.RefreshExpiresAt,
@@ -93,7 +93,7 @@ func (a *Auth) Login(ctx context.Context,
 	err = a.sessionStorage.Create(ctx, session)
 	if err != nil {
 		log.Error("error creating session", zap.Error(err))
-		return authCore.TokensModel{}, err
+		return auth.TokensModel{}, err
 	}
 
 	return tokens, nil
@@ -109,25 +109,22 @@ func (a *Auth) Logout(ctx context.Context,
 ) {
 	log := a.log.Named("Logout")
 
-	userID, err := authCore.GetUserIDByContext(ctx)
+	userID, err := auth.GetUserIDByContext(ctx)
 	if err != nil {
 		log.Error("error getting user id by context", zap.Error(err))
-		return false, time.Time{}, authCore.ErrInvalidContext
-	}
-	if userID == "" {
-		return false, time.Time{}, authCore.ErrInvalidToken
+		return false, time.Time{}, auth.ErrInvalidContext
 	}
 
 	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, authCore.Unauthorized
+		return false, time.Time{}, auth.Unauthorized
 	}
 
 	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
 	if !ok {
 		log.Error("error comparing refresh token", zap.Error(err))
-		return false, time.Time{}, authCore.ErrNoAccess
+		return false, time.Time{}, auth.ErrNoAccess
 	}
 
 	err = a.sessionStorage.DeleteByUserAndDevice(ctx, userID, deviceID)
@@ -149,22 +146,22 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 ) {
 	log := a.log.Named("Logout all devices")
 
-	userID, err := authCore.GetUserIDByContext(ctx)
+	userID, err := auth.GetUserIDByContext(ctx)
 	if err != nil {
 		log.Error("error getting user id by context", zap.Error(err))
-		return false, time.Time{}, authCore.ErrInvalidContext
+		return false, time.Time{}, auth.ErrInvalidContext
 	}
 
 	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, authCore.Unauthorized
+		return false, time.Time{}, auth.Unauthorized
 	}
 
 	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
 	if !ok {
 		log.Error("error comparing refresh token", zap.Error(err))
-		return false, time.Time{}, authCore.ErrNoAccess
+		return false, time.Time{}, auth.ErrNoAccess
 	}
 
 	err = a.sessionStorage.DeleteByUser(ctx, userID)
@@ -180,7 +177,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	refreshToken string,
 	deviceID string,
 ) (
-	authCore.TokensModel,
+	auth.TokensModel,
 	error,
 ) {
 	log := a.log.Named("Refresh tokens")
@@ -190,48 +187,48 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	session, err := a.sessionStorage.GetByRefreshToken(ctx, refreshTokenHash)
 	if err != nil {
 		log.Error("error getting session", zap.Error(err))
-		return authCore.TokensModel{}, authCore.ErrSessionNotFound
+		return auth.TokensModel{}, auth.ErrSessionNotFound
 	}
 
 	userID := session.UserID
 
 	log.Info("searching user with db", zap.String("userId", userID))
-	user, err := a.userProvider.Get(ctx, userID)
+	gotUser, err := a.userProvider.Get(ctx, userID)
 	if err != nil {
 		log.Error("error getting user by id", zap.Error(err))
-		return authCore.TokensModel{}, userCore.ErrUserNotFound
+		return auth.TokensModel{}, user.ErrUserNotFound
 	}
 
 	log.Info("searching session with userId deviceID", zap.String("userId", userID), zap.String("deviceID", deviceID))
 	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return authCore.TokensModel{}, authCore.Unauthorized
+		return auth.TokensModel{}, auth.Unauthorized
 	}
 
 	log.Info("validating token expiry", zap.String("ExpireAt", sessionInfo.ExpiresAt.String()))
 	if sessionInfo.ExpiresAt.Before(time.Now()) {
-		return authCore.TokensModel{}, authCore.ErrRefreshExpired
+		return auth.TokensModel{}, auth.ErrRefreshExpired
 	}
 
 	log.Info("comparing refresh token")
 	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
 	if !ok {
 		log.Error("error verifying refresh token", zap.Error(err))
-		return authCore.TokensModel{}, authCore.Unauthorized
+		return auth.TokensModel{}, auth.Unauthorized
 	}
 
 	log.Info("generating new tokens")
-	newTokens, err := a.tokenManager.Generate(user)
+	newTokens, err := a.tokenManager.Generate(gotUser)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return authCore.TokensModel{}, err
+		return auth.TokensModel{}, err
 	}
 
 	tokenHash := hash.GenerateHashSHA256(refreshToken)
 
-	newSessionInfo := authCore.SessionModel{
-		UserID:           user.ID,
+	newSessionInfo := auth.SessionModel{
+		UserID:           gotUser.ID,
 		DeviceID:         deviceID,
 		RefreshTokenHash: tokenHash,
 		ExpiresAt:        newTokens.RefreshExpiresAt,
@@ -241,7 +238,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	err = a.sessionStorage.Update(ctx, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
-		return authCore.TokensModel{}, err
+		return auth.TokensModel{}, err
 	}
 
 	return newTokens, nil

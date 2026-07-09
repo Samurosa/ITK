@@ -5,8 +5,6 @@ import (
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"go.uber.org/zap"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -18,7 +16,7 @@ func (s *ServerApi) Registration(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateRegistration(req); err != nil {
@@ -31,7 +29,7 @@ func (s *ServerApi) Registration(
 
 	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
 	if err != nil {
-		return nil, status.Error(codes.AlreadyExists, "failed to register user")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.RegisterUserResponse{
@@ -48,7 +46,7 @@ func (s *ServerApi) Login(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateLogin(req); err != nil {
@@ -58,7 +56,7 @@ func (s *ServerApi) Login(
 	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
 	if err != nil {
 		s.log.Error("failed to login", zap.Error(err))
-		return nil, status.Error(codes.Unauthenticated, "failed to authorize user")
+		return nil, ToGRPC(err)
 	}
 
 	return ToProtoTokens(tokens), nil
@@ -72,12 +70,12 @@ func (s *ServerApi) Logout(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid request")
+		return nil, ToGRPC(err)
 	}
 
 	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.LogoutResponse{
@@ -94,12 +92,12 @@ func (s *ServerApi) LogoutAllDevices(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid request")
+		return nil, ToGRPC(err)
 	}
 
 	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "failed to unauthenticated user")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.LogoutResponse{
@@ -116,12 +114,12 @@ func (s *ServerApi) RefreshToken(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid request")
+		return nil, ToGRPC(err)
 	}
 
 	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to refresh token")
+		return nil, ToGRPC(err)
 	}
 	return ToProtoTokens(tokens), nil
 }

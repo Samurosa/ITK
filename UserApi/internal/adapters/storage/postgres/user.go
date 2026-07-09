@@ -101,7 +101,7 @@ func (r *UserRepository) Get(ctx context.Context,
 	)
 
 	if err != nil {
-		return userCore.User{}, userCore.ErrUserNotFound
+		return userCore.User{}, err
 	}
 
 	return userModel, nil
@@ -144,7 +144,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	)
 
 	if err != nil {
-		return userCore.User{}, userCore.ErrUserNotFound
+		return userCore.User{}, err
 	}
 
 	return userModel, nil
@@ -242,7 +242,7 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	}
 
 	if result.RowsAffected() == 0 {
-		return false, userCore.ErrUserNotFound
+		return false, err
 	}
 
 	return true, nil
@@ -268,7 +268,7 @@ func (r *UserRepository) Delete(ctx context.Context,
 	}
 
 	if result.RowsAffected() == 0 {
-		return userCore.ErrUserNotFound
+		return err
 	}
 
 	return nil
@@ -296,7 +296,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 	).Scan(&role)
 
 	if err != nil {
-		return false, userCore.ErrUserNotFound
+		return false, err
 	}
 
 	return role == userCore.AdminRole, nil

@@ -19,7 +19,7 @@ func (w *Wallet) Deposit(ctx context.Context,
 	log := w.log.Named("Deposit")
 	balance, err := w.balanceRepository.GetOrCreate(ctx, id, asset)
 	if err != nil {
-		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(wallet.ErrBalanceNotFound))
+		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(err))
 		return false, wallet.Balance{}, wallet.ErrCreateNewBalance
 	}
 
@@ -42,9 +42,11 @@ func (w *Wallet) GetBalances(ctx context.Context,
 	[]wallet.Balance,
 	error,
 ) {
+	log := w.log.Named("GetBalances")
 
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
+		log.Error("failed to get balances", zap.String("id", id), zap.Error(err))
 		return nil, wallet.ErrBalanceNotFound
 	}
 
