@@ -1,27 +1,41 @@
 package user
 
 import (
+	"unicode"
+
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+var (
+	ErrUserIDEmpty   = status.Error(codes.InvalidArgument, "user id empty")
+	ErrEmailEmpty    = status.Error(codes.InvalidArgument, "email empty")
+	ErrUsernameEmpty = status.Error(codes.InvalidArgument, "username empty")
+	ErrAssetEmpty    = status.Error(codes.InvalidArgument, "asset empty")
+	ErrAmountEmpty   = status.Error(codes.InvalidArgument, "amount empty")
+
+	ErrPasswordEmpty            = status.Error(codes.InvalidArgument, "password empty")
+	ErrPasswordWrongUpperSymbol = status.Error(codes.InvalidArgument, "password wrong, upper symbol not found")
+	ErrPasswordWrongDigitSymbol = status.Error(codes.InvalidArgument, "password wrong, lower symbol not found")
+)
+
 func ValidateUserId(id string) error {
 	if id == "" {
-		return status.Error(codes.InvalidArgument, "Id is required")
+		return ErrUserIDEmpty
 	}
 	return nil
 }
 
 func ValidateDepositRequest(req *pb.DepositRequest) error {
 	if req.GetUserId() == "" {
-		return status.Error(codes.InvalidArgument, "UserId is required")
+		return ErrUserIDEmpty
 	}
 	if req.GetAsset() == "" {
-		return status.Error(codes.InvalidArgument, "Asset is required")
+		return ErrAssetEmpty
 	}
 	if req.GetAmount().Currency == "" {
-		return status.Error(codes.InvalidArgument, "Amount is required")
+		return ErrAmountEmpty
 	}
 
 	return nil
@@ -29,25 +43,51 @@ func ValidateDepositRequest(req *pb.DepositRequest) error {
 
 func ValidateRegistration(req *pb.RegisterUserRequest) error {
 	if req.GetEmail() == "" {
-		return status.Error(codes.InvalidArgument, "Email is required")
+		return ErrEmailEmpty
 	}
 	if req.GetPassword() == "" {
-		return status.Error(codes.InvalidArgument, "Password is required")
+		return ErrPasswordEmpty
 	}
 	if req.GetName() == "" {
-		return status.Error(codes.InvalidArgument, "Name is required")
+		return ErrUsernameEmpty
 	}
 	return nil
 }
 
 func ValidateLogin(req *pb.LoginRequest) error {
 	if req.GetEmail() == "" {
-		return status.Error(codes.InvalidArgument, "Email is required")
+		return ErrEmailEmpty
 	}
 	if req.GetPassword() == "" {
-		return status.Error(codes.InvalidArgument, "Password is required")
+		return ErrPasswordEmpty
 	}
 	return nil
 }
 
-//VaLIDATEpASSWORD
+func ValidatePassword(password string) error {
+	if password == "" {
+		return ErrPasswordEmpty
+	}
+
+	var hasUpper, hasDigit bool
+
+	for _, char := range password {
+
+		switch {
+		case unicode.IsUpper(char):
+			hasUpper = true
+
+		case unicode.IsLower(char):
+			hasDigit = true
+		}
+	}
+	if !hasUpper {
+		return ErrPasswordWrongUpperSymbol
+	}
+
+	if !hasDigit {
+		return ErrPasswordWrongDigitSymbol
+	}
+
+	return nil
+}

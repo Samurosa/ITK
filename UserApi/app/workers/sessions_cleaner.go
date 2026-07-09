@@ -25,5 +25,5 @@ func NewWorker(log *zap.Logger, ctx context.Context, sessionRepository auth.Sess
 func (w *App) Run() {
 	cleaner := workers.NewExpiredSessionCleaner(w.log, w.sessionRepository)
 
-	cleaner.Clean(w.ctx)
+	cleaner.Run(w.ctx)
 }

@@ -1,6 +1,6 @@
 package mapper
 
-import (
+/*import (
 	db "ITK_Code/m/v2/internal/storage"
 
 	pb "github.com/Samurosa/exchange-contract/generated"
@@ -49,3 +49,4 @@ func ToProtoStatus(
 	}
 
 }
+*/

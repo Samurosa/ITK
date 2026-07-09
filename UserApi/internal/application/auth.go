@@ -109,7 +109,11 @@ func (a *Auth) Logout(ctx context.Context,
 ) {
 	log := a.log.Named("Logout")
 
-	userID := ctx.Value(authCore.UserIDContextKey).(string)
+	userID, err := authCore.GetUserIDByContext(ctx)
+	if err != nil {
+		log.Error("error getting user id by context", zap.Error(err))
+		return false, time.Time{}, authCore.ErrInvalidContext
+	}
 	if userID == "" {
 		return false, time.Time{}, authCore.ErrInvalidToken
 	}
@@ -139,24 +143,25 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 	refreshToken string,
 	deviceID string,
 ) (
-	success bool,
-	loggedOutAt time.Time,
-	err error,
+	bool,
+	time.Time,
+	error,
 ) {
 	log := a.log.Named("Logout all devices")
 
-	userID := ctx.Value(authCore.UserIDContextKey).(string)
-	if userID == "" {
-		return false, time.Time{}, authCore.ErrInvalidToken
+	userID, err := authCore.GetUserIDByContext(ctx)
+	if err != nil {
+		log.Error("error getting user id by context", zap.Error(err))
+		return false, time.Time{}, authCore.ErrInvalidContext
 	}
 
-	sessions, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
+	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, authCore.Unauthorized
 	}
 
-	ok := hash.CompareHashSHA256(refreshToken, sessions.RefreshTokenHash)
+	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
 	if !ok {
 		log.Error("error comparing refresh token", zap.Error(err))
 		return false, time.Time{}, authCore.ErrNoAccess
@@ -175,15 +180,20 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	refreshToken string,
 	deviceID string,
 ) (
-	tokensPairs authCore.TokensModel,
-	err error,
+	authCore.TokensModel,
+	error,
 ) {
 	log := a.log.Named("Refresh tokens")
 
-	userID := ctx.Value(authCore.UserIDContextKey).(string)
-	if userID == "" {
-		return authCore.TokensModel{}, authCore.ErrInvalidToken
+	refreshTokenHash := hash.GenerateHashSHA256(refreshToken)
+
+	session, err := a.sessionStorage.GetByRefreshToken(ctx, refreshTokenHash)
+	if err != nil {
+		log.Error("error getting session", zap.Error(err))
+		return authCore.TokensModel{}, authCore.ErrSessionNotFound
 	}
+
+	userID := session.UserID
 
 	log.Info("searching user with db", zap.String("userId", userID))
 	user, err := a.userProvider.Get(ctx, userID)

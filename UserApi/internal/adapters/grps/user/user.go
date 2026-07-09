@@ -114,6 +114,14 @@ func (s *ServerApi) ChangePassword(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	if err := ValidateUserId(req.UserId); err != nil {
+		return nil, err
+	}
+
+	if err := ValidatePassword(req.NewPassword); err != nil {
+		return nil, err
+	}
+
 	isSuccess, userPasswordChangedAt, err := s.user.ChangePassword(ctx, req.UserId,
 		req.OldPassword,
 		req.NewPassword,

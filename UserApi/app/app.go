@@ -9,32 +9,43 @@ import (
 	"ITK_Code/m/v2/internal/adapters/storage/postgres"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"go.uber.org/zap"
 )
 
 type App struct {
-	GrpcApp *grpsApp.App
+	logger *zap.Logger
 
-	Workers *workers.App
+	grpcApp *grpsApp.App
 
-	Context *contextStatus.App
+	workers *workers.App
+
+	context *contextStatus.App
+
+	storage *postgres.Storage
 }
 
 func New(
-	log *zap.Logger,
 	storagePath string,
 	port int,
 	tokenTTL config.TokensTTL,
 	secret string,
-) *App {
-	//TODO: переделать сделать cleaner для контекста и соединения с бд
+) (*App, error) {
+
+	log, err := zap.NewProduction()
+	if err != nil {
+		panic(err)
+	}
+
 	ctxApp := contextStatus.New()
 	ctx := ctxApp.GetContext()
 
 	postgresStorage, err := postgres.NewPool(ctx, log, storagePath, 10)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	pool := postgresStorage.GetPool()
@@ -79,10 +90,38 @@ func New(
 	workersApp := workers.NewWorker(log, ctx, sessionStorage)
 
 	return &App{
-		GrpcApp: app,
+		logger: log,
 
-		Workers: workersApp,
+		grpcApp: app,
 
-		Context: ctxApp,
+		workers: workersApp,
+
+		context: ctxApp,
+
+		storage: postgresStorage,
+	}, nil
+}
+
+func (app *App) Start() {
+	go app.grpcApp.Run()
+	go app.workers.Run()
+}
+
+func (app *App) WaitSignal() {
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	<-stop
+}
+
+func (app *App) Stop() {
+	app.logger.Debug("application stop")
+
+	app.grpcApp.Stop()
+	app.context.Stop()
+	app.storage.ClosePool()
+	err := app.logger.Sync()
+	if err != nil {
+		app.logger.Error("error sync logger: ", zap.Error(err))
 	}
 }
