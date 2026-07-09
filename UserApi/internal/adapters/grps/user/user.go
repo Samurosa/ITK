@@ -4,8 +4,6 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -17,7 +15,7 @@ func (s *ServerApi) GetUser(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateUserId(req.UserId); err != nil {
@@ -26,7 +24,7 @@ func (s *ServerApi) GetUser(
 
 	user, err := s.user.GetUser(ctx, req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "failed to get user")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.UserInfoResponse{
@@ -47,7 +45,7 @@ func (s *ServerApi) UpdateUserInfo(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateUserId(req.UserId); err != nil {
@@ -70,7 +68,7 @@ func (s *ServerApi) UpdateUserInfo(
 		email,
 	)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "user not found")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.UpdateUserInfoResponse{
@@ -87,7 +85,7 @@ func (s *ServerApi) DeleteUser(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateUserId(req.UserId); err != nil {
@@ -96,7 +94,7 @@ func (s *ServerApi) DeleteUser(
 
 	success, deletedUserAt, err := s.user.DeleteUser(ctx, req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "failed to delete user")
+		return nil, ToGRPC(err)
 	}
 	return &pb.DeleteUserResponse{
 		Success:       success,
@@ -111,7 +109,7 @@ func (s *ServerApi) ChangePassword(
 	*pb.ChangeUserResponse,
 	error) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateUserId(req.UserId); err != nil {
@@ -127,7 +125,7 @@ func (s *ServerApi) ChangePassword(
 		req.NewPassword,
 	)
 	if err != nil {
-		return nil, status.Error(codes.Aborted, err.Error())
+		return nil, ToGRPC(err)
 	}
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,

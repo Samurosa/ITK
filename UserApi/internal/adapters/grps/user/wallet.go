@@ -4,8 +4,6 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 func (s *ServerApi) Deposit(
@@ -16,21 +14,21 @@ func (s *ServerApi) Deposit(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 	if err := ValidateDepositRequest(req); err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 	amount, err := ToProtoMoney(req.Amount)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, ToGRPC(err)
 	}
 	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "failed to deposit funds")
+		return nil, ToGRPC(err)
 	}
 
 	return &pb.DepositResponse{
@@ -47,16 +45,16 @@ func (s *ServerApi) GetBalances(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+		return nil, ToGRPC(err)
 	}
 
 	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, status.Error(codes.NotFound, "invalid user id")
+		return nil, ToGRPC(err)
 	}
 
 	balancesResponse, err := s.wallet.GetBalances(ctx, req.UserId)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "failed to get wallet")
+		return nil, ToGRPC(err)
 	}
 	return &pb.UserBalancesInfoResponse{
 		Balances: ToProtoBalances(balancesResponse),

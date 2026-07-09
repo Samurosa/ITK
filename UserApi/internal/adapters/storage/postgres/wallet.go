@@ -86,7 +86,7 @@ func (b *BalanceRepository) Get(ctx context.Context, userID string, currency str
 	)
 
 	if err != nil {
-		return wallet.Balance{}, wallet.ErrBalanceNotFound
+		return wallet.Balance{}, err
 	}
 
 	return balance, nil
@@ -202,7 +202,7 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet
 	}
 
 	if len(result) == 0 {
-		return result, wallet.ErrBalanceNotFound
+		return result, err
 	}
 
 	return result, nil
