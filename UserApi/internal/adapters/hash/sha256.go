@@ -1,12 +1,17 @@
 package hash
 
-import "crypto/sha256"
+import (
+	"bytes"
+	"crypto/sha256"
+)
 
-func GenerateHashSHA256(value string) [32]byte {
-	return sha256.Sum256([]byte(value))
+func GenerateHashSHA256(value string) []byte {
+	hash := sha256.Sum256([]byte(value))
+	return hash[:]
 }
 
-func CompareHashSHA256(value string, hash [32]byte) bool {
+func CompareHashSHA256(value string, hash []byte) bool {
 	currentValue := GenerateHashSHA256(value)
-	return currentValue == hash
+	isCompareHash := bytes.Compare(currentValue, hash)
+	return isCompareHash == 0
 }

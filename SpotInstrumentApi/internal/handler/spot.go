@@ -1,6 +1,6 @@
 package handler
 
-import (
+/*import (
 	mapper "ITK_Code/m/v2/internal/mapper"
 	db "ITK_Code/m/v2/internal/storage"
 	"context"
@@ -165,3 +165,4 @@ func HasAccess(
 
 	return false
 }
+*/

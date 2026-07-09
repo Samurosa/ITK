@@ -1,6 +1,6 @@
 package handler
 
-import (
+/*import (
 	"ITK_Code/m/v2/internal/mapper"
 	db "ITK_Code/m/v2/internal/storage"
 	"context"
@@ -118,3 +118,4 @@ func (h *OrderService) GetOrderStatus(
 		OrderStatus: mapper.ToProtoStatus(order.Status),
 	}, nil
 }
+*/

@@ -25,19 +25,17 @@ func (s *SessionRepository) Create(
 	query := `
 		INSERT INTO sessions
 		(
-			id,
 			user_id,
 			device_id,
 			refresh_token_hash,
 			expires_at
 		)
-		VALUES ($1,$2,$3,$4,$5)
+		VALUES ($1,$2,$3,$4)
 	`
 
 	_, err := s.pool.Exec(
 		ctx,
 		query,
-		session.ID,
 		session.UserID,
 		session.DeviceID,
 		session.RefreshTokenHash,
@@ -59,7 +57,12 @@ func (s *SessionRepository) GetByUserAndDevice(ctx context.Context,
 	error,
 ) {
 	query := `
-		SELECT id, user_id, device_id, refresh_token_hash, expires_at
+		SELECT id,
+		       user_id,
+		       device_id,
+		       refresh_token_hash,
+		       expires_at,
+		       created_at
 FROM sessions
 WHERE user_id=$1
 AND device_id=$2;
@@ -82,6 +85,44 @@ AND device_id=$2;
 
 	if err != nil {
 		return authCore.SessionModel{}, authCore.ErrSessionNotFound
+	}
+
+	return session, nil
+}
+
+func (s *SessionRepository) GetByRefreshToken(ctx context.Context,
+	refreshTokenHash []byte,
+) (
+	authCore.SessionModel,
+	error,
+) {
+	query := `
+		SELECT id,
+		       user_id,
+		       device_id,
+		       refresh_token_hash,
+		       expires_at,
+		       created_at
+FROM sessions
+WHERE refresh_token_hash=$1;
+	`
+	var session authCore.SessionModel
+
+	err := s.pool.QueryRow(
+		ctx,
+		query,
+		refreshTokenHash,
+	).Scan(
+		&session.ID,
+		&session.UserID,
+		&session.DeviceID,
+		&session.RefreshTokenHash,
+		&session.ExpiresAt,
+		&session.CreatedAt,
+	)
+
+	if err != nil {
+		return authCore.SessionModel{}, err
 	}
 
 	return session, nil
@@ -145,7 +186,7 @@ func (s *SessionRepository) GetAllByUser(
 	}
 
 	if len(sessions) == 0 {
-		return sessions, authCore.ErrSessionNotFound
+		return sessions, err
 	}
 
 	return sessions, nil
@@ -179,7 +220,7 @@ func (s *SessionRepository) Update(
 	}
 
 	if result.RowsAffected() == 0 {
-		return authCore.ErrSessionNotFound
+		return err
 	}
 
 	return nil
@@ -209,7 +250,7 @@ func (s *SessionRepository) DeleteByUserAndDevice(
 	}
 
 	if result.RowsAffected() == 0 {
-		return authCore.ErrSessionNotFound
+		return err
 	}
 
 	return nil

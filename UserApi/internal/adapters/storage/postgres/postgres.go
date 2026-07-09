@@ -54,7 +54,7 @@ func NewPool(ctx context.Context, logger *zap.Logger, connectionString string, m
 
 		log.Error("postgres ping failed", zap.Error(err))
 
-		//pool.Close()
+		pool.Close()
 
 		time.Sleep(
 			time.Duration(i) * time.Second,
@@ -67,8 +67,6 @@ func (s *Storage) GetPool() *pgxpool.Pool {
 	return s.pool
 }
 
-func (s *Storage) Close() {
+func (s *Storage) ClosePool() {
 	s.pool.Close()
 }
-
-//TODO: переделать конект к бд и логи

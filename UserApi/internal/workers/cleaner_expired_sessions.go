@@ -20,7 +20,7 @@ func NewExpiredSessionCleaner(log *zap.Logger, sessionRepository auth.SessionRep
 	}
 }
 
-func (e *ExpiredSessionCleaner) Clean(ctx context.Context) {
+func (e *ExpiredSessionCleaner) Run(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 

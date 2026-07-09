@@ -12,6 +12,8 @@ type SessionRepository interface {
 
 	GetAllByUser(ctx context.Context, userID string) ([]SessionModel, error)
 
+	GetByRefreshToken(ctx context.Context, refreshTokenHash []byte) (SessionModel, error)
+
 	Update(ctx context.Context, SessionModel SessionModel) error
 
 	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error

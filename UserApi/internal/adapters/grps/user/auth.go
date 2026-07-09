@@ -25,6 +25,10 @@ func (s *ServerApi) Registration(
 		return nil, err
 	}
 
+	if err := ValidatePassword(req.GetPassword()); err != nil {
+		return nil, err
+	}
+
 	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
 	if err != nil {
 		return nil, status.Error(codes.AlreadyExists, "failed to register user")

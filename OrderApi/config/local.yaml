@@ -8,4 +8,4 @@ clients:
   user:
     addr: localhost:50051
   spot:
-    addr: loaclhost:50052
+    addr: localhost:50052
