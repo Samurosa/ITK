@@ -20,11 +20,13 @@ func generateAccessToken(
 	secret string,
 	accessTokenTTL time.Duration,
 	user user.User,
+	deviceId string,
 ) (string, error) {
 
 	claimsAccessToken := auth.TokenParse{
 		UserID: user.ID,
 		Role:   string(user.Role),
+		Device: deviceId,
 		Jti:    uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL)),

@@ -25,10 +25,11 @@ func New(
 	userService user.Service,
 	authService auth.Service,
 	walletService wallet.Service,
+	sessionStorage auth.SessionRepository,
 	port int,
 ) *App {
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(interceptors.AuthInterceptor(log, tokenManager)),
+		grpc.UnaryInterceptor(interceptors.AuthInterceptor(log, tokenManager, sessionStorage)),
 	)
 
 	usergrps.RegisterUserService(grpcServer, userService, authService, walletService, log)

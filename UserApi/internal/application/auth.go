@@ -74,7 +74,7 @@ func (a *Auth) Login(ctx context.Context,
 	_ = a.sessionStorage.DeleteByUserAndDevice(ctx, gotUser.ID, deviceId)
 
 	log.Info("create token")
-	tokens, err := a.tokenManager.Generate(gotUser)
+	tokens, err := a.tokenManager.Generate(gotUser, deviceId)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return auth.TokensModel{}, err
@@ -219,7 +219,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 
 	log.Info("generating new tokens")
-	newTokens, err := a.tokenManager.Generate(gotUser)
+	newTokens, err := a.tokenManager.Generate(gotUser, deviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return auth.TokensModel{}, err

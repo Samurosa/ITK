@@ -21,13 +21,13 @@ func NewJWT(log *zap.Logger, jwtConfig auth.JWTConfig) *Token {
 	}
 }
 
-func (j *Token) Generate(user user.User) (auth.TokensModel, error) {
+func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, error) {
 	refreshTokenString, err := generateRefreshToken()
 	if err != nil {
 		return auth.TokensModel{}, err
 	}
 
-	accessTokenString, err := generateAccessToken(j.jwtConfig.Secret, j.jwtConfig.AccessTokenTTL, user)
+	accessTokenString, err := generateAccessToken(j.jwtConfig.Secret, j.jwtConfig.AccessTokenTTL, user, deviceID)
 	if err != nil {
 		return auth.TokensModel{}, err
 	}
