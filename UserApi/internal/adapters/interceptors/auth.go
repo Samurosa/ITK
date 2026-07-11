@@ -4,6 +4,7 @@ import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -21,6 +22,7 @@ var publicMethods = map[string]struct{}{
 func AuthInterceptor(
 	log *zap.Logger,
 	tokenManager auth.TokenManager,
+	sessions auth.SessionRepository,
 ) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		log := log.Named("auth interceptor")
@@ -50,8 +52,23 @@ func AuthInterceptor(
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		ctx = context.WithValue(ctx, auth.UserIDContextKey, claims.UserID)
-		ctx = context.WithValue(ctx, auth.RoleContextKey, claims.Role)
+		userID := claims.UserID
+		role := claims.Role
+		deviceID := claims.Device
+
+		if claims.RegisteredClaims.ExpiresAt.Before(time.Now()) {
+			log.Error("invalid token expired")
+			return nil, status.Error(codes.Unauthenticated, "token expired")
+		}
+
+		if session, err := sessions.GetByUserAndDevice(ctx, userID, deviceID); err != nil || session.ExpiresAt.Before(time.Now()) {
+			log.Error("invalid token")
+			return nil, status.Error(codes.Unauthenticated, "invalid token")
+		}
+
+		ctx = context.WithValue(ctx, auth.UserIDContextKey, userID)
+		ctx = context.WithValue(ctx, auth.RoleContextKey, role)
+		ctx = context.WithValue(ctx, auth.DeviceContextKey, deviceID)
 
 		return handler(ctx, req)
 	}

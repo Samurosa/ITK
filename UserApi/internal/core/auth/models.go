@@ -11,6 +11,7 @@ type ContextKey string
 const (
 	UserIDContextKey ContextKey = "user_id"
 	RoleContextKey   ContextKey = "role"
+	DeviceContextKey ContextKey = "device"
 )
 
 type JWTConfig struct {
@@ -42,6 +43,7 @@ type TokensModel struct {
 type TokenParse struct {
 	UserID string
 	Role   string
+	Device string
 	Jti    string
 
 	jwt.RegisteredClaims

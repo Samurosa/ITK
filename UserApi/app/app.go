@@ -84,6 +84,7 @@ func New(
 		userService,
 		authService,
 		walletService,
+		sessionStorage,
 		port,
 	)
 
