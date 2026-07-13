@@ -6,17 +6,17 @@ import (
 )
 
 type SessionRepository interface {
-	Create(ctx context.Context, SessionModel SessionModel) error
+	Create(ctx context.Context, jti string, SessionModel SessionModel) error
 
-	GetByUserAndDevice(ctx context.Context, userID string, deviceID string) (SessionModel, error)
+	GetByJTI(ctx context.Context, jti string) (SessionModel, error)
 
 	GetAllByUser(ctx context.Context, userID string) ([]SessionModel, error)
 
-	GetByRefreshToken(ctx context.Context, refreshTokenHash []byte) (SessionModel, error)
+	GetByRefreshToken(ctx context.Context, jti string) (SessionModel, error)
 
 	Update(ctx context.Context, SessionModel SessionModel) error
 
-	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error
+	DeleteByJTI(ctx context.Context, jti string) error
 
 	DeleteByUser(ctx context.Context, userID string) error
 
@@ -26,5 +26,6 @@ type SessionRepository interface {
 type TokenManager interface {
 	Generate(user user.User, deviceID string) (TokensModel, error)
 
-	ParseAccessToken(accessToken string) (TokenParse, error)
+	ParseAccessToken(token string) (AccessTokenParse, error)
+	ParseRefreshToken(refreshToken string) (RefreshTokenParse, error)
 }

@@ -40,11 +40,18 @@ type TokensModel struct {
 	RefreshExpiresAt time.Time
 }
 
-type TokenParse struct {
+type AccessTokenParse struct {
 	UserID string
 	Role   string
 	Device string
 	Jti    string
+
+	jwt.RegisteredClaims
+}
+
+type RefreshTokenParse struct {
+	AccessTokenJti string
+	Jti            string
 
 	jwt.RegisteredClaims
 }

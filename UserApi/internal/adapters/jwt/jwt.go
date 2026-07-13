@@ -22,12 +22,21 @@ func NewJWT(log *zap.Logger, jwtConfig auth.JWTConfig) *Token {
 }
 
 func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, error) {
-	refreshTokenString, err := generateRefreshToken()
+	accessTokenString, accessTokenJTI, err := generateAccessToken(
+		j.jwtConfig.Secret,
+		j.jwtConfig.AccessTokenTTL,
+		user,
+		deviceID,
+	)
 	if err != nil {
 		return auth.TokensModel{}, err
 	}
 
-	accessTokenString, err := generateAccessToken(j.jwtConfig.Secret, j.jwtConfig.AccessTokenTTL, user, deviceID)
+	refreshTokenString, err := generateRefreshToken(
+		j.jwtConfig.Secret,
+		j.jwtConfig.AccessTokenTTL,
+		accessTokenJTI,
+	)
 	if err != nil {
 		return auth.TokensModel{}, err
 	}
@@ -41,11 +50,11 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, err
 	}, nil
 }
 
-func (j *Token) ParseAccessToken(accessToken string) (auth.TokenParse, error) {
+func (j *Token) ParseAccessToken(accessToken string) (auth.AccessTokenParse, error) {
 	log := j.log.Named("Parse Access Token")
 	token, err := jwt.ParseWithClaims(
 		accessToken,
-		&auth.TokenParse{},
+		&auth.AccessTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, auth.ErrInvalidToken
@@ -55,13 +64,38 @@ func (j *Token) ParseAccessToken(accessToken string) (auth.TokenParse, error) {
 	)
 	if err != nil {
 		log.Error("Parse Access Token Error", zap.Error(err))
-		return auth.TokenParse{}, err
+		return auth.AccessTokenParse{}, auth.ErrInvalidToken
 	}
 
-	claims, err := GetClaimsWithToken(log, token)
+	claims, err := GetClaimsWithAccessToken(log, token)
+	if err != nil {
+		return auth.AccessTokenParse{}, err
+	}
+
+	return *claims, nil
+}
+
+func (j *Token) ParseRefreshToken(refreshToken string) (auth.RefreshTokenParse, error) {
+	log := j.log.Named("Parse Refresh Token")
+	token, err := jwt.ParseWithClaims(
+		refreshToken,
+		&auth.RefreshTokenParse{},
+		func(token *jwt.Token) (interface{}, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, auth.ErrInvalidToken
+			}
+			return []byte(j.jwtConfig.Secret), nil
+		},
+	)
+	if err != nil {
+		log.Error("Parse Refresh Token Error", zap.Error(err))
+		return auth.RefreshTokenParse{}, auth.ErrInvalidToken
+	}
+
+	claims, err := GetClaimsWithRefreshToken(log, token)
 
 	if err != nil {
-		return auth.TokenParse{}, err
+		return auth.RefreshTokenParse{}, err
 	}
 
 	return *claims, nil

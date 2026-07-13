@@ -7,6 +7,7 @@ import (
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/jwt"
 	"ITK_Code/m/v2/internal/adapters/storage/postgres"
+	"ITK_Code/m/v2/internal/adapters/storage/redis"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
 	"os"
@@ -52,7 +53,7 @@ func New(
 
 	userStorage := postgres.NewUserStorage(pool)
 
-	sessionStorage := postgres.NewSessionStorage(pool)
+	sessionStorage := redis.NewSessionStorage(pool)
 
 	walletStorage := postgres.NewBalanceStorage(pool)
 

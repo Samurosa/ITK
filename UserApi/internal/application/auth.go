@@ -182,9 +182,18 @@ func (a *Auth) RefreshToken(ctx context.Context,
 ) {
 	log := a.log.Named("Refresh tokens")
 
-	refreshTokenHash := hash.GenerateHashSHA256(refreshToken)
+	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
+	if err != nil {
+		log.Error("error parsing refresh token", zap.Error(err))
+		return auth.TokensModel{}, auth.ErrInvalidToken
+	}
 
-	session, err := a.sessionStorage.GetByRefreshToken(ctx, refreshTokenHash)
+	if claims.ExpiresAt.Before(time.Now()) {
+		log.Error("token expired")
+		return auth.TokensModel{}, auth.ErrRefreshExpired
+	}
+
+	session, err := a.sessionStorage.GetByRefreshToken(ctx, claims.AccessTokenJti)
 	if err != nil {
 		log.Error("error getting session", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrSessionNotFound

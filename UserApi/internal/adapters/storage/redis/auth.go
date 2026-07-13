@@ -1,19 +1,19 @@
-package postgres
+package redis
 
 import (
 	authCore "ITK_Code/m/v2/internal/core/auth"
 	"context"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type SessionRepository struct {
-	pool *pgxpool.Pool
+	client *redis.Client
 }
 
-func NewSessionStorage(pool *pgxpool.Pool) *SessionRepository {
+func NewSessionStorage(client *redis.Client) *SessionRepository {
 	return &SessionRepository{
-		pool: pool,
+		client: client,
 	}
 }
 
@@ -21,37 +21,13 @@ func (s *SessionRepository) Create(
 	ctx context.Context,
 	session authCore.SessionModel,
 ) error {
-
-	query := `
-		INSERT INTO sessions
-		(
-			user_id,
-			device_id,
-			refresh_token_hash,
-			expires_at
-		)
-		VALUES ($1,$2,$3,$4)
-	`
-
-	_, err := s.pool.Exec(
-		ctx,
-		query,
-		session.UserID,
-		session.DeviceID,
-		session.RefreshTokenHash,
-		session.ExpiresAt,
-	)
-
-	if err != nil {
-		return err
-	}
+	s.client.HSet(ctx, "session_id", session.ID, "user_id", session.UserID)
 
 	return nil
 }
 
-func (s *SessionRepository) GetByUserAndDevice(ctx context.Context,
-	userID string,
-	deviceID string,
+func (s *SessionRepository) GetByJTI(ctx context.Context,
+	jti string,
 ) (
 	authCore.SessionModel,
 	error,
@@ -226,10 +202,8 @@ func (s *SessionRepository) Update(
 	return nil
 }
 
-func (s *SessionRepository) DeleteByUserAndDevice(
-	ctx context.Context,
-	userID string,
-	deviceID string,
+func (s *SessionRepository) DeleteByJTI(ctx context.Context,
+	jti string,
 ) error {
 
 	query := `
