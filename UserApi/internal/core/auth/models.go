@@ -12,6 +12,7 @@ const (
 	UserIDContextKey ContextKey = "user_id"
 	RoleContextKey   ContextKey = "role"
 	DeviceContextKey ContextKey = "device"
+	JTIContextKey    ContextKey = "jti"
 )
 
 type JWTConfig struct {
@@ -22,14 +23,14 @@ type JWTConfig struct {
 }
 
 type SessionModel struct {
-	ID       string
-	UserID   string
-	DeviceID string
+	UserID   string `redis:"user_id"`
+	DeviceID string `redis:"device_id"`
 
-	RefreshTokenHash []byte
+	RefreshTokenHash string `redis:"refresh_token_hash"`
 
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	TTL       time.Duration `redis:"ttl"`
+	ExpiresAt time.Time     `redis:"expires_at"`
+	CreatedAt time.Time     `redis:"created_at"`
 }
 
 type TokensModel struct {
@@ -37,14 +38,24 @@ type TokensModel struct {
 	RefreshToken string
 
 	AccessExpiresAt  time.Time
+	AccessCreatedAt  time.Time
 	RefreshExpiresAt time.Time
+	RefreshCreatedAt time.Time
+	RefreshTTL       time.Duration
 }
 
-type TokenParse struct {
+type AccessTokenParse struct {
 	UserID string
 	Role   string
 	Device string
 	Jti    string
+
+	jwt.RegisteredClaims
+}
+
+type RefreshTokenParse struct {
+	AccessTokenJti string
+	Jti            string
 
 	jwt.RegisteredClaims
 }

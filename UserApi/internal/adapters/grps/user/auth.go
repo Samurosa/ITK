@@ -73,7 +73,7 @@ func (s *ServerApi) Logout(
 		return nil, ToGRPC(err)
 	}
 
-	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken, req.DeviceId)
+	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}
@@ -95,7 +95,7 @@ func (s *ServerApi) LogoutAllDevices(
 		return nil, ToGRPC(err)
 	}
 
-	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken, req.DeviceId)
+	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}
@@ -117,7 +117,7 @@ func (s *ServerApi) RefreshToken(
 		return nil, ToGRPC(err)
 	}
 
-	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken, req.DeviceId)
+	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}

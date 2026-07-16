@@ -70,15 +70,13 @@ func (a *Auth) Login(ctx context.Context,
 		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
 
-	log.Info("search old session")
-	_ = a.sessionStorage.DeleteByUserAndDevice(ctx, gotUser.ID, deviceId)
-
 	log.Info("create token")
-	tokens, err := a.tokenManager.Generate(gotUser, deviceId)
+	tokens, accessToken, refreshToken, err := a.tokenManager.Generate(gotUser, deviceId)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return auth.TokensModel{}, err
 	}
+	_ = refreshToken
 
 	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
 
@@ -87,10 +85,12 @@ func (a *Auth) Login(ctx context.Context,
 		UserID:           gotUser.ID,
 		DeviceID:         deviceId,
 		RefreshTokenHash: tokenHash,
+		TTL:              tokens.RefreshTTL,
 		ExpiresAt:        tokens.RefreshExpiresAt,
+		CreatedAt:        tokens.RefreshCreatedAt,
 	}
 
-	err = a.sessionStorage.Create(ctx, session)
+	err = a.sessionStorage.Create(ctx, accessToken.Jti, session)
 	if err != nil {
 		log.Error("error creating session", zap.Error(err))
 		return auth.TokensModel{}, err
@@ -101,7 +101,6 @@ func (a *Auth) Login(ctx context.Context,
 
 func (a *Auth) Logout(ctx context.Context,
 	refreshToken string,
-	deviceID string,
 ) (
 	success bool,
 	loggedOutAt time.Time,
@@ -109,28 +108,31 @@ func (a *Auth) Logout(ctx context.Context,
 ) {
 	log := a.log.Named("Logout")
 
-	userID, err := auth.GetUserIDByContext(ctx)
+	jtiFromContext, err := auth.GetJTIFromContext(ctx)
 	if err != nil {
-		log.Error("error getting user id by context", zap.Error(err))
+		log.Error("error getting jti from context", zap.Error(err))
 		return false, time.Time{}, auth.ErrInvalidContext
 	}
 
-	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jtiFromContext)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, auth.Unauthorized
+		return false, time.Time{}, auth.ErrSessionNotFound
 	}
 
-	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
-	if !ok {
-		log.Error("error comparing refresh token", zap.Error(err))
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+		log.Error("error comparing refresh token",
+			zap.Error(err),
+			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("storedHash", sessionInfo.RefreshTokenHash),
+		)
 		return false, time.Time{}, auth.ErrNoAccess
 	}
 
-	err = a.sessionStorage.DeleteByUserAndDevice(ctx, userID, deviceID)
+	err = a.sessionStorage.DeleteByJTI(ctx, jtiFromContext, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
-		return false, time.Time{}, err
+		return false, time.Time{}, auth.ErrSessionNotFound
 	}
 
 	return true, time.Now(), nil
@@ -138,7 +140,6 @@ func (a *Auth) Logout(ctx context.Context,
 
 func (a *Auth) LogoutAllDevices(ctx context.Context,
 	refreshToken string,
-	deviceID string,
 ) (
 	bool,
 	time.Time,
@@ -146,25 +147,28 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 ) {
 	log := a.log.Named("Logout all devices")
 
-	userID, err := auth.GetUserIDByContext(ctx)
+	jti, err := auth.GetJTIFromContext(ctx)
 	if err != nil {
 		log.Error("error getting user id by context", zap.Error(err))
 		return false, time.Time{}, auth.ErrInvalidContext
 	}
 
-	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, auth.Unauthorized
 	}
 
-	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
-	if !ok {
-		log.Error("error comparing refresh token", zap.Error(err))
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+		log.Error("error comparing refresh token",
+			zap.Error(err),
+			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("storedHash", sessionInfo.RefreshTokenHash),
+		)
 		return false, time.Time{}, auth.ErrNoAccess
 	}
 
-	err = a.sessionStorage.DeleteByUser(ctx, userID)
+	err = a.sessionStorage.DeleteByUser(ctx, sessionInfo.UserID)
 	if err != nil {
 		log.Error("error deleting sessions", zap.Error(err))
 		return false, time.Time{}, err
@@ -175,22 +179,67 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 
 func (a *Auth) RefreshToken(ctx context.Context,
 	refreshToken string,
-	deviceID string,
 ) (
 	auth.TokensModel,
 	error,
 ) {
 	log := a.log.Named("Refresh tokens")
 
-	refreshTokenHash := hash.GenerateHashSHA256(refreshToken)
+	log.Info("parsing token")
+	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
+	if err != nil {
+		log.Error("error parsing refresh token", zap.Error(err))
+		return auth.TokensModel{}, auth.ErrInvalidToken
+	}
 
-	session, err := a.sessionStorage.GetByRefreshToken(ctx, refreshTokenHash)
+	if claims.ExpiresAt.Before(time.Now()) {
+		log.Error("token expired")
+		return auth.TokensModel{}, auth.ErrRefreshExpired
+	}
+
+	storedJTI := claims.AccessTokenJti
+
+	//синхронизация
+	ok, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
+	if err != nil {
+		log.Error("error acquiring refresh lock", zap.Error(err))
+		return auth.TokensModel{}, auth.ErrSyncRedis
+	}
+
+	if !ok {
+		log.Error("generate tokens processing", zap.Error(err))
+		return auth.TokensModel{}, auth.ErrGenerateTokenProcessing
+	}
+
+	defer func() {
+
+		releaseCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Second,
+		)
+
+		defer cancel()
+
+		err = a.syncPrimitiveForRedis.ReleaseRefreshLock(
+			releaseCtx,
+			storedJTI,
+		)
+		if err != nil {
+			log.Error("error releasing refresh lock", zap.Error(err))
+			return
+		}
+
+	}()
+
+	//поиск сессии
+	log.Info("searching session with jti", zap.String("jti", storedJTI))
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, storedJTI)
 	if err != nil {
 		log.Error("error getting session", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrSessionNotFound
 	}
 
-	userID := session.UserID
+	userID := sessionInfo.UserID
 
 	log.Info("searching user with db", zap.String("userId", userID))
 	gotUser, err := a.userProvider.Get(ctx, userID)
@@ -199,46 +248,39 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		return auth.TokensModel{}, user.ErrUserNotFound
 	}
 
-	log.Info("searching session with userId deviceID", zap.String("userId", userID), zap.String("deviceID", deviceID))
-	sessionInfo, err := a.sessionStorage.GetByUserAndDevice(ctx, userID, deviceID)
-	if err != nil {
-		log.Error("error getting session info", zap.Error(err))
-		return auth.TokensModel{}, auth.Unauthorized
-	}
-
-	log.Info("validating token expiry", zap.String("ExpireAt", sessionInfo.ExpiresAt.String()))
-	if sessionInfo.ExpiresAt.Before(time.Now()) {
-		return auth.TokensModel{}, auth.ErrRefreshExpired
-	}
-
 	log.Info("comparing refresh token")
-	ok := hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
-	if !ok {
-		log.Error("error verifying refresh token", zap.Error(err))
-		return auth.TokensModel{}, auth.Unauthorized
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+		log.Error("error comparing refresh token",
+			zap.Error(err),
+			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("storedHash", sessionInfo.RefreshTokenHash),
+		)
+		return auth.TokensModel{}, auth.ErrNoAccess
 	}
 
 	log.Info("generating new tokens")
-	newTokens, err := a.tokenManager.Generate(gotUser, deviceID)
+	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return auth.TokensModel{}, err
+		return auth.TokensModel{}, auth.ErrGenerateToken
 	}
 
-	tokenHash := hash.GenerateHashSHA256(refreshToken)
+	tokenHash := hash.GenerateHashSHA256(newTokens.RefreshToken)
 
 	newSessionInfo := auth.SessionModel{
 		UserID:           gotUser.ID,
-		DeviceID:         deviceID,
+		DeviceID:         sessionInfo.DeviceID,
 		RefreshTokenHash: tokenHash,
+		TTL:              newTokens.RefreshTTL,
 		ExpiresAt:        newTokens.RefreshExpiresAt,
+		CreatedAt:        newTokens.RefreshCreatedAt,
 	}
 
 	log.Info("session info update")
-	err = a.sessionStorage.Update(ctx, newSessionInfo)
+	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
-		return auth.TokensModel{}, err
+		return auth.TokensModel{}, auth.ErrGenerateToken
 	}
 
 	return newTokens, nil

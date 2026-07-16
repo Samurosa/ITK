@@ -19,9 +19,7 @@ func main() {
 	secret := os.Getenv("JWT_SECRET")
 
 	application, err := app.New(
-		cfg.Storage.Link,
-		cfg.GRPC.Port,
-		cfg.TokenTTl,
+		cfg,
 		secret,
 	)
 

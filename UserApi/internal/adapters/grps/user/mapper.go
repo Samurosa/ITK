@@ -60,10 +60,12 @@ func ToProtoRole(role user.Role) pb.Role {
 
 func ToProtoTokens(tokens auth.TokensModel) *pb.TokenPairResponse {
 	return &pb.TokenPairResponse{
-		AccessToken:      tokens.AccessToken,
-		RefreshToken:     tokens.RefreshToken,
-		AccessExpiresAt:  timestamppb.New(tokens.AccessExpiresAt),
+		AccessToken:     tokens.AccessToken,
+		RefreshToken:    tokens.RefreshToken,
+		AccessExpiresAt: timestamppb.New(tokens.AccessExpiresAt),
+		//AccessCreatesAt:  timestamppb.New(tokens.AccessCreatedAt),
 		RefreshExpiresAt: timestamppb.New(tokens.RefreshExpiresAt),
+		//RefreshCreateAt:  timestamppb.New(tokens.RefreshCreatedAt),
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/jwt"
 	"ITK_Code/m/v2/internal/adapters/storage/postgres"
+	"ITK_Code/m/v2/internal/adapters/storage/redis"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
 	"os"
@@ -25,13 +26,13 @@ type App struct {
 
 	context *contextStatus.App
 
-	storage *postgres.Storage
+	postgres *postgres.Storage
+
+	redis *redis.Storage
 }
 
 func New(
-	storagePath string,
-	port int,
-	tokenTTL config.TokensTTL,
+	cfg *config.Config,
 	secret string,
 ) (*App, error) {
 
@@ -43,7 +44,7 @@ func New(
 	ctxApp := contextStatus.New()
 	ctx := ctxApp.GetContext()
 
-	postgresStorage, err := postgres.NewPool(ctx, log, storagePath, 10)
+	postgresStorage, err := postgres.NewPool(ctx, log, cfg.Storage.Link, 10)
 	if err != nil {
 		return nil, err
 	}
@@ -52,15 +53,20 @@ func New(
 
 	userStorage := postgres.NewUserStorage(pool)
 
-	sessionStorage := postgres.NewSessionStorage(pool)
+	redisClient, err := redis.NewRedisClient(ctx, cfg.Redis)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionStorage := redis.NewStorage(redisClient)
 
 	walletStorage := postgres.NewBalanceStorage(pool)
 
 	secretAuthorization := jwt.NewJWT(log,
 		auth.JWTConfig{
 			Secret:          secret,
-			AccessTokenTTL:  tokenTTL.AccessTokenTTL,
-			RefreshTokenTTL: tokenTTL.RefreshTokenTTL,
+			AccessTokenTTL:  cfg.TokenTTl.AccessTokenTTL,
+			RefreshTokenTTL: cfg.TokenTTl.RefreshTokenTTL,
 		})
 
 	userService := application.NewUserService(log,
@@ -70,6 +76,7 @@ func New(
 
 	authService := application.NewAuthService(log,
 		secretAuthorization,
+		sessionStorage,
 		sessionStorage,
 		userStorage,
 		userStorage,
@@ -85,7 +92,7 @@ func New(
 		authService,
 		walletService,
 		sessionStorage,
-		port,
+		cfg.GRPC.Port,
 	)
 
 	workersApp := workers.NewWorker(log, ctx, sessionStorage)
@@ -99,7 +106,9 @@ func New(
 
 		context: ctxApp,
 
-		storage: postgresStorage,
+		postgres: postgresStorage,
+
+		redis: sessionStorage,
 	}, nil
 }
 
@@ -120,8 +129,12 @@ func (app *App) Stop() {
 
 	app.grpcApp.Stop()
 	app.context.Stop()
-	app.storage.ClosePool()
-	err := app.logger.Sync()
+	app.postgres.ClosePool()
+	err := app.redis.Stop()
+	if err != nil {
+		app.logger.Error("redis stop", zap.Error(err))
+	}
+	err = app.logger.Sync()
 	if err != nil {
 		app.logger.Error("error sync logger: ", zap.Error(err))
 	}

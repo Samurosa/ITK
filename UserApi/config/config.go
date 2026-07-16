@@ -13,6 +13,7 @@ type Config struct {
 	GRPC     GRPCConfig `yaml:"grpc"`
 	Env      string     `yaml:"env"`
 	Storage  Storage    `yaml:"storage"`
+	Redis    Redis      `yaml:"redis"`
 }
 
 type GRPCConfig struct {
@@ -23,6 +24,15 @@ type GRPCConfig struct {
 type TokensTTL struct {
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
 	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
+}
+
+type Redis struct {
+	Addr        string        `yaml:"addr"`
+	Password    string        `yaml:"password"`
+	DB          int           `yaml:"db"`
+	MaxRetries  int           `yaml:"max_retries"`
+	DialTimeout time.Duration `yaml:"dial_timeout"`
+	Timeout     time.Duration `yaml:"timeout"`
 }
 
 type Storage struct {

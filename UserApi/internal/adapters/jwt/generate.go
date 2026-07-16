@@ -10,10 +10,28 @@ import (
 	"go.uber.org/zap"
 )
 
-func generateRefreshToken() (string, error) {
-	refreshTokenString := uuid.NewString()
+func generateRefreshToken(
+	secret string,
+	refreshTokenTTL time.Duration,
+	jti string,
+) (string, auth.RefreshTokenParse, error) {
 
-	return refreshTokenString, nil
+	claimsRefreshToken := auth.RefreshTokenParse{
+		AccessTokenJti: jti,
+		Jti:            uuid.NewString(),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTokenTTL)),
+		},
+	}
+
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claimsRefreshToken)
+
+	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
+	if err != nil {
+		return "", auth.RefreshTokenParse{}, auth.ErrGenerateToken
+	}
+
+	return refreshTokenString, claimsRefreshToken, nil
 }
 
 func generateAccessToken(
@@ -21,13 +39,15 @@ func generateAccessToken(
 	accessTokenTTL time.Duration,
 	user user.User,
 	deviceId string,
-) (string, error) {
+) (string, auth.AccessTokenParse, error) {
 
-	claimsAccessToken := auth.TokenParse{
+	tokenID := uuid.NewString()
+
+	claimsAccessToken := auth.AccessTokenParse{
 		UserID: user.ID,
 		Role:   string(user.Role),
 		Device: deviceId,
-		Jti:    uuid.NewString(),
+		Jti:    tokenID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL)),
 		},
@@ -37,23 +57,39 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", auth.ErrGenerateToken
+		return "", auth.AccessTokenParse{}, auth.ErrGenerateToken
 	}
 
-	return accessTokenString, nil
+	return accessTokenString, claimsAccessToken, nil
 }
 
-func GetClaimsWithToken(log *zap.Logger, token *jwt.Token) (*auth.TokenParse, error) {
+func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*auth.AccessTokenParse, error) {
 
 	if !token.Valid {
 		log.Error("token is not valid")
-		return &auth.TokenParse{}, auth.ErrInvalidToken
+		return &auth.AccessTokenParse{}, auth.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*auth.TokenParse)
+	claims, ok := token.Claims.(*auth.AccessTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
-		return &auth.TokenParse{}, auth.ErrInvalidToken
+		return &auth.AccessTokenParse{}, auth.ErrInvalidToken
+	}
+
+	return claims, nil
+}
+
+func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*auth.RefreshTokenParse, error) {
+
+	if !token.Valid {
+		log.Error("token is not valid")
+		return &auth.RefreshTokenParse{}, auth.ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*auth.RefreshTokenParse)
+	if !ok {
+		log.Error("token claims is not found")
+		return &auth.RefreshTokenParse{}, auth.ErrInvalidToken
 	}
 
 	return claims, nil

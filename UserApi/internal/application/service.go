@@ -18,8 +18,9 @@ type User struct {
 type Auth struct {
 	log *zap.Logger
 
-	tokenManager   authCore.TokenManager
-	sessionStorage authCore.SessionRepository
+	tokenManager          authCore.TokenManager
+	sessionStorage        authCore.SessionRepository
+	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis
 
 	userSaver    userCore.Save
 	userProvider userCore.Provider
@@ -47,16 +48,18 @@ func NewAuthService(
 	log *zap.Logger,
 	tokenManager authCore.TokenManager,
 	sessionStorage authCore.SessionRepository,
+	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis,
 	userSaver userCore.Save,
 	userProvider userCore.Provider,
 
 ) *Auth {
 	return &Auth{
-		log:            log,
-		tokenManager:   tokenManager,
-		sessionStorage: sessionStorage,
-		userSaver:      userSaver,
-		userProvider:   userProvider,
+		log:                   log,
+		tokenManager:          tokenManager,
+		sessionStorage:        sessionStorage,
+		syncPrimitiveForRedis: syncPrimitiveForRedis,
+		userSaver:             userSaver,
+		userProvider:          userProvider,
 	}
 }
 

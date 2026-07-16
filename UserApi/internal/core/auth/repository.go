@@ -6,25 +6,25 @@ import (
 )
 
 type SessionRepository interface {
-	Create(ctx context.Context, SessionModel SessionModel) error
+	Create(ctx context.Context, jti string, SessionModel SessionModel) error
 
-	GetByUserAndDevice(ctx context.Context, userID string, deviceID string) (SessionModel, error)
+	GetByJTI(ctx context.Context, jti string) (SessionModel, error)
 
-	GetAllByUser(ctx context.Context, userID string) ([]SessionModel, error)
+	Update(ctx context.Context, storedJTI string, jti string, SessionModel SessionModel) error
 
-	GetByRefreshToken(ctx context.Context, refreshTokenHash []byte) (SessionModel, error)
-
-	Update(ctx context.Context, SessionModel SessionModel) error
-
-	DeleteByUserAndDevice(ctx context.Context, userID, deviceID string) error
+	DeleteByJTI(ctx context.Context, jti string, userID string) error
 
 	DeleteByUser(ctx context.Context, userID string) error
-
-	DeleteExpiredSessions(ctx context.Context) error
 }
 
 type TokenManager interface {
-	Generate(user user.User, deviceID string) (TokensModel, error)
+	Generate(user user.User, deviceID string) (TokensModel, AccessTokenParse, RefreshTokenParse, error)
 
-	ParseAccessToken(accessToken string) (TokenParse, error)
+	ParseAccessToken(token string) (AccessTokenParse, error)
+	ParseRefreshToken(refreshToken string) (RefreshTokenParse, error)
+}
+
+type SyncPrimitiveForRedis interface {
+	AcquireRefreshLock(ctx context.Context, userID string) (bool, error)
+	ReleaseRefreshLock(ctx context.Context, userID string) error
 }
