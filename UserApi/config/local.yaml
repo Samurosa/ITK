@@ -4,6 +4,13 @@ token_ttl:
   access_token_ttl: 12h
 grpc:
   port: 50051
-  timeout: 1h
+  timeout: 1m
 storage:
   link: "postgres://admin:admin@db:5432/db?sslmode=disable"
+redis:
+  addr: "redis:6379"
+  password: "admin"
+  db: 0
+  max_retries: 10
+  dial_timeout: 10s
+  timeout: 5s

@@ -14,7 +14,7 @@ func generateRefreshToken(
 	secret string,
 	refreshTokenTTL time.Duration,
 	jti string,
-) (string, error) {
+) (string, auth.RefreshTokenParse, error) {
 
 	claimsRefreshToken := auth.RefreshTokenParse{
 		AccessTokenJti: jti,
@@ -28,10 +28,10 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", auth.ErrGenerateToken
+		return "", auth.RefreshTokenParse{}, auth.ErrGenerateToken
 	}
 
-	return refreshTokenString, nil
+	return refreshTokenString, claimsRefreshToken, nil
 }
 
 func generateAccessToken(
@@ -39,7 +39,7 @@ func generateAccessToken(
 	accessTokenTTL time.Duration,
 	user user.User,
 	deviceId string,
-) (string, string, error) {
+) (string, auth.AccessTokenParse, error) {
 
 	tokenID := uuid.NewString()
 
@@ -57,10 +57,10 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", "", auth.ErrGenerateToken
+		return "", auth.AccessTokenParse{}, auth.ErrGenerateToken
 	}
 
-	return accessTokenString, tokenID, nil
+	return accessTokenString, claimsAccessToken, nil
 }
 
 func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*auth.AccessTokenParse, error) {

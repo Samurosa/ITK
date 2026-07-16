@@ -2,7 +2,6 @@ package workers
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/workers"
 	"context"
 
 	"go.uber.org/zap"
@@ -23,7 +22,4 @@ func NewWorker(log *zap.Logger, ctx context.Context, sessionRepository auth.Sess
 }
 
 func (w *App) Run() {
-	cleaner := workers.NewExpiredSessionCleaner(w.log, w.sessionRepository)
-
-	cleaner.Run(w.ctx)
 }

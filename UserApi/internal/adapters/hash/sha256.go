@@ -1,17 +1,28 @@
 package hash
 
 import (
-	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"strings"
 )
 
-func GenerateHashSHA256(value string) []byte {
+var (
+	ErrHashMissMatch = errors.New("the hash does not match")
+)
+
+func GenerateHashSHA256(value string) string {
 	hash := sha256.Sum256([]byte(value))
-	return hash[:]
+
+	hashToString := hex.EncodeToString(hash[:])
+	return hashToString
 }
 
-func CompareHashSHA256(value string, hash []byte) bool {
+func CompareHashSHA256(value string, hash string) error {
 	currentValue := GenerateHashSHA256(value)
-	isCompareHash := bytes.Compare(currentValue, hash)
-	return isCompareHash == 0
+	isCompareHash := strings.Compare(currentValue, hash)
+	if isCompareHash != 0 {
+		return ErrHashMissMatch
+	}
+	return nil
 }

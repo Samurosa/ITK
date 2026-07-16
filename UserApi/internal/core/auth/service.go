@@ -27,7 +27,6 @@ type Service interface {
 
 	Logout(ctx context.Context,
 		refreshToken string,
-		deviceID string,
 	) (
 		success bool,
 		loggedOutAt time.Time,
@@ -36,7 +35,6 @@ type Service interface {
 
 	LogoutAllDevices(ctx context.Context,
 		refreshToken string,
-		deviceID string,
 	) (
 		success bool,
 		loggedOutAt time.Time,
@@ -45,7 +43,6 @@ type Service interface {
 
 	RefreshToken(ctx context.Context,
 		refreshToken string,
-		deviceID string,
 	) (
 		tokensPairs TokensModel,
 		err error,

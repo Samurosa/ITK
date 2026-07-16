@@ -55,20 +55,22 @@ func AuthInterceptor(
 		userID := claims.UserID
 		role := claims.Role
 		deviceID := claims.Device
+		jti := claims.Jti
 
 		if claims.RegisteredClaims.ExpiresAt.Before(time.Now()) {
 			log.Error("invalid token expired")
 			return nil, status.Error(codes.Unauthenticated, "token expired")
 		}
 
-		if session, err := sessions.GetByUserAndDevice(ctx, userID, deviceID); err != nil || session.ExpiresAt.Before(time.Now()) {
-			log.Error("invalid token")
+		if _, err := sessions.GetByJTI(ctx, jti); err != nil {
+			log.Error("invalid token", zap.Error(err))
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
 		ctx = context.WithValue(ctx, auth.UserIDContextKey, userID)
 		ctx = context.WithValue(ctx, auth.RoleContextKey, role)
 		ctx = context.WithValue(ctx, auth.DeviceContextKey, deviceID)
+		ctx = context.WithValue(ctx, auth.JTIContextKey, jti)
 
 		return handler(ctx, req)
 	}

@@ -21,24 +21,24 @@ func NewJWT(log *zap.Logger, jwtConfig auth.JWTConfig) *Token {
 	}
 }
 
-func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, error) {
-	accessTokenString, accessTokenJTI, err := generateAccessToken(
+func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, auth.AccessTokenParse, auth.RefreshTokenParse, error) {
+	accessTokenString, accessToken, err := generateAccessToken(
 		j.jwtConfig.Secret,
 		j.jwtConfig.AccessTokenTTL,
 		user,
 		deviceID,
 	)
 	if err != nil {
-		return auth.TokensModel{}, err
+		return auth.TokensModel{}, auth.AccessTokenParse{}, auth.RefreshTokenParse{}, err
 	}
 
-	refreshTokenString, err := generateRefreshToken(
+	refreshTokenString, refreshToken, err := generateRefreshToken(
 		j.jwtConfig.Secret,
 		j.jwtConfig.AccessTokenTTL,
-		accessTokenJTI,
+		accessToken.Jti,
 	)
 	if err != nil {
-		return auth.TokensModel{}, err
+		return auth.TokensModel{}, auth.AccessTokenParse{}, auth.RefreshTokenParse{}, err
 	}
 
 	return auth.TokensModel{
@@ -46,8 +46,11 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, err
 		RefreshToken: refreshTokenString,
 
 		AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
-		RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
-	}, nil
+		AccessCreatedAt:  time.Now(),
+		RefreshExpiresAt: time.Now().Add(j.jwtConfig.AccessTokenTTL),
+		RefreshCreatedAt: time.Now(),
+		RefreshTTL:       j.jwtConfig.RefreshTokenTTL,
+	}, accessToken, refreshToken, nil
 }
 
 func (j *Token) ParseAccessToken(accessToken string) (auth.AccessTokenParse, error) {

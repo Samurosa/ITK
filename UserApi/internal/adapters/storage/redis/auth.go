@@ -1,267 +1,263 @@
 package redis
 
 import (
-	authCore "ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/auth"
 	"context"
+	"errors"
+	"reflect"
+	"strconv"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
 
-type SessionRepository struct {
-	client *redis.Client
-}
+func (s *Storage) Create(ctx context.Context, jti string, sessionModel auth.SessionModel) error {
 
-func NewSessionStorage(client *redis.Client) *SessionRepository {
-	return &SessionRepository{
-		client: client,
+	if err := s.toRedisSave(ctx, jti, &sessionModel); err != nil {
+		return err
 	}
-}
-
-func (s *SessionRepository) Create(
-	ctx context.Context,
-	session authCore.SessionModel,
-) error {
-	s.client.HSet(ctx, "session_id", session.ID, "user_id", session.UserID)
 
 	return nil
 }
 
-func (s *SessionRepository) GetByJTI(ctx context.Context,
-	jti string,
-) (
-	authCore.SessionModel,
-	error,
-) {
-	query := `
-		SELECT id,
-		       user_id,
-		       device_id,
-		       refresh_token_hash,
-		       expires_at,
-		       created_at
-FROM sessions
-WHERE user_id=$1
-AND device_id=$2;
-	`
-	var session authCore.SessionModel
-
-	err := s.pool.QueryRow(
-		ctx,
-		query,
-		userID,
-		deviceID,
-	).Scan(
-		&session.ID,
-		&session.UserID,
-		&session.DeviceID,
-		&session.RefreshTokenHash,
-		&session.ExpiresAt,
-		&session.CreatedAt,
-	)
-
+func (s *Storage) GetByJTI(ctx context.Context, jti string) (auth.SessionModel, error) {
+	session, err := s.fromRedisByJTI(ctx, jti)
 	if err != nil {
-		return authCore.SessionModel{}, authCore.ErrSessionNotFound
+		return auth.SessionModel{}, err
 	}
 
 	return session, nil
 }
 
-func (s *SessionRepository) GetByRefreshToken(ctx context.Context,
-	refreshTokenHash []byte,
-) (
-	authCore.SessionModel,
-	error,
-) {
-	query := `
-		SELECT id,
-		       user_id,
-		       device_id,
-		       refresh_token_hash,
-		       expires_at,
-		       created_at
-FROM sessions
-WHERE refresh_token_hash=$1;
-	`
-	var session authCore.SessionModel
-
-	err := s.pool.QueryRow(
-		ctx,
-		query,
-		refreshTokenHash,
-	).Scan(
-		&session.ID,
-		&session.UserID,
-		&session.DeviceID,
-		&session.RefreshTokenHash,
-		&session.ExpiresAt,
-		&session.CreatedAt,
-	)
-
-	if err != nil {
-		return authCore.SessionModel{}, err
+func (s *Storage) Update(ctx context.Context, storedJTI string, jti string, sessionModel auth.SessionModel) error {
+	if err := s.toRedisUpdate(ctx, storedJTI, jti, &sessionModel); err != nil {
+		return err
 	}
 
-	return session, nil
+	return nil
 }
 
-func (s *SessionRepository) GetAllByUser(
-	ctx context.Context,
-	userID string,
-) (
-	[]authCore.SessionModel,
-	error,
-) {
-
-	query := `
-		SELECT
-			id,
-			user_id,
-			device_id,
-			refresh_token_hash,
-			expires_at,
-			created_at
-		FROM sessions
-		WHERE user_id=$1
-	`
-
-	rows, err := s.pool.Query(
-		ctx,
-		query,
-		userID,
-	)
-
+func (s *Storage) DeleteByJTI(ctx context.Context, jti string, userID string) error {
+	err := s.deleteFromRedisByJTI(ctx, jti, userID)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	defer rows.Close()
+	return nil
+}
 
-	sessions := make([]authCore.SessionModel, 0)
+func (s *Storage) DeleteByUser(ctx context.Context, userID string) error {
+	if err := s.deleteFromRedisByUser(ctx, userID); err != nil {
+		return err
+	}
 
-	for rows.Next() {
+	return nil
+}
 
-		var session authCore.SessionModel
+func (s *Storage) toRedisSave(ctx context.Context, jti string, value *auth.SessionModel) error {
+	key := "session:" + jti
 
-		err := rows.Scan(
-			&session.ID,
-			&session.UserID,
-			&session.DeviceID,
-			&session.RefreshTokenHash,
-			&session.ExpiresAt,
-			&session.CreatedAt,
-		)
+	val := reflect.ValueOf(value).Elem()
 
-		if err != nil {
-			return nil, err
+	if val.NumField() == 0 {
+		return errors.New("value is empty")
+	}
+
+	setter := func(p redis.Pipeliner) error {
+
+		for i := 0; i < val.NumField(); i++ {
+			field := val.Type().Field(i)
+
+			tag := field.Tag.Get("redis")
+
+			if err := p.HSet(ctx, key, tag, val.Field(i).Interface()).Err(); err != nil {
+				return err
+			}
+
+		}
+		if err := p.Expire(ctx, key, value.TTL).Err(); err != nil {
+			return err
+		}
+		if err := p.SAdd(ctx, "user:"+value.UserID, "session:"+jti).Err(); err != nil {
+			return err
 		}
 
-		sessions = append(
-			sessions,
-			session,
-		)
+		return nil
 	}
-
-	if len(sessions) == 0 {
-		return sessions, err
+	if _, err := s.client.TxPipelined(ctx, setter); err != nil {
+		return err
 	}
-
-	return sessions, nil
+	return nil
 }
 
-func (s *SessionRepository) Update(
+func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionModel, error) {
+	key = "session:" + key
+
+	data, err := s.client.HGetAll(
+		ctx,
+		key,
+	).Result()
+
+	if err != nil {
+		return auth.SessionModel{}, err
+	}
+
+	if len(data) == 0 {
+		return auth.SessionModel{}, redis.Nil
+	}
+
+	expiresAt, err := time.Parse(
+		time.RFC3339,
+		data["expires_at"],
+	)
+	if err != nil {
+		return auth.SessionModel{}, err
+	}
+
+	createsAt, err := time.Parse(
+		time.RFC3339,
+		data["created_at"],
+	)
+	if err != nil {
+		return auth.SessionModel{}, err
+	}
+
+	ns, err := strconv.ParseInt(data["ttl"], 10, 64)
+	if err != nil {
+		return auth.SessionModel{}, err
+	}
+
+	duration := time.Duration(ns)
+
+	return auth.SessionModel{
+		UserID:           data["user_id"],
+		DeviceID:         data["device_id"],
+		RefreshTokenHash: data["refresh_token_hash"],
+		TTL:              duration,
+		ExpiresAt:        expiresAt,
+		CreatedAt:        createsAt,
+	}, nil
+}
+
+func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti string, value *auth.SessionModel) error {
+	key := "session:" + jti
+
+	val := reflect.ValueOf(value).Elem()
+
+	if val.NumField() == 0 {
+		return errors.New("value is empty")
+	}
+
+	setter := func(p redis.Pipeliner) error {
+
+		for i := 0; i < val.NumField(); i++ {
+			field := val.Type().Field(i)
+
+			tag := field.Tag.Get("redis")
+
+			if err := p.HSet(ctx, key, tag, val.Field(i).Interface()).Err(); err != nil {
+				return err
+			}
+
+		}
+		if err := p.Expire(ctx, key, value.TTL).Err(); err != nil {
+			return err
+		}
+		if err := p.SAdd(ctx, "user:"+value.UserID, "session:"+jti).Err(); err != nil {
+			return err
+		}
+
+		restoreSession := "session:" + storedJTI
+
+		if err := p.Del(
+			ctx,
+			restoreSession,
+		).Err(); err != nil {
+			return err
+		}
+
+		if err := p.SRem(
+			ctx,
+			"user:"+value.UserID,
+			restoreSession,
+		).Err(); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	if _, err := s.client.TxPipelined(ctx, setter); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *Storage) deleteFromRedisByJTI(
 	ctx context.Context,
-	session authCore.SessionModel,
-) error {
-
-	query := `
-		UPDATE sessions
-		SET
-			refresh_token_hash=$1,
-			expires_at=$2
-		WHERE user_id=$3
-		AND device_id=$4
-	`
-
-	result, err := s.pool.Exec(
-		ctx,
-		query,
-		session.RefreshTokenHash,
-		session.ExpiresAt,
-		session.UserID,
-		session.DeviceID,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected() == 0 {
-		return err
-	}
-
-	return nil
-}
-
-func (s *SessionRepository) DeleteByJTI(ctx context.Context,
 	jti string,
+	userID string,
 ) error {
+	key := "session:" + jti
+	pipe := s.client.TxPipeline()
 
-	query := `
-		DELETE FROM sessions
-		WHERE user_id=$1
-		AND device_id=$2
-	`
-
-	result, err := s.pool.Exec(
+	if err := pipe.Del(
 		ctx,
-		query,
-		userID,
-		deviceID,
-	)
-
-	if err != nil {
+		key,
+	).Err(); err != nil {
 		return err
 	}
 
-	if result.RowsAffected() == 0 {
+	if err := pipe.SRem(
+		ctx,
+		"user:"+userID,
+		key,
+	).Err(); err != nil {
 		return err
 	}
 
-	return nil
+	_, err := pipe.Exec(ctx)
+
+	return err
 }
 
-func (s *SessionRepository) DeleteByUser(
+func (s *Storage) deleteFromRedisByUser(
 	ctx context.Context,
 	userID string,
 ) error {
+	key := "user:" + userID
 
-	query := `
-		DELETE FROM sessions
-		WHERE user_id=$1
-	`
-
-	_, err := s.pool.Exec(
+	tokensJTI, err := s.client.SMembers(
 		ctx,
-		query,
-		userID,
-	)
+		key,
+	).Result()
 
-	return err
-}
+	if err != nil {
+		return err
+	}
 
-func (s *SessionRepository) DeleteExpiredSessions(
-	ctx context.Context,
-) error {
+	if len(tokensJTI) == 0 {
+		return errors.New("tokens not found")
+	}
 
-	query := `
-		DELETE FROM sessions
-		WHERE expires_at < NOW()
-	`
+	pipe := s.client.TxPipeline()
 
-	_, err := s.pool.Exec(
-		ctx,
-		query,
-	)
+	for _, tokenJTI := range tokensJTI {
+		if err = pipe.Del(
+			ctx,
+			tokenJTI,
+		).Err(); err != nil {
+			return err
+		}
+	}
 
-	return err
+	if err = pipe.Del(ctx, key).Err(); err != nil {
+		return err
+	}
+
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
