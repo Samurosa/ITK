@@ -24,12 +24,10 @@ type User struct {
 	Role         Role      `json:"role"`
 	CreateTime   time.Time `json:"create_time"`
 	UpdateTime   time.Time `json:"update_time"`
+	Deleted      bool      `json:"deleted"`
 }
 
 type UpdateUser struct {
 	Name  *string `json:"name"`
 	Email *string `json:"email"`
-	Role  *Role   `json:"role"`
-
-	PassHash *[]byte `json:"-"`
 }

@@ -9,10 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var (
-	ErrEmailIsExist = errors.New("email is exist")
-)
-
 type UserRepository struct {
 	pool *pgxpool.Pool
 }
@@ -38,9 +34,10 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 			password_hash,
 			role,
 			created_at,
-			updated_at
+			updated_at,
+		 	deleted
 		)
-		VALUES($1,$2,$3,$4,$5,$6)
+		VALUES($1,$2,$3,$4,$5,$6,$7)
 		RETURNING id
 	`
 
@@ -55,7 +52,15 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 		user.Role,
 		user.CreateTime,
 		user.UpdateTime,
+		user.Deleted,
 	).Scan(&id)
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return "", userCore.ErrEmailIsExist
+		}
+	}
 
 	if err != nil {
 		return "", err
@@ -79,7 +84,8 @@ func (r *UserRepository) Get(ctx context.Context,
 		password_hash,
 		role,
 		created_at,
-		updated_at
+		updated_at,
+		deleted
 	FROM users
 	WHERE id=$1
 	`
@@ -98,6 +104,7 @@ func (r *UserRepository) Get(ctx context.Context,
 		&userModel.Role,
 		&userModel.CreateTime,
 		&userModel.UpdateTime,
+		&userModel.Deleted,
 	)
 
 	if err != nil {
@@ -122,7 +129,8 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		password_hash,
 		role,
 		created_at,
-		updated_at
+		updated_at,
+		deleted
 	FROM users
 	WHERE email=$1
 	`
@@ -141,6 +149,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		&userModel.Role,
 		&userModel.CreateTime,
 		&userModel.UpdateTime,
+		&userModel.Deleted,
 	)
 
 	if err != nil {
@@ -150,33 +159,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	return userModel, nil
 }
 
-func (r *UserRepository) IsExistsUserByEmail(ctx context.Context,
-	email string,
-) bool {
-
-	query := `
-		SELECT EXISTS(
-			SELECT 1
-			FROM users
-			WHERE email=$1
-		)
-	`
-
-	var exists bool
-
-	err := r.pool.QueryRow(
-		ctx,
-		query,
-		email,
-	).Scan(&exists)
-
-	if err != nil {
-		return false
-	}
-
-	return exists
-}
-
 func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) (bool, error) {
 
 	query := `
@@ -184,7 +166,6 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		SET
 			name = COALESCE($1, name),
 			email = COALESCE($2, email),
-			role = COALESCE($3, role),
 			updated_at = NOW()
 		WHERE id = $4
 	`
@@ -194,14 +175,13 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		query,
 		update.Name,
 		update.Email,
-		update.Role,
 		userID,
 	)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if pgErr.Code == "23505" {
-			return false, ErrEmailIsExist
+			return false, userCore.ErrEmailIsExist
 		}
 	}
 
@@ -216,9 +196,9 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 	return true, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, update userCore.UpdateUser) (bool, error) {
+func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) (bool, error) {
 
-	if update.PassHash == nil {
+	if newPass == "" {
 		return false, errors.New("password hash is empty")
 	}
 
@@ -233,7 +213,7 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		*update.PassHash,
+		newPass,
 		current.ID,
 	)
 
@@ -249,18 +229,21 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 }
 
 func (r *UserRepository) Delete(ctx context.Context,
-	uid string,
+	id string,
 ) error {
 
 	query := `
-		DELETE FROM users
-		WHERE id=$1
+		UPDATE users
+		SET
+			deleted=$1
+		WHERE id=$2
 	`
 
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		uid,
+		true,
+		id,
 	)
 
 	if err != nil {
@@ -275,7 +258,7 @@ func (r *UserRepository) Delete(ctx context.Context,
 }
 
 func (r *UserRepository) IsAdmin(ctx context.Context,
-	uid string,
+	id string,
 ) (
 	bool,
 	error,
@@ -292,7 +275,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 	err := r.pool.QueryRow(
 		ctx,
 		query,
-		uid,
+		id,
 	).Scan(&role)
 
 	if err != nil {

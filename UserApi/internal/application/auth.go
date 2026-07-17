@@ -5,6 +5,7 @@ import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,9 +36,14 @@ func (a *Auth) Registration(ctx context.Context,
 		Role:         user.UserRole,
 		CreateTime:   now,
 		UpdateTime:   now,
+		Deleted:      false,
 	}
 
 	uid, err := a.userSaver.SaveUser(ctx, newUser)
+	if errors.Is(err, user.ErrEmailIsExist) {
+		log.Info("email is exist", zap.String("email", email))
+		return "", time.Time{}, user.ErrEmailIsExist
+	}
 	if err != nil {
 		log.Error("error saving user", zap.Error(err))
 		return "", time.Time{}, err
