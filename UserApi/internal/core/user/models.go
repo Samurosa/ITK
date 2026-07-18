@@ -24,7 +24,7 @@ type User struct {
 	Role         Role      `json:"role"`
 	CreateTime   time.Time `json:"create_time"`
 	UpdateTime   time.Time `json:"update_time"`
-	Deleted      bool      `json:"deleted"`
+	DeleteTime   time.Time `json:"delete_time"`
 }
 
 type UpdateUser struct {

@@ -36,7 +36,6 @@ func (a *Auth) Registration(ctx context.Context,
 		Role:         user.UserRole,
 		CreateTime:   now,
 		UpdateTime:   now,
-		Deleted:      false,
 	}
 
 	uid, err := a.userSaver.SaveUser(ctx, newUser)

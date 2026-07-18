@@ -156,10 +156,10 @@ func (u *User) ChangePassword(ctx context.Context,
 
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
-		log.Error("error getting user by email", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, auth.ErrInvalidLoginCredentials
+		log.Error("error getting user", zap.String("id", id), zap.Error(err))
+		return false, time.Time{}, user.ErrUserNotFound
 	}
-	log.Info("got user", zap.String("id", current.ID))
+	log.Info("health check user successful, got user:", zap.String("id", current.ID))
 
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {

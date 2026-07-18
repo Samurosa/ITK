@@ -84,6 +84,7 @@ func New(
 
 	walletService := application.NewWalletService(log,
 		walletStorage,
+		userStorage,
 	)
 
 	app := grpsApp.New(log,

@@ -4,6 +4,7 @@ import (
 	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -34,10 +35,9 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 			password_hash,
 			role,
 			created_at,
-			updated_at,
-		 	deleted
+			updated_at
 		)
-		VALUES($1,$2,$3,$4,$5,$6,$7)
+		VALUES($1,$2,$3,$4,$5,$6)
 		RETURNING id
 	`
 
@@ -52,7 +52,6 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 		user.Role,
 		user.CreateTime,
 		user.UpdateTime,
-		user.Deleted,
 	).Scan(&id)
 
 	var pgErr *pgconn.PgError
@@ -84,10 +83,10 @@ func (r *UserRepository) Get(ctx context.Context,
 		password_hash,
 		role,
 		created_at,
-		updated_at,
-		deleted
+		updated_at
 	FROM users
-	WHERE id=$1
+	WHERE id=$1 
+	AND deleted_at IS NULL; 
 	`
 
 	var userModel userCore.User
@@ -104,7 +103,6 @@ func (r *UserRepository) Get(ctx context.Context,
 		&userModel.Role,
 		&userModel.CreateTime,
 		&userModel.UpdateTime,
-		&userModel.Deleted,
 	)
 
 	if err != nil {
@@ -129,10 +127,10 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		password_hash,
 		role,
 		created_at,
-		updated_at,
-		deleted
+		updated_at
 	FROM users
 	WHERE email=$1
+	AND deleted_at IS NULL; 
 	`
 
 	var userModel userCore.User
@@ -149,7 +147,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		&userModel.Role,
 		&userModel.CreateTime,
 		&userModel.UpdateTime,
-		&userModel.Deleted,
 	)
 
 	if err != nil {
@@ -167,7 +164,8 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 			name = COALESCE($1, name),
 			email = COALESCE($2, email),
 			updated_at = NOW()
-		WHERE id = $4
+		WHERE id = $3
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
@@ -208,6 +206,7 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 			password_hash=$1,
 			updated_at=NOW()
 		WHERE id=$2
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
@@ -222,7 +221,7 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	}
 
 	if result.RowsAffected() == 0 {
-		return false, err
+		return false, userCore.ErrUserNotFound
 	}
 
 	return true, nil
@@ -235,14 +234,15 @@ func (r *UserRepository) Delete(ctx context.Context,
 	query := `
 		UPDATE users
 		SET
-			deleted=$1
+			deleted_at=$1
 		WHERE id=$2
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		true,
+		time.Now(),
 		id,
 	)
 
@@ -251,7 +251,7 @@ func (r *UserRepository) Delete(ctx context.Context,
 	}
 
 	if result.RowsAffected() == 0 {
-		return err
+		return userCore.ErrUserNotFound
 	}
 
 	return nil
@@ -268,6 +268,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		SELECT role
 		FROM users
 		WHERE id=$1
+		AND deleted_at IS NULL; 
 	`
 
 	var role userCore.Role

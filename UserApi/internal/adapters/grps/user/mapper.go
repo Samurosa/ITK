@@ -101,7 +101,7 @@ func ToGRPC(err error) error {
 	case errors.Is(err, user.ErrUpdateUser):
 		return status.Error(codes.Internal, "failed to update user")
 	case errors.Is(err, user.ErrEmailIsExist):
-		return status.Error(codes.NotFound, "email is exist")
+		return status.Error(codes.AlreadyExists, "email is exist")
 
 	case errors.Is(err, auth.ErrRefreshExpired):
 		return status.Error(codes.Unauthenticated, "refresh token expired")

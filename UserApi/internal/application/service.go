@@ -30,6 +30,8 @@ type Wallet struct {
 	log *zap.Logger
 
 	balanceRepository wallet.Repository
+
+	userProvider userCore.Provider
 }
 
 func NewUserService(
@@ -66,9 +68,11 @@ func NewAuthService(
 func NewWalletService(
 	log *zap.Logger,
 	balanceRepository wallet.Repository,
+	userProvider userCore.Provider,
 ) *Wallet {
 	return &Wallet{
 		log:               log,
 		balanceRepository: balanceRepository,
+		userProvider:      userProvider,
 	}
 }

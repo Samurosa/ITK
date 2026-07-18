@@ -2,6 +2,7 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
 	"context"
 
@@ -18,6 +19,13 @@ func (w *Wallet) Deposit(ctx context.Context,
 	error,
 ) {
 	log := w.log.Named("Deposit")
+
+	if _, err := w.userProvider.Get(ctx, id); err != nil {
+		log.Error("failed to get balance", zap.String("id", id), zap.Error(err))
+		return false, wallet.Balance{}, user.ErrUserNotFound
+	}
+	log.Info("health check user successful")
+
 	balance, err := w.balanceRepository.GetOrCreate(ctx, id, asset)
 	if err != nil {
 		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(err))
@@ -51,6 +59,12 @@ func (w *Wallet) GetBalances(ctx context.Context,
 		return []wallet.Balance{}, auth.ErrInvalidContext
 	}
 	log.Info("user id from context", zap.String("id", id))
+
+	if _, err = w.userProvider.Get(ctx, id); err != nil {
+		log.Error("failed to get balance", zap.String("id", id), zap.Error(err))
+		return []wallet.Balance{}, user.ErrUserNotFound
+	}
+	log.Info("health check user successful")
 
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
