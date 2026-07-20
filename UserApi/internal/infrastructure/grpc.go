@@ -52,11 +52,11 @@ func NewGRPC(
 	}
 }
 
-func (a *GRPCApp) Run() {
+func (a *GRPCApp) Run() error {
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
 	if err != nil {
-		a.log.Fatal("error accessing port:", zap.Error(err))
+		return err
 	}
 
 	a.log.Info(
@@ -65,8 +65,9 @@ func (a *GRPCApp) Run() {
 	)
 
 	if err := a.grpcServer.Serve(l); err != nil {
-		a.log.Fatal("grpc server failed", zap.Error(err))
+		return err
 	}
+	return nil
 }
 
 func (a *GRPCApp) Stop() {

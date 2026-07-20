@@ -23,31 +23,32 @@ func New(
 	secret string,
 ) (*App, error) {
 
-	log, err := zap.NewProduction()
+	logger, err := zap.NewProduction()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	log.Named("app start")
+
+	log := logger.Named("app start")
 
 	contextModel := infrastructure.NewContext()
 	ctx := contextModel.GetContext()
 
-	storages, err := infrastructure.NewStorages(ctx, log, cfg)
+	storages, err := infrastructure.NewStorages(ctx, logger, cfg)
 	if err != nil {
 		log.Error("failed to initialize infrastructure", zap.Error(err))
 		return nil, err
 	}
 	log.Info("infrastructure initialized")
 
-	services := NewServices(log, cfg, storages, secret)
+	services := NewServices(logger, cfg, storages, secret)
 
-	grpcApp := infrastructure.NewGRPC(log,
+	grpcApp := infrastructure.NewGRPC(logger,
 		services,
 		cfg.GRPC.Port,
 	)
 
 	return &App{
-		logger: log,
+		logger: logger,
 
 		context: contextModel,
 
@@ -58,7 +59,13 @@ func New(
 }
 
 func (app *App) Start() {
-	go app.grpcApp.Run()
+	log := app.logger.Named("starting grpc goroutine")
+	go func() {
+		err := app.grpcApp.Run()
+		if err != nil {
+			log.Error("grpc goroutine failed", zap.Error(err))
+		}
+	}()
 }
 
 func (app *App) WaitSignal() {

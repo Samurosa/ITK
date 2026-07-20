@@ -3,6 +3,7 @@ package main
 import (
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/app"
+	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -13,7 +14,8 @@ func main() {
 
 	err := godotenv.Load(cfg.Env)
 	if err != nil {
-		panic("error loading .env file path: " + cfg.Env + "error: " + err.Error())
+		fmt.Printf("error loading .env file path: %s, error: %s", cfg.Env, err.Error())
+		return
 	}
 
 	secret := os.Getenv("JWT_SECRET")
@@ -22,9 +24,9 @@ func main() {
 		cfg,
 		secret,
 	)
-
 	if err != nil {
-		panic("create application failed error: " + err.Error())
+		fmt.Printf("create application failed error: %s", err.Error())
+		return
 	}
 
 	application.Start()
