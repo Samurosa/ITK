@@ -7,7 +7,6 @@ import (
 
 type Service interface {
 	GetUser(ctx context.Context,
-		id string,
 	) (
 		user User,
 		err error,
@@ -21,7 +20,6 @@ type Service interface {
 	)
 
 	UpdateUserInfo(ctx context.Context,
-		id string,
 		name string,
 		email string,
 	) (
@@ -31,7 +29,6 @@ type Service interface {
 	)
 
 	DeleteUser(ctx context.Context,
-		id string,
 	) (
 		success bool,
 		deletedUserAt time.Time,
@@ -39,7 +36,6 @@ type Service interface {
 	)
 
 	ChangePassword(ctx context.Context,
-		id string,
 		oldPassword string,
 		newPassword string,
 	) (

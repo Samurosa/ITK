@@ -1,27 +1,27 @@
-package contextStatus
+package infrastructure
 
 import (
 	"context"
 )
 
-type App struct {
+type Context struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-func New() *App {
+func NewContext() *Context {
 
 	ctx, cancel := context.WithCancel(context.Background())
-	return &App{
+	return &Context{
 		ctx:    ctx,
 		cancel: cancel,
 	}
 }
 
-func (a *App) GetContext() context.Context {
+func (a *Context) GetContext() context.Context {
 	return a.ctx
 }
 
-func (a *App) Stop() {
+func (a *Context) Stop() {
 	a.cancel()
 }

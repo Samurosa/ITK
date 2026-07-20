@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/hash"
+	"ITK_Code/m/v2/internal/adapters/outbound/hash"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -11,39 +11,48 @@ import (
 )
 
 func (u *User) GetUser(ctx context.Context,
-	id string,
 ) (
 	user.User,
 	error,
 ) {
 	log := u.log.Named("GetUser")
-	log.Info("getting user", zap.String("id", id))
+
+	id, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Error("context is not valid", zap.Error(err))
+		return user.User{}, auth.ErrInvalidContext
+	}
+	log.Info("user id from context", zap.String("id", id))
 
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return user.User{}, err
+		return user.User{}, user.ErrUserNotFound
 	}
-
-	log.Info("got user", zap.String("id", id))
+	log.Info("got user id:", zap.String("id", id))
 
 	return current, nil
 }
 
 func (u *User) DeleteUser(ctx context.Context,
-	id string,
 ) (
 	bool,
 	time.Time,
 	error,
 ) {
 	log := u.log.Named("DeleteUser")
-	log.Info("deleting user", zap.String("id", id))
 
-	err := u.userProvider.Delete(ctx, id)
+	id, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Error("context is not valid", zap.Error(err))
+		return false, time.Time{}, auth.ErrInvalidContext
+	}
+	log.Info("user id from context", zap.String("id", id))
+
+	err = u.userProvider.Delete(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, err
+		return false, time.Time{}, user.ErrUserNotFound
 	}
 
 	log.Info("user deleted", zap.String("id", id))
@@ -52,19 +61,25 @@ func (u *User) DeleteUser(ctx context.Context,
 }
 
 func (u *User) IsAdmin(ctx context.Context,
-	uid string,
 ) (
 	bool,
 	error,
 ) {
 	log := u.log.Named("IsAdmin")
-	log.Info("checking user is admin", zap.String("id", uid))
 
-	isAdmin, err := u.userProvider.IsAdmin(ctx, uid)
+	id, err := auth.GetUserIDFromContext(ctx)
 	if err != nil {
-		log.Error("user not found", zap.String("id", uid), zap.Error(err))
+		log.Error("context is not valid", zap.Error(err))
+		return false, auth.ErrInvalidContext
+	}
+	log.Info("user id from context", zap.String("id", id))
+
+	isAdmin, err := u.userProvider.IsAdmin(ctx, id)
+	if err != nil {
+		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return false, err
 	}
+	log.Info("checked role user", zap.Bool("admin role", isAdmin))
 
 	return isAdmin, nil
 }
@@ -82,11 +97,12 @@ func (u *User) GetUserByEmail(ctx context.Context,
 		log.Error("user not found", zap.String("email", email), zap.Error(err))
 		return current, err
 	}
+	log.Info("got user by email", zap.String("id", current.ID))
+
 	return current, nil
 }
 
 func (u *User) UpdateUserInfo(ctx context.Context,
-	id string,
 	name string,
 	email string,
 ) (
@@ -95,6 +111,13 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 	error,
 ) {
 	log := u.log.Named("update user")
+
+	id, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Error("context is not valid", zap.Error(err))
+		return false, time.Time{}, auth.ErrInvalidContext
+	}
+	log.Info("user id from context", zap.String("id", id))
 
 	updated := user.UpdateUser{}
 	if name != "" {
@@ -109,12 +132,12 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 		log.Error("error updating user", zap.Error(err))
 		return false, time.Time{}, user.ErrUpdateUser
 	}
+	log.Info("user updated", zap.String("id", id))
 
 	return success, time.Now(), nil
 }
 
 func (u *User) ChangePassword(ctx context.Context,
-	id string,
 	oldPassword string,
 	newPassword string,
 ) (
@@ -123,34 +146,41 @@ func (u *User) ChangePassword(ctx context.Context,
 	error,
 ) {
 	log := u.log.Named("change Password")
-	log.Info("searching user with id", zap.String("id", id))
+
+	id, err := auth.GetUserIDFromContext(ctx)
+	if err != nil {
+		log.Error("context is not valid", zap.Error(err))
+		return false, time.Time{}, auth.ErrInvalidContext
+	}
+	log.Info("user id from context", zap.String("id", id))
 
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
-		log.Error("error getting user by email", zap.String("id", id), zap.Error(user.ErrUserNotFound))
-		return false, time.Time{}, auth.ErrInvalidLoginCredentials
+		log.Error("error getting user", zap.String("id", id), zap.Error(err))
+		return false, time.Time{}, user.ErrUserNotFound
 	}
+	log.Info("health check user successful, got user:", zap.String("id", current.ID))
 
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
 		return false, time.Time{}, auth.ErrInvalidLoginCredentials
 	}
+	log.Info("verify password successful")
 
 	newPassHash, err := hash.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return false, time.Time{}, user.ErrPassGenHash
 	}
+	log.Info("password hash generated")
 
-	updated := user.UpdateUser{}
-	updated.PassHash = &newPassHash
-
-	success, err := u.userProvider.UpdatePassword(ctx, current, updated)
+	success, err := u.userProvider.UpdatePassword(ctx, current, string(newPassHash))
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
 		return false, time.Time{}, user.ErrUpdateUser
 	}
+	log.Info("success updated password", zap.String("id", current.ID))
 
 	return success, time.Now(), nil
 }

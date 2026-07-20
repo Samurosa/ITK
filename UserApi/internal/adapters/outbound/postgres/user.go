@@ -4,13 +4,10 @@ import (
 	userCore "ITK_Code/m/v2/internal/core/user"
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
-)
-
-var (
-	ErrEmailIsExist = errors.New("email is exist")
 )
 
 type UserRepository struct {
@@ -57,6 +54,13 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 		user.UpdateTime,
 	).Scan(&id)
 
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if pgErr.Code == "23505" {
+			return "", userCore.ErrEmailIsExist
+		}
+	}
+
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +85,8 @@ func (r *UserRepository) Get(ctx context.Context,
 		created_at,
 		updated_at
 	FROM users
-	WHERE id=$1
+	WHERE id=$1 
+	AND deleted_at IS NULL; 
 	`
 
 	var userModel userCore.User
@@ -125,6 +130,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		updated_at
 	FROM users
 	WHERE email=$1
+	AND deleted_at IS NULL; 
 	`
 
 	var userModel userCore.User
@@ -150,33 +156,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	return userModel, nil
 }
 
-func (r *UserRepository) IsExistsUserByEmail(ctx context.Context,
-	email string,
-) bool {
-
-	query := `
-		SELECT EXISTS(
-			SELECT 1
-			FROM users
-			WHERE email=$1
-		)
-	`
-
-	var exists bool
-
-	err := r.pool.QueryRow(
-		ctx,
-		query,
-		email,
-	).Scan(&exists)
-
-	if err != nil {
-		return false
-	}
-
-	return exists
-}
-
 func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) (bool, error) {
 
 	query := `
@@ -184,9 +163,9 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		SET
 			name = COALESCE($1, name),
 			email = COALESCE($2, email),
-			role = COALESCE($3, role),
 			updated_at = NOW()
-		WHERE id = $4
+		WHERE id = $3
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
@@ -194,14 +173,13 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		query,
 		update.Name,
 		update.Email,
-		update.Role,
 		userID,
 	)
 
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if pgErr.Code == "23505" {
-			return false, ErrEmailIsExist
+			return false, userCore.ErrEmailIsExist
 		}
 	}
 
@@ -216,9 +194,9 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 	return true, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, update userCore.UpdateUser) (bool, error) {
+func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) (bool, error) {
 
-	if update.PassHash == nil {
+	if newPass == "" {
 		return false, errors.New("password hash is empty")
 	}
 
@@ -228,12 +206,13 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 			password_hash=$1,
 			updated_at=NOW()
 		WHERE id=$2
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		*update.PassHash,
+		newPass,
 		current.ID,
 	)
 
@@ -242,25 +221,29 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	}
 
 	if result.RowsAffected() == 0 {
-		return false, err
+		return false, userCore.ErrUserNotFound
 	}
 
 	return true, nil
 }
 
 func (r *UserRepository) Delete(ctx context.Context,
-	uid string,
+	id string,
 ) error {
 
 	query := `
-		DELETE FROM users
-		WHERE id=$1
+		UPDATE users
+		SET
+			deleted_at=$1
+		WHERE id=$2
+		AND deleted_at IS NULL;
 	`
 
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		uid,
+		time.Now(),
+		id,
 	)
 
 	if err != nil {
@@ -268,14 +251,14 @@ func (r *UserRepository) Delete(ctx context.Context,
 	}
 
 	if result.RowsAffected() == 0 {
-		return err
+		return userCore.ErrUserNotFound
 	}
 
 	return nil
 }
 
 func (r *UserRepository) IsAdmin(ctx context.Context,
-	uid string,
+	id string,
 ) (
 	bool,
 	error,
@@ -285,6 +268,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		SELECT role
 		FROM users
 		WHERE id=$1
+		AND deleted_at IS NULL; 
 	`
 
 	var role userCore.Role
@@ -292,7 +276,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 	err := r.pool.QueryRow(
 		ctx,
 		query,
-		uid,
+		id,
 	).Scan(&role)
 
 	if err != nil {

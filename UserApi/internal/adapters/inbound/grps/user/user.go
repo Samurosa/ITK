@@ -9,26 +9,19 @@ import (
 
 func (s *ServerApi) GetUser(
 	ctx context.Context,
-	req *pb.UserIDRequest,
+	req *pb.EmptyRequest,
 ) (
 	*pb.UserInfoResponse,
 	error,
 ) {
-	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
-	}
-
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, err
-	}
-
-	user, err := s.user.GetUser(ctx, req.UserId)
+	_ = req
+	user, err := s.user.GetUser(ctx)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}
 
 	return &pb.UserInfoResponse{
-		UserId:    req.UserId,
+		UserId:    user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
 		Role:      ToProtoRole(user.Role),
@@ -48,10 +41,6 @@ func (s *ServerApi) UpdateUserInfo(
 		return nil, ToGRPC(err)
 	}
 
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, err
-	}
-
 	name := ""
 	email := ""
 	if req.Name != nil {
@@ -63,7 +52,6 @@ func (s *ServerApi) UpdateUserInfo(
 
 	updated, updatedAt, err := s.user.UpdateUserInfo(
 		ctx,
-		req.UserId,
 		name,
 		email,
 	)
@@ -79,7 +67,7 @@ func (s *ServerApi) UpdateUserInfo(
 
 func (s *ServerApi) DeleteUser(
 	ctx context.Context,
-	req *pb.UserIDRequest,
+	req *pb.EmptyRequest,
 ) (
 	*pb.DeleteUserResponse,
 	error,
@@ -88,11 +76,7 @@ func (s *ServerApi) DeleteUser(
 		return nil, ToGRPC(err)
 	}
 
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, err
-	}
-
-	success, deletedUserAt, err := s.user.DeleteUser(ctx, req.UserId)
+	success, deletedUserAt, err := s.user.DeleteUser(ctx)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}
@@ -112,15 +96,11 @@ func (s *ServerApi) ChangePassword(
 		return nil, ToGRPC(err)
 	}
 
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, err
-	}
-
 	if err := ValidatePassword(req.NewPassword); err != nil {
 		return nil, err
 	}
 
-	isSuccess, userPasswordChangedAt, err := s.user.ChangePassword(ctx, req.UserId,
+	isSuccess, userPasswordChangedAt, err := s.user.ChangePassword(ctx,
 		req.OldPassword,
 		req.NewPassword,
 	)

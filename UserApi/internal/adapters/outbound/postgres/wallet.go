@@ -7,10 +7,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type BalanceKey struct {
-	UserID string
-	Asset  string
-}
 type BalanceRepository struct {
 	pool *pgxpool.Pool
 }

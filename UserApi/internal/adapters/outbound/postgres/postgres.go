@@ -15,10 +15,9 @@ var (
 
 type Storage struct {
 	pool *pgxpool.Pool
-	log  *zap.Logger
 }
 
-func NewPool(ctx context.Context, logger *zap.Logger, connectionString string, maxRetries int) (*Storage, error) {
+func NewStorage(ctx context.Context, logger *zap.Logger, connectionString string, maxRetries int) (*Storage, error) {
 	log := logger.Named("postgres")
 
 	config, err := pgxpool.ParseConfig(connectionString)
@@ -48,7 +47,6 @@ func NewPool(ctx context.Context, logger *zap.Logger, connectionString string, m
 
 			return &Storage{
 				pool: pool,
-				log:  logger,
 			}, nil
 		}
 

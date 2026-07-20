@@ -16,16 +16,20 @@ func (s *ServerApi) Deposit(
 	if err := req.Validate(); err != nil {
 		return nil, ToGRPC(err)
 	}
+
 	if err := ValidateUserId(req.UserId); err != nil {
 		return nil, ToGRPC(err)
 	}
+
 	if err := ValidateDepositRequest(req); err != nil {
 		return nil, ToGRPC(err)
 	}
+
 	amount, err := ToProtoMoney(req.Amount)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}
+
 	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
 	if err != nil {
 		return nil, ToGRPC(err)
@@ -39,7 +43,7 @@ func (s *ServerApi) Deposit(
 
 func (s *ServerApi) GetBalances(
 	ctx context.Context,
-	req *pb.UserIDRequest,
+	req *pb.EmptyRequest,
 ) (
 	*pb.UserBalancesInfoResponse,
 	error,
@@ -48,11 +52,7 @@ func (s *ServerApi) GetBalances(
 		return nil, ToGRPC(err)
 	}
 
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, ToGRPC(err)
-	}
-
-	balancesResponse, err := s.wallet.GetBalances(ctx, req.UserId)
+	balancesResponse, err := s.wallet.GetBalances(ctx)
 	if err != nil {
 		return nil, ToGRPC(err)
 	}

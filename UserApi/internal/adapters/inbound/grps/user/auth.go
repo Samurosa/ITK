@@ -64,7 +64,7 @@ func (s *ServerApi) Login(
 
 func (s *ServerApi) Logout(
 	ctx context.Context,
-	req *pb.RefreshTokenRequest,
+	req *pb.LogoutRequest,
 ) (
 	*pb.LogoutResponse,
 	error,
@@ -86,7 +86,7 @@ func (s *ServerApi) Logout(
 
 func (s *ServerApi) LogoutAllDevices(
 	ctx context.Context,
-	req *pb.RefreshTokenRequest,
+	req *pb.LogoutAllRequest,
 ) (
 	*pb.LogoutResponse,
 	error,

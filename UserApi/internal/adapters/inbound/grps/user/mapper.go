@@ -1,6 +1,8 @@
 package user
 
 import (
+	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/redis"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
@@ -60,12 +62,12 @@ func ToProtoRole(role user.Role) pb.Role {
 
 func ToProtoTokens(tokens auth.TokensModel) *pb.TokenPairResponse {
 	return &pb.TokenPairResponse{
-		AccessToken:     tokens.AccessToken,
-		RefreshToken:    tokens.RefreshToken,
-		AccessExpiresAt: timestamppb.New(tokens.AccessExpiresAt),
-		//AccessCreatesAt:  timestamppb.New(tokens.AccessCreatedAt),
+		AccessToken:      tokens.AccessToken,
+		RefreshToken:     tokens.RefreshToken,
+		AccessExpiresAt:  timestamppb.New(tokens.AccessExpiresAt),
+		AccessCreatesAt:  timestamppb.New(tokens.AccessCreatedAt),
 		RefreshExpiresAt: timestamppb.New(tokens.RefreshExpiresAt),
-		//RefreshCreateAt:  timestamppb.New(tokens.RefreshCreatedAt),
+		RefreshCreatesAt: timestamppb.New(tokens.RefreshCreatedAt),
 	}
 }
 
@@ -100,6 +102,8 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Unauthenticated, "invalid credentials")
 	case errors.Is(err, user.ErrUpdateUser):
 		return status.Error(codes.Internal, "failed to update user")
+	case errors.Is(err, user.ErrEmailIsExist):
+		return status.Error(codes.AlreadyExists, "email is exist")
 
 	case errors.Is(err, auth.ErrRefreshExpired):
 		return status.Error(codes.Unauthenticated, "refresh token expired")
@@ -113,10 +117,17 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Unauthenticated, "session not found")
 	case errors.Is(err, auth.ErrInvalidContext):
 		return status.Error(codes.Internal, "invalid context")
+	case errors.Is(err, auth.ErrInvalidLoginCredentials):
+		return status.Error(codes.InvalidArgument, "invalid login")
 	case errors.Is(err, auth.Unauthorized):
 		return status.Error(codes.Unauthenticated, "incorrect login or password")
 	case errors.Is(err, auth.ErrNoAccess):
 		return status.Error(codes.PermissionDenied, "no access")
+	case errors.Is(err, postgres.ErrPingDB):
+		return status.Error(codes.Internal, "failed connect to database")
+	case errors.Is(err, redis.ErrPingToRedis):
+		return status.Error(codes.Internal, "failed connect to redis")
+
 	default:
 		return status.Error(codes.Internal, "internal server error")
 	}

@@ -12,7 +12,7 @@ type Config struct {
 	TokenTTl TokensTTL  `yaml:"token_ttl"`
 	GRPC     GRPCConfig `yaml:"grpc"`
 	Env      string     `yaml:"env"`
-	Storage  Storage    `yaml:"storage"`
+	Postgres Postgres   `yaml:"postgres"`
 	Redis    Redis      `yaml:"redis"`
 }
 
@@ -35,8 +35,9 @@ type Redis struct {
 	Timeout     time.Duration `yaml:"timeout"`
 }
 
-type Storage struct {
-	Link string
+type Postgres struct {
+	Link       string `yaml:"link"`
+	MaxRetries int    `yaml:"max_retries"`
 }
 
 func Load(
