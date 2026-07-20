@@ -1,8 +1,8 @@
 package grpsApp
 
 import (
-	usergrps "ITK_Code/m/v2/internal/adapters/grps/user"
-	"ITK_Code/m/v2/internal/adapters/interceptors"
+	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grps/user"
+	"ITK_Code/m/v2/internal/adapters/inbound/interceptors"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"

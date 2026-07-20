@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/hash"
+	hash2 "ITK_Code/m/v2/internal/adapters/outbound/hash"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -23,7 +23,7 @@ func (a *Auth) Registration(ctx context.Context,
 	now := time.Now()
 
 	log := a.log.Named("RegisterNewUser")
-	passHash, err := hash.GeneratePasswordHash(password)
+	passHash, err := hash2.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return "", time.Time{}, user.ErrPassGenHash
@@ -69,7 +69,7 @@ func (a *Auth) Login(ctx context.Context,
 		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
 
-	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
+	err = hash2.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
@@ -83,7 +83,7 @@ func (a *Auth) Login(ctx context.Context,
 	}
 	_ = refreshToken
 
-	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
+	tokenHash := hash2.GenerateHashSHA256(tokens.RefreshToken)
 
 	log.Info("session info save")
 	session := auth.SessionModel{
@@ -125,10 +125,10 @@ func (a *Auth) Logout(ctx context.Context,
 		return false, time.Time{}, auth.ErrSessionNotFound
 	}
 
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return false, time.Time{}, auth.ErrNoAccess
@@ -164,10 +164,10 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		return false, time.Time{}, auth.Unauthorized
 	}
 
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return false, time.Time{}, auth.ErrNoAccess
@@ -254,10 +254,10 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 
 	log.Info("comparing refresh token")
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return auth.TokensModel{}, auth.ErrNoAccess
@@ -270,7 +270,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		return auth.TokensModel{}, auth.ErrGenerateToken
 	}
 
-	tokenHash := hash.GenerateHashSHA256(newTokens.RefreshToken)
+	tokenHash := hash2.GenerateHashSHA256(newTokens.RefreshToken)
 
 	newSessionInfo := auth.SessionModel{
 		UserID:           gotUser.ID,
