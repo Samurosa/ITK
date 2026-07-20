@@ -17,14 +17,14 @@ type SessionRepository interface {
 	DeleteByUser(ctx context.Context, userID string) error
 }
 
+type SyncPrimitiveForRedis interface {
+	AcquireRefreshLock(ctx context.Context, userID string) (bool, error)
+	ReleaseRefreshLock(ctx context.Context, userID string) error
+}
+
 type TokenManager interface {
 	Generate(user user.User, deviceID string) (TokensModel, AccessTokenParse, RefreshTokenParse, error)
 
 	ParseAccessToken(token string) (AccessTokenParse, error)
 	ParseRefreshToken(refreshToken string) (RefreshTokenParse, error)
-}
-
-type SyncPrimitiveForRedis interface {
-	AcquireRefreshLock(ctx context.Context, userID string) (bool, error)
-	ReleaseRefreshLock(ctx context.Context, userID string) error
 }

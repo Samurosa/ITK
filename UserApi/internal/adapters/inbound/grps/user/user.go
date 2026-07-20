@@ -14,6 +14,7 @@ func (s *ServerApi) GetUser(
 	*pb.UserInfoResponse,
 	error,
 ) {
+	_ = req
 	user, err := s.user.GetUser(ctx)
 	if err != nil {
 		return nil, ToGRPC(err)

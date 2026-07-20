@@ -1,4 +1,4 @@
-package grpsApp
+package infrastructure
 
 import (
 	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grps/user"
@@ -13,35 +13,46 @@ import (
 	"google.golang.org/grpc"
 )
 
-type App struct {
+type Services interface {
+	TokenManager() auth.TokenManager
+	UserService() user.Service
+	AuthService() auth.Service
+	WalletService() wallet.Service
+	SessionStorage() auth.SessionRepository
+}
+
+type GRPCApp struct {
 	log        *zap.Logger
 	grpcServer *grpc.Server
 	port       int
 }
 
-func New(
+func NewGRPC(
 	log *zap.Logger,
-	tokenManager auth.TokenManager,
-	userService user.Service,
-	authService auth.Service,
-	walletService wallet.Service,
-	sessionStorage auth.SessionRepository,
+	services Services,
 	port int,
-) *App {
+) *GRPCApp {
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(interceptors.AuthInterceptor(log, tokenManager, sessionStorage)),
+		grpc.UnaryInterceptor(interceptors.AuthInterceptor(log,
+			services.TokenManager(),
+			services.SessionStorage(),
+		)),
 	)
 
-	usergrps.RegisterUserService(grpcServer, userService, authService, walletService, log)
+	usergrps.RegisterUserService(grpcServer,
+		services.UserService(),
+		services.AuthService(),
+		services.WalletService(),
+		log)
 
-	return &App{
+	return &GRPCApp{
 		log:        log,
 		grpcServer: grpcServer,
 		port:       port,
 	}
 }
 
-func (a *App) Run() {
+func (a *GRPCApp) Run() {
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
 	if err != nil {
@@ -58,7 +69,7 @@ func (a *App) Run() {
 	}
 }
 
-func (a *App) Stop() {
+func (a *GRPCApp) Stop() {
 	a.log.Info("GRPC server stopped")
 	a.grpcServer.GracefulStop()
 }

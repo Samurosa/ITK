@@ -1,8 +1,8 @@
 package main
 
 import (
-	"ITK_Code/m/v2/app"
 	"ITK_Code/m/v2/config"
+	"ITK_Code/m/v2/internal/app"
 	"os"
 
 	"github.com/joho/godotenv"

@@ -5,8 +5,9 @@ token_ttl:
 grpc:
   port: 50051
   timeout: 1m
-storage:
+postgres:
   link: "postgres://admin:admin@db:5432/db?sslmode=disable"
+  max_retries: 10
 redis:
   addr: "redis:6379"
   password: "admin"
