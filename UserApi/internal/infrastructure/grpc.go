@@ -33,10 +33,13 @@ func NewGRPC(
 	port int,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(
-		grpc.UnaryInterceptor(interceptors.AuthInterceptor(log,
-			services.TokenManager(),
-			services.SessionStorage(),
-		)),
+		grpc.ChainUnaryInterceptor(
+			interceptors.ClientIPInterceptor(log),
+			interceptors.AuthInterceptor(log,
+				services.TokenManager(),
+				services.SessionStorage(),
+			),
+		),
 	)
 
 	usergrps.RegisterUserService(grpcServer,

@@ -22,6 +22,10 @@ type SyncPrimitiveForRedis interface {
 	ReleaseRefreshLock(ctx context.Context, userID string) error
 }
 
+type RateLimiting interface {
+	Allow(ctx context.Context, userIP string) (bool, error)
+}
+
 type TokenManager interface {
 	Generate(user user.User, deviceID string) (TokensModel, AccessTokenParse, RefreshTokenParse, error)
 

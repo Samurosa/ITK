@@ -67,10 +67,10 @@ func AuthInterceptor(
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		ctx = context.WithValue(ctx, auth.UserIDContextKey, userID)
-		ctx = context.WithValue(ctx, auth.RoleContextKey, role)
-		ctx = context.WithValue(ctx, auth.DeviceContextKey, deviceID)
-		ctx = context.WithValue(ctx, auth.JTIContextKey, jti)
+		ctx = auth.WithUserID(ctx, userID)
+		ctx = auth.WithRole(ctx, role)
+		ctx = auth.WithDeviceID(ctx, deviceID)
+		ctx = auth.WithJTI(ctx, jti)
 
 		return handler(ctx, req)
 	}

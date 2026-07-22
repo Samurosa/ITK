@@ -4,6 +4,8 @@ import (
 	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/outbound/jwt"
 	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/redis"
+
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
@@ -39,6 +41,8 @@ func NewServices(log *zap.Logger,
 			RefreshTokenTTL: cfg.TokenTTl.RefreshTokenTTL,
 		})
 
+	rateLimiter := redis.NewLimiter(cfg.Limiter, redisStorage.GetClient())
+
 	userService := application.NewUserService(log,
 		userStorage,
 		userStorage,
@@ -48,6 +52,7 @@ func NewServices(log *zap.Logger,
 		tokenManager,
 		redisStorage,
 		redisStorage,
+		rateLimiter,
 		userStorage,
 		userStorage,
 	)

@@ -16,6 +16,7 @@ var (
 	ErrInvalidLoginCredentials = errors.New("invalid login credentials")
 	Unauthorized               = errors.New("unauthorized")
 	ErrNoAccess                = errors.New("no access")
+	ErrTooManyRequests         = errors.New("too many requests")
 
 	ErrSyncRedis = errors.New("sync redis error")
 )
