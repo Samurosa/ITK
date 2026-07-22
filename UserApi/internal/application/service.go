@@ -21,6 +21,7 @@ type Auth struct {
 	tokenManager          authCore.TokenManager
 	sessionStorage        authCore.SessionRepository
 	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis
+	rateLimiting          authCore.RateLimiting
 
 	userSaver    userCore.Save
 	userProvider userCore.Provider
@@ -51,6 +52,7 @@ func NewAuthService(
 	tokenManager authCore.TokenManager,
 	sessionStorage authCore.SessionRepository,
 	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis,
+	rateLimiting authCore.RateLimiting,
 	userSaver userCore.Save,
 	userProvider userCore.Provider,
 
@@ -60,6 +62,7 @@ func NewAuthService(
 		tokenManager:          tokenManager,
 		sessionStorage:        sessionStorage,
 		syncPrimitiveForRedis: syncPrimitiveForRedis,
+		rateLimiting:          rateLimiting,
 		userSaver:             userSaver,
 		userProvider:          userProvider,
 	}

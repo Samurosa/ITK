@@ -123,6 +123,8 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Unauthenticated, "incorrect login or password")
 	case errors.Is(err, auth.ErrNoAccess):
 		return status.Error(codes.PermissionDenied, "no access")
+	case errors.Is(err, auth.ErrTooManyRequests):
+		return status.Error(codes.Aborted, "too many requests")
 	case errors.Is(err, postgres.ErrPingDB):
 		return status.Error(codes.Internal, "failed connect to database")
 	case errors.Is(err, redis.ErrPingToRedis):

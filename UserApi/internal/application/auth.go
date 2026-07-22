@@ -23,6 +23,23 @@ func (a *Auth) Registration(ctx context.Context,
 	now := time.Now()
 
 	log := a.log.Named("RegisterNewUser")
+
+	ip, err := auth.GetClientIPFromContext(ctx)
+	if err != nil {
+		log.Error("Failed to get user ip from context", zap.Error(err))
+		return "", time.Time{}, auth.ErrInvalidContext
+	}
+
+	allowed, err := a.rateLimiting.Allow(ctx, ip)
+	if err != nil {
+		log.Error("Failed to check rate limiting", zap.Error(err))
+		return "", time.Time{}, auth.ErrTooManyRequests
+	}
+	if !allowed {
+		log.Error("Rate limiting is not allowed")
+		return "", time.Time{}, auth.ErrTooManyRequests
+	}
+
 	passHash, err := hash2.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))

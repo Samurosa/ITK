@@ -14,6 +14,12 @@ type Config struct {
 	Env      string     `yaml:"env"`
 	Postgres Postgres   `yaml:"postgres"`
 	Redis    Redis      `yaml:"redis"`
+	Limiter  Limiter    `yaml:"limiter"`
+}
+
+type TokensTTL struct {
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
 }
 
 type GRPCConfig struct {
@@ -21,9 +27,9 @@ type GRPCConfig struct {
 	Timeout time.Duration `yaml:"timeout"`
 }
 
-type TokensTTL struct {
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
+type Postgres struct {
+	Link       string `yaml:"link"`
+	MaxRetries int    `yaml:"max_retries"`
 }
 
 type Redis struct {
@@ -35,9 +41,9 @@ type Redis struct {
 	Timeout     time.Duration `yaml:"timeout"`
 }
 
-type Postgres struct {
-	Link       string `yaml:"link"`
-	MaxRetries int    `yaml:"max_retries"`
+type Limiter struct {
+	Limit int           `yaml:"limit"`
+	Timer time.Duration `yaml:"timer"`
 }
 
 func Load(

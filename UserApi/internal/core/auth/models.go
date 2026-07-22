@@ -9,10 +9,11 @@ import (
 type ContextKey string
 
 const (
-	UserIDContextKey ContextKey = "user_id"
-	RoleContextKey   ContextKey = "role"
-	DeviceContextKey ContextKey = "device"
-	JTIContextKey    ContextKey = "jti"
+	userIDContextKey ContextKey = "user_id"
+	roleContextKey   ContextKey = "role"
+	deviceContextKey ContextKey = "device"
+	jtiContextKey    ContextKey = "jti"
+	clientIPKey      ContextKey = "client_ip"
 )
 
 type JWTConfig struct {
