@@ -1,0 +1,3 @@
+[submodule "exchange-contract"]
+	path = exchange-contract
+	url = git@github.com:Samurosa/exchange-contract.git
