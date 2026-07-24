@@ -17,7 +17,7 @@ var (
 
 	ErrPasswordEmpty            = status.Error(codes.InvalidArgument, "password empty")
 	ErrPasswordWrongUpperSymbol = status.Error(codes.InvalidArgument, "password wrong, upper symbol not found")
-	ErrPasswordWrongDigitSymbol = status.Error(codes.InvalidArgument, "password wrong, lower symbol not found")
+	ErrPasswordWrongDigitSymbol = status.Error(codes.InvalidArgument, "password wrong, digit not found")
 )
 
 func ValidateUserId(id string) error {

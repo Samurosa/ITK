@@ -1,9 +1,9 @@
 package infrastructure
 
 import (
-	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
 	redisStorage "ITK_Code/m/v2/internal/adapters/outbound/redis"
+	"ITK_Code/m/v2/internal/config"
 	"context"
 
 	"go.uber.org/zap"

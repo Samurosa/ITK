@@ -34,7 +34,7 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, aut
 
 	refreshTokenString, refreshToken, err := generateRefreshToken(
 		j.jwtConfig.Secret,
-		j.jwtConfig.AccessTokenTTL,
+		j.jwtConfig.RefreshTokenTTL,
 		accessToken.Jti,
 	)
 	if err != nil {
@@ -47,7 +47,7 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, aut
 
 		AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
 		AccessCreatedAt:  time.Now(),
-		RefreshExpiresAt: time.Now().Add(j.jwtConfig.AccessTokenTTL),
+		RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
 		RefreshCreatedAt: time.Now(),
 		RefreshTTL:       j.jwtConfig.RefreshTokenTTL,
 	}, accessToken, refreshToken, nil

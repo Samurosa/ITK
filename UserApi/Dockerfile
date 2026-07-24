@@ -14,7 +14,7 @@ COPY --from=build /userserver /userserver
 
 COPY --from=build ./migrations /migrations
 
-COPY --from=build ./config /config
+COPY --from=build internal/config /config
 
 COPY --from=build .env .env
 

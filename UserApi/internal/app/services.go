@@ -1,10 +1,10 @@
 package app
 
 import (
-	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/adapters/outbound/jwt"
 	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
 	"ITK_Code/m/v2/internal/adapters/outbound/redis"
+	"ITK_Code/m/v2/internal/config"
 
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/core/auth"

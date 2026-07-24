@@ -1,8 +1,8 @@
 package main
 
 import (
-	"ITK_Code/m/v2/config"
 	"ITK_Code/m/v2/internal/app"
+	"ITK_Code/m/v2/internal/config"
 	"fmt"
 	"os"
 
@@ -10,10 +10,13 @@ import (
 )
 
 func main() {
-	cfg := config.Load("config/local.yaml")
-
-	err := godotenv.Load(cfg.Env)
+	cfgPath := "intenal/config/local.yaml"
+	cfg, err := config.Load(cfgPath)
 	if err != nil {
+		fmt.Printf("error loading config file path: %s, error: %s", cfgPath, err.Error())
+		return
+	}
+	if err := godotenv.Load(cfg.Env); err != nil {
 		fmt.Printf("error loading .env file path: %s, error: %s", cfg.Env, err.Error())
 		return
 	}
