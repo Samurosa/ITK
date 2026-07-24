@@ -18,8 +18,8 @@ type SessionRepository interface {
 }
 
 type SyncPrimitiveForRedis interface {
-	AcquireRefreshLock(ctx context.Context, userID string) (bool, error)
-	ReleaseRefreshLock(ctx context.Context, userID string) error
+	AcquireRefreshLock(ctx context.Context, jti string) (bool, error)
+	ReleaseRefreshLock(ctx context.Context, jti string) error
 }
 
 type RateLimiting interface {

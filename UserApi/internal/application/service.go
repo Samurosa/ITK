@@ -13,6 +13,8 @@ type User struct {
 
 	userSaver    userCore.Save
 	userProvider userCore.Provider
+
+	sessionStorage authCore.SessionRepository
 }
 
 type Auth struct {
@@ -39,11 +41,13 @@ func NewUserService(
 	log *zap.Logger,
 	userSaver userCore.Save,
 	userProvider userCore.Provider,
+	sessionStorage authCore.SessionRepository,
 ) *User {
 	return &User{
-		log:          log,
-		userSaver:    userSaver,
-		userProvider: userProvider,
+		log:            log,
+		userSaver:      userSaver,
+		userProvider:   userProvider,
+		sessionStorage: sessionStorage,
 	}
 }
 

@@ -108,6 +108,8 @@ func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, curr
 		currency,
 	)
 
+	// ошибка на проблемы с сетью
+
 	if err != nil {
 		return wallet.Balance{}, err
 	}

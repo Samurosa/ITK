@@ -1,6 +1,8 @@
-package user
+package grps
 
 import (
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -16,20 +18,20 @@ func (s *ServerApi) Registration(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := ValidateRegistration(req); err != nil {
+	if err := validate.Registration(req); err != nil {
 		return nil, err
 	}
 
-	if err := ValidatePassword(req.GetPassword()); err != nil {
+	if err := validate.Password(req.GetPassword()); err != nil {
 		return nil, err
 	}
 
 	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.RegisterUserResponse{
@@ -46,20 +48,20 @@ func (s *ServerApi) Login(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := ValidateLogin(req); err != nil {
+	if err := validate.Login(req); err != nil {
 		return nil, err
 	}
 
 	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
 	if err != nil {
 		s.log.Error("failed to login", zap.Error(err))
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
-	return ToProtoTokens(tokens), nil
+	return mapper.ToProtoTokens(tokens), nil
 }
 
 func (s *ServerApi) Logout(
@@ -70,12 +72,12 @@ func (s *ServerApi) Logout(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.LogoutResponse{
@@ -92,12 +94,12 @@ func (s *ServerApi) LogoutAllDevices(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.LogoutResponse{
@@ -114,12 +116,12 @@ func (s *ServerApi) RefreshToken(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
-	return ToProtoTokens(tokens), nil
+	return mapper.ToProtoTokens(tokens), nil
 }

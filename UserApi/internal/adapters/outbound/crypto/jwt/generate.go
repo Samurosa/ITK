@@ -17,8 +17,8 @@ func generateRefreshToken(
 ) (string, auth.RefreshTokenParse, error) {
 
 	claimsRefreshToken := auth.RefreshTokenParse{
-		AccessTokenJti: jti,
-		Jti:            uuid.NewString(),
+		AccessTokenJTI:  jti,
+		RefreshTokenJTI: uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTokenTTL)),
 		},

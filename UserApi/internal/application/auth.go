@@ -1,7 +1,7 @@
 package application
 
 import (
-	hash2 "ITK_Code/m/v2/internal/adapters/outbound/hash"
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -29,6 +29,7 @@ func (a *Auth) Registration(ctx context.Context,
 		log.Error("Failed to get user ip from context", zap.Error(err))
 		return "", time.Time{}, auth.ErrInvalidContext
 	}
+	log.Info("got user IP from context")
 
 	allowed, err := a.rateLimiting.Allow(ctx, ip)
 	if err != nil {
@@ -36,15 +37,17 @@ func (a *Auth) Registration(ctx context.Context,
 		return "", time.Time{}, auth.ErrTooManyRequests
 	}
 	if !allowed {
-		log.Error("Rate limiting is not allowed")
+		log.Error("Rate limiting is not allowed", zap.String("ip", ip))
 		return "", time.Time{}, auth.ErrTooManyRequests
 	}
+	log.Info("validate rate limiting")
 
-	passHash, err := hash2.GeneratePasswordHash(password)
+	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return "", time.Time{}, user.ErrPassGenHash
 	}
+	log.Info("generate password hash", zap.String("id", ip))
 
 	newUser := user.User{
 		Email:        email,
@@ -78,31 +81,29 @@ func (a *Auth) Login(ctx context.Context,
 	error,
 ) {
 	log := a.log.Named("login")
-	log.Info("searching user with email", zap.String("email", email))
 
 	gotUser, err := a.userProvider.GetByEmail(ctx, email)
 	if err != nil {
 		log.Error("error getting user by email", zap.String("email", email), zap.Error(err))
 		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
+	log.Info("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
-	err = hash2.VerifyPasswordHash(password, gotUser.PasswordHash)
+	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrInvalidLoginCredentials
 	}
+	log.Info("verify password passed", zap.String("id", gotUser.ID))
 
-	log.Info("create token")
-	tokens, accessToken, refreshToken, err := a.tokenManager.Generate(gotUser, deviceId)
+	tokens, accessToken, _, err := a.tokenManager.Generate(gotUser, deviceId)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return auth.TokensModel{}, err
 	}
-	_ = refreshToken
+	log.Info("generate tokens for user", zap.String("id", gotUser.ID))
 
-	tokenHash := hash2.GenerateHashSHA256(tokens.RefreshToken)
-
-	log.Info("session info save")
+	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
 	session := auth.SessionModel{
 		UserID:           gotUser.ID,
 		DeviceID:         deviceId,
@@ -117,6 +118,7 @@ func (a *Auth) Login(ctx context.Context,
 		log.Error("error creating session", zap.Error(err))
 		return auth.TokensModel{}, err
 	}
+	log.Info("session created", zap.String("id", gotUser.ID))
 
 	return tokens, nil
 }
@@ -135,27 +137,31 @@ func (a *Auth) Logout(ctx context.Context,
 		log.Error("error getting jti from context", zap.Error(err))
 		return false, time.Time{}, auth.ErrInvalidContext
 	}
+	log.Info("got token jti from context")
 
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jtiFromContext)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, auth.ErrSessionNotFound
 	}
+	log.Info("got session", zap.String("id", sessionInfo.UserID))
 
-	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return false, time.Time{}, auth.ErrNoAccess
 	}
+	log.Info("verify password passed", zap.String("id", sessionInfo.UserID))
 
 	err = a.sessionStorage.DeleteByJTI(ctx, jtiFromContext, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
 		return false, time.Time{}, auth.ErrSessionNotFound
 	}
+	log.Info("session deleted", zap.String("id", sessionInfo.UserID))
 
 	return true, time.Now(), nil
 }
@@ -174,27 +180,31 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		log.Error("error getting user id by context", zap.Error(err))
 		return false, time.Time{}, auth.ErrInvalidContext
 	}
+	log.Info("got token jti from context")
 
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, auth.Unauthorized
 	}
+	log.Info("got session", zap.String("id", sessionInfo.UserID))
 
-	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return false, time.Time{}, auth.ErrNoAccess
 	}
+	log.Info("verify password passed", zap.String("id", sessionInfo.UserID))
 
 	err = a.sessionStorage.DeleteByUser(ctx, sessionInfo.UserID)
 	if err != nil {
 		log.Error("error deleting sessions", zap.Error(err))
 		return false, time.Time{}, err
 	}
+	log.Info("user sessions deleted", zap.String("id", sessionInfo.UserID))
 
 	return true, time.Now(), nil
 }
@@ -213,34 +223,28 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		log.Error("error parsing refresh token", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrInvalidToken
 	}
+	log.Info("parsed refresh token is successful")
 
-	if claims.ExpiresAt.Before(time.Now()) {
-		log.Error("token expired")
-		return auth.TokensModel{}, auth.ErrRefreshExpired
-	}
-
-	storedJTI := claims.AccessTokenJti
-
+	storedJTI := claims.AccessTokenJTI
 	//синхронизация
 	ok, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
 	if err != nil {
 		log.Error("error acquiring refresh lock", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrSyncRedis
 	}
-
 	if !ok {
 		log.Error("generate tokens processing", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrGenerateTokenProcessing
 	}
+	log.Info("acquiring refresh lock success")
 
 	defer func() {
-
 		releaseCtx, cancel := context.WithTimeout(
 			context.Background(),
 			time.Second,
 		)
-
 		defer cancel()
+		defer log.Info("released refresh lock success")
 
 		err = a.syncPrimitiveForRedis.ReleaseRefreshLock(
 			releaseCtx,
@@ -253,42 +257,35 @@ func (a *Auth) RefreshToken(ctx context.Context,
 
 	}()
 
-	//поиск сессии
-	log.Info("searching session with jti", zap.String("jti", storedJTI))
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, storedJTI)
 	if err != nil {
 		log.Error("error getting session", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrSessionNotFound
 	}
+	log.Info("got session", zap.String("id", sessionInfo.UserID))
 
 	userID := sessionInfo.UserID
-
-	log.Info("searching user with db", zap.String("userId", userID))
 	gotUser, err := a.userProvider.Get(ctx, userID)
 	if err != nil {
 		log.Error("error getting user by id", zap.Error(err))
 		return auth.TokensModel{}, user.ErrUserNotFound
 	}
+	log.Info("got user from session info", zap.String("id", userID))
 
-	log.Info("comparing refresh token")
-	if err = hash2.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
-		log.Error("error comparing refresh token",
-			zap.Error(err),
-			zap.String("refreshToken", hash2.GenerateHashSHA256(refreshToken)),
-			zap.String("storedHash", sessionInfo.RefreshTokenHash),
-		)
+	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+		log.Error("error comparing refresh token", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrNoAccess
 	}
+	log.Info("verify password passed", zap.String("id", sessionInfo.UserID))
 
-	log.Info("generating new tokens")
 	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrGenerateToken
 	}
+	log.Info("generated new tokens", zap.String("id", sessionInfo.UserID))
 
-	tokenHash := hash2.GenerateHashSHA256(newTokens.RefreshToken)
-
+	tokenHash := hash.GenerateHashSHA256(newTokens.RefreshToken)
 	newSessionInfo := auth.SessionModel{
 		UserID:           gotUser.ID,
 		DeviceID:         sessionInfo.DeviceID,
@@ -298,12 +295,12 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		CreatedAt:        newTokens.RefreshCreatedAt,
 	}
 
-	log.Info("session info update")
 	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
 		return auth.TokensModel{}, auth.ErrGenerateToken
 	}
+	log.Info("session updated", zap.String("id", sessionInfo.UserID))
 
 	return newTokens, nil
 }

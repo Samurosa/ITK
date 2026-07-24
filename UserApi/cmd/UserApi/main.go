@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	cfgPath := "intenal/config/local.yaml"
+	cfgPath := "./internal/config/local.yaml"
 	cfg, err := config.Load(cfgPath)
 	if err != nil {
 		fmt.Printf("error loading config file path: %s, error: %s", cfgPath, err.Error())

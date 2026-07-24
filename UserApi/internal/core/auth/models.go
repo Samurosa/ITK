@@ -55,8 +55,8 @@ type AccessTokenParse struct {
 }
 
 type RefreshTokenParse struct {
-	AccessTokenJti string
-	Jti            string
+	AccessTokenJTI  string
+	RefreshTokenJTI string
 
 	jwt.RegisteredClaims
 }
