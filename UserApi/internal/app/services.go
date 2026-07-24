@@ -1,12 +1,11 @@
 package app
 
 import (
-	"ITK_Code/m/v2/config"
-	"ITK_Code/m/v2/internal/adapters/outbound/jwt"
-	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
-	"ITK_Code/m/v2/internal/adapters/outbound/redis"
-
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
 	"ITK_Code/m/v2/internal/application"
+	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
@@ -46,6 +45,7 @@ func NewServices(log *zap.Logger,
 	userService := application.NewUserService(log,
 		userStorage,
 		userStorage,
+		redisStorage,
 	)
 
 	authService := application.NewAuthService(log,

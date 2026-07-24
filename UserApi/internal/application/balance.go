@@ -60,12 +60,6 @@ func (w *Wallet) GetBalances(ctx context.Context,
 	}
 	log.Info("user id from context", zap.String("id", id))
 
-	if _, err = w.userProvider.Get(ctx, id); err != nil {
-		log.Error("failed to get balance", zap.String("id", id), zap.Error(err))
-		return []wallet.Balance{}, user.ErrUserNotFound
-	}
-	log.Info("health check user successful")
-
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
 		log.Error("failed to get balances", zap.String("id", id), zap.Error(err))

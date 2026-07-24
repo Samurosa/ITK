@@ -1,6 +1,8 @@
-package user
+package grps
 
 import (
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -17,14 +19,14 @@ func (s *ServerApi) GetUser(
 	_ = req
 	user, err := s.user.GetUser(ctx)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.UserInfoResponse{
 		UserId:    user.ID,
 		Name:      user.Name,
 		Email:     user.Email,
-		Role:      ToProtoRole(user.Role),
+		Role:      mapper.ToProtoRole(user.Role),
 		CreatedAt: timestamppb.New(user.CreateTime),
 		UpdatedAt: timestamppb.New(user.UpdateTime),
 	}, nil
@@ -38,7 +40,7 @@ func (s *ServerApi) UpdateUserInfo(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	name := ""
@@ -56,7 +58,7 @@ func (s *ServerApi) UpdateUserInfo(
 		email,
 	)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.UpdateUserInfoResponse{
@@ -73,12 +75,12 @@ func (s *ServerApi) DeleteUser(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	success, deletedUserAt, err := s.user.DeleteUser(ctx)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 	return &pb.DeleteUserResponse{
 		Success:       success,
@@ -93,10 +95,10 @@ func (s *ServerApi) ChangePassword(
 	*pb.ChangeUserResponse,
 	error) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := ValidatePassword(req.NewPassword); err != nil {
+	if err := validate.Password(req.NewPassword); err != nil {
 		return nil, err
 	}
 
@@ -105,7 +107,7 @@ func (s *ServerApi) ChangePassword(
 		req.NewPassword,
 	)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 	return &pb.ChangeUserResponse{
 		Success:               isSuccess,

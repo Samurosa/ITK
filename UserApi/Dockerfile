@@ -3,7 +3,7 @@ WORKDIR /
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -o /userserver ./cmd/user/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /userserver ./cmd/UserApi/main.go
 
 
 FROM alpine:3.18
@@ -14,7 +14,7 @@ COPY --from=build /userserver /userserver
 
 COPY --from=build ./migrations /migrations
 
-COPY --from=build ./config /config
+COPY --from=build ./internal/config /internal/config
 
 COPY --from=build .env .env
 

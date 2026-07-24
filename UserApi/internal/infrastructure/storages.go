@@ -1,9 +1,9 @@
 package infrastructure
 
 import (
-	"ITK_Code/m/v2/config"
-	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
-	redisStorage "ITK_Code/m/v2/internal/adapters/outbound/redis"
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
+	"ITK_Code/m/v2/internal/config"
 	"context"
 
 	"go.uber.org/zap"
@@ -11,7 +11,7 @@ import (
 
 type Storages struct {
 	Postgres *postgres.Storage
-	Redis    *redisStorage.Storage
+	Redis    *redis.Storage
 }
 
 func NewStorages(ctx context.Context,
@@ -36,13 +36,13 @@ func NewStorages(ctx context.Context,
 
 	log.Named("Redis infrastructure")
 
-	redisClient, err := redisStorage.NewRedisClient(ctx, log, cfg.Redis)
+	redisClient, err := redis.NewRedisClient(ctx, log, cfg.Redis)
 	if err != nil {
 		log.Error("Error creating redis client", zap.Error(err))
 		return nil, err
 	}
 
-	storage := redisStorage.NewStorage(redisClient)
+	storage := redis.NewStorage(redisClient)
 
 	return &Storages{
 		Postgres: postgresStorage,

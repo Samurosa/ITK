@@ -241,13 +241,8 @@ func (s *Storage) deleteFromRedisByUser(
 
 	pipe := s.client.TxPipeline()
 
-	for _, tokenJTI := range tokensJTI {
-		if err = pipe.Del(
-			ctx,
-			tokenJTI,
-		).Err(); err != nil {
-			return err
-		}
+	if err := pipe.Unlink(ctx, tokensJTI...).Err(); err != nil {
+		return err
 	}
 
 	if err = pipe.Del(ctx, key).Err(); err != nil {

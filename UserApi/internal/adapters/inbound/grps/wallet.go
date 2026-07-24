@@ -1,6 +1,8 @@
-package user
+package grps
 
 import (
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -14,30 +16,26 @@ func (s *ServerApi) Deposit(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := ValidateUserId(req.UserId); err != nil {
-		return nil, ToGRPC(err)
+	if err := validate.Deposit(req); err != nil {
+		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := ValidateDepositRequest(req); err != nil {
-		return nil, ToGRPC(err)
-	}
-
-	amount, err := ToProtoMoney(req.Amount)
+	amount, err := mapper.ToProtoMoney(req.Amount)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.DepositResponse{
 		Success: success,
-		Balance: ToProtoBalance(balances),
+		Balance: mapper.ToProtoBalance(balances),
 	}, nil
 }
 
@@ -49,14 +47,14 @@ func (s *ServerApi) GetBalances(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 
 	balancesResponse, err := s.wallet.GetBalances(ctx)
 	if err != nil {
-		return nil, ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 	return &pb.UserBalancesInfoResponse{
-		Balances: ToProtoBalances(balancesResponse),
+		Balances: mapper.ToProtoBalances(balancesResponse),
 	}, nil
 }

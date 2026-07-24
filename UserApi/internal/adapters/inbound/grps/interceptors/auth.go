@@ -4,7 +4,6 @@ import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -56,11 +55,6 @@ func AuthInterceptor(
 		role := claims.Role
 		deviceID := claims.Device
 		jti := claims.Jti
-
-		if claims.RegisteredClaims.ExpiresAt.Before(time.Now()) {
-			log.Error("invalid token expired")
-			return nil, status.Error(codes.Unauthenticated, "token expired")
-		}
 
 		if _, err := sessions.GetByJTI(ctx, jti); err != nil {
 			log.Error("invalid token", zap.Error(err))

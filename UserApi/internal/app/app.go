@@ -1,7 +1,7 @@
 package app
 
 import (
-	"ITK_Code/m/v2/config"
+	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/infrastructure"
 	"os"
 	"os/signal"

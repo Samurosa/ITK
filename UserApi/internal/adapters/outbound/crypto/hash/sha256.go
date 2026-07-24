@@ -2,9 +2,9 @@ package hash
 
 import (
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
-	"strings"
 )
 
 var (
@@ -20,9 +20,10 @@ func GenerateHashSHA256(value string) string {
 
 func CompareHashSHA256(value string, hash string) error {
 	currentValue := GenerateHashSHA256(value)
-	isCompareHash := strings.Compare(currentValue, hash)
-	if isCompareHash != 0 {
+
+	if subtle.ConstantTimeCompare([]byte(currentValue), []byte(hash)) != 1 {
 		return ErrHashMissMatch
 	}
+
 	return nil
 }

@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/hash"
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -54,8 +54,14 @@ func (u *User) DeleteUser(ctx context.Context,
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return false, time.Time{}, user.ErrUserNotFound
 	}
-
 	log.Info("user deleted", zap.String("id", id))
+
+	err = u.sessionStorage.DeleteByUser(ctx, id)
+	if err != nil {
+		log.Error("session not found", zap.String("id", id), zap.Error(err))
+		return false, time.Time{}, user.ErrUserNotFound
+	}
+	log.Info("user sessions deleted", zap.String("id", id))
 
 	return true, time.Now(), nil
 }

@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"ITK_Code/m/v2/config"
+	"ITK_Code/m/v2/internal/config"
 	"context"
 	"time"
 

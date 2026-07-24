@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"time"
 
@@ -48,17 +47,17 @@ type Limiter struct {
 
 func Load(
 	configPath string,
-) *Config {
+) (*Config, error) {
 	data, err := os.ReadFile(configPath)
 	if err != nil {
-		log.Fatal("error read config: ", err)
+		return nil, err
 	}
 
 	var cfg Config
 
 	err = yaml.Unmarshal(data, &cfg)
 	if err != nil {
-		log.Fatal("error unmarshal config: ", err)
+		return nil, err
 	}
-	return &cfg
+	return &cfg, nil
 }

@@ -1,4 +1,4 @@
-package user
+package grps
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
