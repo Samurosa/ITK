@@ -1,21 +1,24 @@
 package wallet
 
-import "context"
+import (
+	"ITK_Code/m/v2/internal/core/dto"
+	"context"
+)
 
 type Service interface {
 	Deposit(ctx context.Context,
 		id string,
 		asset string,
-		amount Money,
+		amount dto.Money,
 	) (
 		success bool,
-		balance Balance,
+		balance dto.Balance,
 		err error,
 	)
 
 	GetBalances(ctx context.Context,
 	) (
-		[]Balance,
+		[]dto.Balance,
 		error,
 	)
 }

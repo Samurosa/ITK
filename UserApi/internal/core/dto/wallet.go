@@ -1,4 +1,4 @@
-package wallet
+package dto
 
 import (
 	"github.com/shopspring/decimal"

@@ -1,7 +1,8 @@
 package postgres
 
 import (
-	userCore "ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/dto"
+	userCore "ITK_Code/m/v2/internal/core/errors"
 	"context"
 	"errors"
 	"time"
@@ -21,7 +22,7 @@ func NewUserStorage(pool *pgxpool.Pool) *UserRepository {
 }
 
 func (r *UserRepository) SaveUser(ctx context.Context,
-	user userCore.User,
+	user dto.User,
 ) (
 	string,
 	error,
@@ -71,7 +72,7 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 func (r *UserRepository) Get(ctx context.Context,
 	uid string,
 ) (
-	userCore.User,
+	dto.User,
 	error,
 ) {
 
@@ -89,7 +90,7 @@ func (r *UserRepository) Get(ctx context.Context,
 	AND deleted_at IS NULL; 
 	`
 
-	var userModel userCore.User
+	var userModel dto.User
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -106,7 +107,7 @@ func (r *UserRepository) Get(ctx context.Context,
 	)
 
 	if err != nil {
-		return userCore.User{}, err
+		return dto.User{}, err
 	}
 
 	return userModel, nil
@@ -115,7 +116,7 @@ func (r *UserRepository) Get(ctx context.Context,
 func (r *UserRepository) GetByEmail(ctx context.Context,
 	email string,
 ) (
-	userCore.User,
+	dto.User,
 	error,
 ) {
 
@@ -133,7 +134,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	AND deleted_at IS NULL; 
 	`
 
-	var userModel userCore.User
+	var userModel dto.User
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -150,13 +151,13 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	)
 
 	if err != nil {
-		return userCore.User{}, err
+		return dto.User{}, err
 	}
 
 	return userModel, nil
 }
 
-func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) (bool, error) {
+func (r *UserRepository) Update(ctx context.Context, userID string, update dto.UpdateUser) (bool, error) {
 
 	query := `
 		UPDATE users
@@ -194,7 +195,7 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 	return true, nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) (bool, error) {
+func (r *UserRepository) UpdatePassword(ctx context.Context, current dto.User, newPass string) (bool, error) {
 
 	if newPass == "" {
 		return false, errors.New("password hash is empty")
@@ -271,7 +272,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		AND deleted_at IS NULL; 
 	`
 
-	var role userCore.Role
+	var role dto.Role
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -283,5 +284,5 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		return false, err
 	}
 
-	return role == userCore.AdminRole, nil
+	return role == dto.AdminRole, nil
 }

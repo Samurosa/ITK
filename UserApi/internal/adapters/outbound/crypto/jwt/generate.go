@@ -1,8 +1,8 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -14,9 +14,9 @@ func generateRefreshToken(
 	secret string,
 	refreshTokenTTL time.Duration,
 	jti string,
-) (string, auth.RefreshTokenParse, error) {
+) (string, dto.RefreshTokenParse, error) {
 
-	claimsRefreshToken := auth.RefreshTokenParse{
+	claimsRefreshToken := dto.RefreshTokenParse{
 		AccessTokenJTI:  jti,
 		RefreshTokenJTI: uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -28,7 +28,7 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", auth.RefreshTokenParse{}, auth.ErrGenerateToken
+		return "", dto.RefreshTokenParse{}, errors.ErrGenerateToken
 	}
 
 	return refreshTokenString, claimsRefreshToken, nil
@@ -37,13 +37,13 @@ func generateRefreshToken(
 func generateAccessToken(
 	secret string,
 	accessTokenTTL time.Duration,
-	user user.User,
+	user dto.User,
 	deviceId string,
-) (string, auth.AccessTokenParse, error) {
+) (string, dto.AccessTokenParse, error) {
 
 	tokenID := uuid.NewString()
 
-	claimsAccessToken := auth.AccessTokenParse{
+	claimsAccessToken := dto.AccessTokenParse{
 		UserID: user.ID,
 		Role:   string(user.Role),
 		Device: deviceId,
@@ -57,39 +57,39 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", auth.AccessTokenParse{}, auth.ErrGenerateToken
+		return "", dto.AccessTokenParse{}, errors.ErrGenerateToken
 	}
 
 	return accessTokenString, claimsAccessToken, nil
 }
 
-func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*auth.AccessTokenParse, error) {
+func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*dto.AccessTokenParse, error) {
 
 	if !token.Valid {
 		log.Error("token is not valid")
-		return &auth.AccessTokenParse{}, auth.ErrInvalidToken
+		return &dto.AccessTokenParse{}, errors.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*auth.AccessTokenParse)
+	claims, ok := token.Claims.(*dto.AccessTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
-		return &auth.AccessTokenParse{}, auth.ErrInvalidToken
+		return &dto.AccessTokenParse{}, errors.ErrInvalidToken
 	}
 
 	return claims, nil
 }
 
-func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*auth.RefreshTokenParse, error) {
+func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*dto.RefreshTokenParse, error) {
 
 	if !token.Valid {
 		log.Error("token is not valid")
-		return &auth.RefreshTokenParse{}, auth.ErrInvalidToken
+		return &dto.RefreshTokenParse{}, errors.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*auth.RefreshTokenParse)
+	claims, ok := token.Claims.(*dto.RefreshTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
-		return &auth.RefreshTokenParse{}, auth.ErrInvalidToken
+		return &dto.RefreshTokenParse{}, errors.ErrInvalidToken
 	}
 
 	return claims, nil

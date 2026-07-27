@@ -1,7 +1,7 @@
 package redis
 
 import (
-	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"errors"
 	"reflect"
@@ -11,7 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-func (s *Storage) Create(ctx context.Context, jti string, sessionModel auth.SessionModel) error {
+func (s *Storage) Create(ctx context.Context, jti string, sessionModel dto.SessionModel) error {
 
 	if err := s.toRedisSave(ctx, jti, &sessionModel); err != nil {
 		return err
@@ -20,16 +20,16 @@ func (s *Storage) Create(ctx context.Context, jti string, sessionModel auth.Sess
 	return nil
 }
 
-func (s *Storage) GetByJTI(ctx context.Context, jti string) (auth.SessionModel, error) {
+func (s *Storage) GetByJTI(ctx context.Context, jti string) (dto.SessionModel, error) {
 	session, err := s.fromRedisByJTI(ctx, jti)
 	if err != nil {
-		return auth.SessionModel{}, err
+		return dto.SessionModel{}, err
 	}
 
 	return session, nil
 }
 
-func (s *Storage) Update(ctx context.Context, storedJTI string, jti string, sessionModel auth.SessionModel) error {
+func (s *Storage) Update(ctx context.Context, storedJTI string, jti string, sessionModel dto.SessionModel) error {
 	if err := s.toRedisUpdate(ctx, storedJTI, jti, &sessionModel); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (s *Storage) DeleteByUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (s *Storage) toRedisSave(ctx context.Context, jti string, value *auth.SessionModel) error {
+func (s *Storage) toRedisSave(ctx context.Context, jti string, value *dto.SessionModel) error {
 	key := "session:" + jti
 
 	val := reflect.ValueOf(value).Elem()
@@ -90,7 +90,7 @@ func (s *Storage) toRedisSave(ctx context.Context, jti string, value *auth.Sessi
 	return nil
 }
 
-func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionModel, error) {
+func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (dto.SessionModel, error) {
 	key = "session:" + key
 
 	data, err := s.client.HGetAll(
@@ -99,11 +99,11 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionM
 	).Result()
 
 	if err != nil {
-		return auth.SessionModel{}, err
+		return dto.SessionModel{}, err
 	}
 
 	if len(data) == 0 {
-		return auth.SessionModel{}, redis.Nil
+		return dto.SessionModel{}, redis.Nil
 	}
 
 	expiresAt, err := time.Parse(
@@ -111,7 +111,7 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionM
 		data["expires_at"],
 	)
 	if err != nil {
-		return auth.SessionModel{}, err
+		return dto.SessionModel{}, err
 	}
 
 	createsAt, err := time.Parse(
@@ -119,17 +119,17 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionM
 		data["created_at"],
 	)
 	if err != nil {
-		return auth.SessionModel{}, err
+		return dto.SessionModel{}, err
 	}
 
 	ns, err := strconv.ParseInt(data["ttl"], 10, 64)
 	if err != nil {
-		return auth.SessionModel{}, err
+		return dto.SessionModel{}, err
 	}
 
 	duration := time.Duration(ns)
 
-	return auth.SessionModel{
+	return dto.SessionModel{
 		UserID:           data["user_id"],
 		DeviceID:         data["device_id"],
 		RefreshTokenHash: data["refresh_token_hash"],
@@ -139,7 +139,7 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (auth.SessionM
 	}, nil
 }
 
-func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti string, value *auth.SessionModel) error {
+func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti string, value *dto.SessionModel) error {
 	key := "session:" + jti
 
 	val := reflect.ValueOf(value).Elem()

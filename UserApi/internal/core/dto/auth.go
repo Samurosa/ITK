@@ -1,4 +1,4 @@
-package auth
+package dto
 
 import (
 	"time"
@@ -9,11 +9,11 @@ import (
 type ContextKey string
 
 const (
-	userIDContextKey ContextKey = "user_id"
-	roleContextKey   ContextKey = "role"
-	deviceContextKey ContextKey = "device"
-	jtiContextKey    ContextKey = "jti"
-	clientIPKey      ContextKey = "client_ip"
+	UserIDContextKey ContextKey = "user_id"
+	RoleContextKey   ContextKey = "role"
+	DeviceContextKey ContextKey = "device"
+	JtiContextKey    ContextKey = "jti"
+	ClientIPKey      ContextKey = "client_ip"
 )
 
 type JWTConfig struct {

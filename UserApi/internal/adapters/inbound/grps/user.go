@@ -6,6 +6,8 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -16,7 +18,10 @@ func (s *ServerApi) GetUser(
 	*pb.UserInfoResponse,
 	error,
 ) {
-	_ = req
+	if err := req.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
+	}
+
 	user, err := s.user.GetUser(ctx)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
@@ -40,7 +45,7 @@ func (s *ServerApi) UpdateUserInfo(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	name := ""
@@ -75,7 +80,7 @@ func (s *ServerApi) DeleteUser(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	success, deletedUserAt, err := s.user.DeleteUser(ctx)
@@ -95,7 +100,7 @@ func (s *ServerApi) ChangePassword(
 	*pb.ChangeUserResponse,
 	error) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	if err := validate.Password(req.NewPassword); err != nil {

@@ -1,7 +1,8 @@
 package postgres
 
 import (
-	"ITK_Code/m/v2/internal/core/wallet"
+	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +18,7 @@ func NewBalanceStorage(pool *pgxpool.Pool) *BalanceRepository {
 	}
 }
 
-func (b *BalanceRepository) Create(ctx context.Context, userID string, currency string) (wallet.Balance, error) {
+func (b *BalanceRepository) Create(ctx context.Context, userID string, currency string) (dto.Balance, error) {
 
 	query := `
 		INSERT INTO balances
@@ -31,7 +32,7 @@ func (b *BalanceRepository) Create(ctx context.Context, userID string, currency 
 		RETURNING user_id, asset, available, locked
 	`
 
-	var balance wallet.Balance
+	var balance dto.Balance
 
 	err := b.pool.QueryRow(
 		ctx,
@@ -48,13 +49,13 @@ func (b *BalanceRepository) Create(ctx context.Context, userID string, currency 
 	)
 
 	if err != nil {
-		return wallet.Balance{}, err
+		return dto.Balance{}, err
 	}
 
 	return balance, nil
 }
 
-func (b *BalanceRepository) Get(ctx context.Context, userID string, currency string) (wallet.Balance, error) {
+func (b *BalanceRepository) Get(ctx context.Context, userID string, currency string) (dto.Balance, error) {
 
 	query := `
 		SELECT
@@ -67,7 +68,7 @@ func (b *BalanceRepository) Get(ctx context.Context, userID string, currency str
 		AND asset=$2
 	`
 
-	var balance wallet.Balance
+	var balance dto.Balance
 
 	err := b.pool.QueryRow(
 		ctx,
@@ -82,13 +83,13 @@ func (b *BalanceRepository) Get(ctx context.Context, userID string, currency str
 	)
 
 	if err != nil {
-		return wallet.Balance{}, err
+		return dto.Balance{}, err
 	}
 
 	return balance, nil
 }
 
-func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, currency string) (wallet.Balance, error) {
+func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, currency string) (dto.Balance, error) {
 
 	query := `
 		INSERT INTO balances
@@ -111,7 +112,7 @@ func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, curr
 	// ошибка на проблемы с сетью
 
 	if err != nil {
-		return wallet.Balance{}, err
+		return dto.Balance{}, err
 	}
 
 	return b.Get(
@@ -121,7 +122,7 @@ func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, curr
 	)
 }
 
-func (b *BalanceRepository) Save(ctx context.Context, balance wallet.Balance) error {
+func (b *BalanceRepository) Save(ctx context.Context, balance dto.Balance) error {
 
 	query := `
 		UPDATE balances
@@ -146,13 +147,13 @@ func (b *BalanceRepository) Save(ctx context.Context, balance wallet.Balance) er
 	}
 
 	if result.RowsAffected() == 0 {
-		return wallet.ErrBalanceNotFound
+		return errors.ErrBalanceNotFound
 	}
 
 	return nil
 }
 
-func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet.Balance, error) {
+func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]dto.Balance, error) {
 
 	query := `
 		SELECT
@@ -176,11 +177,11 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet
 
 	defer rows.Close()
 
-	result := make([]wallet.Balance, 0)
+	result := make([]dto.Balance, 0)
 
 	for rows.Next() {
 
-		var balance wallet.Balance
+		var balance dto.Balance
 
 		err := rows.Scan(
 			&balance.UserID,

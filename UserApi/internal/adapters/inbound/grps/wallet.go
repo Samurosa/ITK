@@ -6,6 +6,8 @@ import (
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func (s *ServerApi) Deposit(
@@ -16,7 +18,7 @@ func (s *ServerApi) Deposit(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	if err := validate.Deposit(req); err != nil {
@@ -47,7 +49,7 @@ func (s *ServerApi) GetBalances(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	balancesResponse, err := s.wallet.GetBalances(ctx)

@@ -1,9 +1,9 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user"
-	"ITK_Code/m/v2/internal/core/wallet"
+	context2 "ITK_Code/m/v2/internal/adapters/outbound/context"
+	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 
 	"go.uber.org/zap"
@@ -12,24 +12,24 @@ import (
 func (w *Wallet) Deposit(ctx context.Context,
 	id string,
 	asset string,
-	amount wallet.Money,
+	amount dto.Money,
 ) (
 	bool,
-	wallet.Balance,
+	dto.Balance,
 	error,
 ) {
 	log := w.log.Named("Deposit")
 
 	if _, err := w.userProvider.Get(ctx, id); err != nil {
 		log.Error("failed to get balance", zap.String("id", id), zap.Error(err))
-		return false, wallet.Balance{}, user.ErrUserNotFound
+		return false, dto.Balance{}, errors.ErrUserNotFound
 	}
 	log.Info("health check user successful")
 
 	balance, err := w.balanceRepository.GetOrCreate(ctx, id, asset)
 	if err != nil {
 		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(err))
-		return false, wallet.Balance{}, wallet.ErrCreateNewBalance
+		return false, dto.Balance{}, errors.ErrCreateNewBalance
 	}
 	log.Info("balance created", zap.String("id", id))
 
@@ -39,7 +39,7 @@ func (w *Wallet) Deposit(ctx context.Context,
 	err = w.balanceRepository.Save(ctx, newBalance)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
-		return false, wallet.Balance{}, wallet.ErrSaveBalance
+		return false, dto.Balance{}, errors.ErrSaveBalance
 	}
 	log.Info("deposit successful", zap.String("id", id))
 
@@ -48,22 +48,22 @@ func (w *Wallet) Deposit(ctx context.Context,
 
 func (w *Wallet) GetBalances(ctx context.Context,
 ) (
-	[]wallet.Balance,
+	[]dto.Balance,
 	error,
 ) {
 	log := w.log.Named("GetBalances")
 
-	id, err := auth.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return []wallet.Balance{}, auth.ErrInvalidContext
+		return []dto.Balance{}, errors.ErrInvalidContext
 	}
 	log.Info("user id from context", zap.String("id", id))
 
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
 		log.Error("failed to get balances", zap.String("id", id), zap.Error(err))
-		return nil, wallet.ErrBalanceNotFound
+		return nil, errors.ErrBalanceNotFound
 	}
 	log.Info("balances retrieved", zap.Int("count elements in wallet", len(gotBalances)))
 

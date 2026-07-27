@@ -7,6 +7,7 @@ import (
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
 	"ITK_Code/m/v2/internal/infrastructure"
@@ -34,7 +35,7 @@ func NewServices(log *zap.Logger,
 	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
 
 	tokenManager := jwt.NewJWT(log,
-		auth.JWTConfig{
+		dto.JWTConfig{
 			Secret:          secret,
 			AccessTokenTTL:  cfg.TokenTTl.AccessTokenTTL,
 			RefreshTokenTTL: cfg.TokenTTl.RefreshTokenTTL,

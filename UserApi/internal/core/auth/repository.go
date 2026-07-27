@@ -1,16 +1,16 @@
 package auth
 
 import (
-	"ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 )
 
 type SessionRepository interface {
-	Create(ctx context.Context, jti string, SessionModel SessionModel) error
+	Create(ctx context.Context, jti string, SessionModel dto.SessionModel) error
 
-	GetByJTI(ctx context.Context, jti string) (SessionModel, error)
+	GetByJTI(ctx context.Context, jti string) (dto.SessionModel, error)
 
-	Update(ctx context.Context, storedJTI string, jti string, SessionModel SessionModel) error
+	Update(ctx context.Context, storedJTI string, jti string, SessionModel dto.SessionModel) error
 
 	DeleteByJTI(ctx context.Context, jti string, userID string) error
 
@@ -27,8 +27,8 @@ type RateLimiting interface {
 }
 
 type TokenManager interface {
-	Generate(user user.User, deviceID string) (TokensModel, AccessTokenParse, RefreshTokenParse, error)
+	Generate(user dto.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error)
 
-	ParseAccessToken(token string) (AccessTokenParse, error)
-	ParseRefreshToken(refreshToken string) (RefreshTokenParse, error)
+	ParseAccessToken(token string) (dto.AccessTokenParse, error)
+	ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error)
 }

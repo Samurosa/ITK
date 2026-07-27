@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"time"
 )
@@ -21,7 +22,7 @@ type Service interface {
 		password string,
 		deviceId string,
 	) (
-		tokensPairs TokensModel,
+		tokensPairs dto.TokensModel,
 		err error,
 	)
 
@@ -44,7 +45,7 @@ type Service interface {
 	RefreshToken(ctx context.Context,
 		refreshToken string,
 	) (
-		tokensPairs TokensModel,
+		tokensPairs dto.TokensModel,
 		err error,
 	)
 }

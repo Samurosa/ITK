@@ -7,6 +7,8 @@ import (
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -18,7 +20,7 @@ func (s *ServerApi) Registration(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	if err := validate.Registration(req); err != nil {
@@ -48,7 +50,7 @@ func (s *ServerApi) Login(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	if err := validate.Login(req); err != nil {
@@ -72,7 +74,7 @@ func (s *ServerApi) Logout(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken)
@@ -94,7 +96,7 @@ func (s *ServerApi) LogoutAllDevices(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken)
@@ -116,7 +118,7 @@ func (s *ServerApi) RefreshToken(
 	error,
 ) {
 	if err := req.Validate(); err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken)

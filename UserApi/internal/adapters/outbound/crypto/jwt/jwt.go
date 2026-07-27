@@ -1,8 +1,8 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user"
+	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -11,17 +11,17 @@ import (
 
 type Token struct {
 	log       *zap.Logger
-	jwtConfig auth.JWTConfig
+	jwtConfig dto.JWTConfig
 }
 
-func NewJWT(log *zap.Logger, jwtConfig auth.JWTConfig) *Token {
+func NewJWT(log *zap.Logger, jwtConfig dto.JWTConfig) *Token {
 	return &Token{
 		log:       log,
 		jwtConfig: jwtConfig,
 	}
 }
 
-func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, auth.AccessTokenParse, auth.RefreshTokenParse, error) {
+func (j *Token) Generate(user dto.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error) {
 	accessTokenString, accessToken, err := generateAccessToken(
 		j.jwtConfig.Secret,
 		j.jwtConfig.AccessTokenTTL,
@@ -29,7 +29,7 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, aut
 		deviceID,
 	)
 	if err != nil {
-		return auth.TokensModel{}, auth.AccessTokenParse{}, auth.RefreshTokenParse{}, err
+		return dto.TokensModel{}, dto.AccessTokenParse{}, dto.RefreshTokenParse{}, err
 	}
 
 	refreshTokenString, refreshToken, err := generateRefreshToken(
@@ -38,10 +38,10 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, aut
 		accessToken.Jti,
 	)
 	if err != nil {
-		return auth.TokensModel{}, auth.AccessTokenParse{}, auth.RefreshTokenParse{}, err
+		return dto.TokensModel{}, dto.AccessTokenParse{}, dto.RefreshTokenParse{}, err
 	}
 
-	return auth.TokensModel{
+	return dto.TokensModel{
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenString,
 
@@ -53,52 +53,52 @@ func (j *Token) Generate(user user.User, deviceID string) (auth.TokensModel, aut
 	}, accessToken, refreshToken, nil
 }
 
-func (j *Token) ParseAccessToken(accessToken string) (auth.AccessTokenParse, error) {
+func (j *Token) ParseAccessToken(accessToken string) (dto.AccessTokenParse, error) {
 	log := j.log.Named("Parse Access Token")
 	token, err := jwt.ParseWithClaims(
 		accessToken,
-		&auth.AccessTokenParse{},
+		&dto.AccessTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, auth.ErrInvalidToken
+				return nil, errors.ErrInvalidToken
 			}
 			return []byte(j.jwtConfig.Secret), nil
 		},
 	)
 	if err != nil {
 		log.Error("Parse Access Token Error", zap.Error(err))
-		return auth.AccessTokenParse{}, auth.ErrInvalidToken
+		return dto.AccessTokenParse{}, errors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithAccessToken(log, token)
 	if err != nil {
-		return auth.AccessTokenParse{}, err
+		return dto.AccessTokenParse{}, err
 	}
 
 	return *claims, nil
 }
 
-func (j *Token) ParseRefreshToken(refreshToken string) (auth.RefreshTokenParse, error) {
+func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error) {
 	log := j.log.Named("Parse Refresh Token")
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
-		&auth.RefreshTokenParse{},
+		&dto.RefreshTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, auth.ErrInvalidToken
+				return nil, errors.ErrInvalidToken
 			}
 			return []byte(j.jwtConfig.Secret), nil
 		},
 	)
 	if err != nil {
 		log.Error("Parse Refresh Token Error", zap.Error(err))
-		return auth.RefreshTokenParse{}, auth.ErrInvalidToken
+		return dto.RefreshTokenParse{}, errors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithRefreshToken(log, token)
 
 	if err != nil {
-		return auth.RefreshTokenParse{}, err
+		return dto.RefreshTokenParse{}, err
 	}
 
 	return *claims, nil
