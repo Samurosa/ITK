@@ -17,7 +17,7 @@ func (s *Server) CreateSpot(ctx context.Context, req *pb.CreateSpotRequest) (*pb
 
 	reqSpot := mapper.FromProtoCreateSpot(req)
 
-	idSpot, createdTo, err := s.spot.CreateSpot(ctx, reqSpot)
+	idSpot, createdTo, err := s.spot.CreateSpot(ctx, s.log, reqSpot)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -33,7 +33,7 @@ func (s *Server) GetSpot(ctx context.Context, req *pb.GetSpotRequest) (*pb.GetSp
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	spot, err := s.spot.GetSpot(ctx, req.Id)
+	spot, err := s.spot.GetSpot(ctx, s.log, req.Id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -41,12 +41,28 @@ func (s *Server) GetSpot(ctx context.Context, req *pb.GetSpotRequest) (*pb.GetSp
 	return mapper.ToProtoSpot(spot), nil
 }
 
+func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*pb.EnableSpotResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
+	}
+
+	success, enableAt, err := s.spot.EnableSpot(ctx, s.log, req.Id)
+	if err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+
+	return &pb.EnableSpotResponse{
+		Success:      success,
+		EnableSpotAt: timestamppb.New(enableAt),
+	}, nil
+}
+
 func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*pb.DisableSpotResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	success, disableAt, err := s.spot.DisableSpot(ctx, req.Id)
+	success, disableAt, err := s.spot.DisableSpot(ctx, s.log, req.Id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -62,7 +78,7 @@ func (s *Server) ViewMarkets(ctx context.Context, req *pb.ViewMarketsRequest) (*
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	markets, total, totalPages, err := s.market.ViewMarkets(ctx, req.UserRoles, req.Page, req.PageSize)
+	markets, total, totalPages, err := s.market.ViewMarkets(ctx, s.log, req.UserRoles, req.Page, req.PageSize)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -81,7 +97,7 @@ func (s *Server) DescribeMarket(ctx context.Context, req *pb.DescribeMarketReque
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	descriptionMarket, err := s.market.DescribeMarket(ctx, req.SpotId)
+	descriptionMarket, err := s.market.DescribeMarket(ctx, s.log, req.SpotId)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}

@@ -4,6 +4,7 @@ go 1.25.4
 
 require (
 	github.com/Samurosa/exchange-contract v0.2.1
+	github.com/shopspring/decimal v1.4.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.82.1
 	google.golang.org/protobuf v1.36.11
