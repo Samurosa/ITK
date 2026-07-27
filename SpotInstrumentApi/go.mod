@@ -3,7 +3,7 @@ module ITK_Code/m/v2
 go 1.25.4
 
 require (
-	github.com/Samurosa/exchange-contract v0.2.1
+	github.com/Samurosa/exchange-contract v0.2.3
 	github.com/shopspring/decimal v1.4.0
 	go.uber.org/zap v1.28.0
 	google.golang.org/grpc v1.82.1
@@ -16,5 +16,5 @@ require (
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260724162435-b2f20204f0df // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260727163830-6c54dddc4772 // indirect
 )
