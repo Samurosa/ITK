@@ -63,7 +63,7 @@ func (a *GRPCApp) Run() error {
 	}
 
 	a.log.Info(
-		"grpcs server started",
+		"grpcs SpotServer started",
 		zap.Any("port", a.port),
 	)
 
@@ -74,6 +74,6 @@ func (a *GRPCApp) Run() error {
 }
 
 func (a *GRPCApp) Stop() {
-	a.log.Info("GRPC server stopped")
+	a.log.Info("GRPC SpotServer stopped")
 	a.grpcServer.GracefulStop()
 }

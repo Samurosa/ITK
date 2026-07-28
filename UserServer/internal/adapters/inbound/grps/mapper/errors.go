@@ -54,6 +54,6 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Internal, "failed connect to redis")
 
 	default:
-		return status.Error(codes.Internal, "internal server error")
+		return status.Error(codes.Internal, "internal SpotServer error")
 	}
 }
