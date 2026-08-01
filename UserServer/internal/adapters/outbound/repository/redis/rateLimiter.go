@@ -1,21 +1,26 @@
 package redis
 
 import (
+	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/config"
+	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 	"time"
 
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 type Limiter struct {
+	log    *zap.Logger
 	limit  int
 	timer  time.Duration
 	client *redis.Client
 }
 
-func NewLimiter(cfg config.Limiter, client *redis.Client) *Limiter {
+func NewLimiter(log *zap.Logger, cfg config.Limiter, client *redis.Client) *Limiter {
 	return &Limiter{
+		log:    log,
 		limit:  cfg.Limit,
 		timer:  cfg.Timer,
 		client: client,
@@ -24,21 +29,29 @@ func NewLimiter(cfg config.Limiter, client *redis.Client) *Limiter {
 
 func (l *Limiter) Allow(
 	ctx context.Context,
-	key string,
 ) (bool, error) {
+	log := l.log.Named("limiter allow")
 
-	count, err := l.client.Incr(ctx, key).Result()
+	ip, err := requestContext.GetClientIPFromContext(ctx)
+	if err != nil {
+		log.Error("Failed to get user ip from context", zap.Error(err))
+		return false, errors.ErrInvalidContext
+	}
+
+	count, err := l.client.Incr(ctx, ip).Result()
 
 	if err != nil {
 		return false, err
 	}
 
 	if count == 1 {
-		l.client.Expire(
+		if err := l.client.Expire(
 			ctx,
-			key,
+			ip,
 			l.timer,
-		)
+		).Err(); err != nil {
+			return false, err
+		}
 	}
 
 	return count <= int64(l.limit), nil

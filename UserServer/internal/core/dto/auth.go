@@ -6,16 +6,6 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type ContextKey string
-
-const (
-	UserIDContextKey ContextKey = "user_id"
-	RoleContextKey   ContextKey = "role"
-	DeviceContextKey ContextKey = "device"
-	JtiContextKey    ContextKey = "jti"
-	ClientIPKey      ContextKey = "client_ip"
-)
-
 type JWTConfig struct {
 	Secret string
 
@@ -24,14 +14,13 @@ type JWTConfig struct {
 }
 
 type SessionModel struct {
-	UserID   string `redis:"user_id"`
-	DeviceID string `redis:"device_id"`
+	UserID   string
+	DeviceID string
 
-	RefreshTokenHash string `redis:"refresh_token_hash"`
-
-	TTL       time.Duration `redis:"ttl"`
-	ExpiresAt time.Time     `redis:"expires_at"`
-	CreatedAt time.Time     `redis:"created_at"`
+	RefreshTokenHash string
+	TTL              time.Duration
+	ExpiresAt        time.Time
+	CreatedAt        time.Time
 }
 
 type TokensModel struct {
