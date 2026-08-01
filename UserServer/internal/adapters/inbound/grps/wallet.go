@@ -25,7 +25,7 @@ func (s *ServerApi) Deposit(
 		return nil, mapper.ToGRPC(err)
 	}
 
-	amount, err := mapper.ToProtoMoney(req.Amount)
+	amount, err := mapper.WithProtoMoney(req.Amount)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}

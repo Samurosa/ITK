@@ -9,7 +9,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func ToProtoMoney(protoMoney *shared.Money) (dto.Money, error) {
+func WithProtoMoney(protoMoney *shared.Money) (dto.Money, error) {
 	if protoMoney == nil {
 		return dto.Money{}, errors.New("money is nil")
 	}

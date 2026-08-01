@@ -103,6 +103,10 @@ func (s *ServerApi) ChangePassword(
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
+	if err := validate.ComparePasswords(req.GetOldPassword(), req.GetNewPassword()); err != nil {
+		return nil, err
+	}
+
 	if err := validate.Password(req.NewPassword); err != nil {
 		return nil, err
 	}

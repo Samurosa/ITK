@@ -1,16 +1,20 @@
 package validate
 
-import pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+import (
+	"ITK_Code/m/v2/internal/core/errors"
+
+	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+)
 
 func Deposit(req *pb.DepositRequest) error {
 	if req.GetUserId() == "" {
-		return ErrUserIDEmpty
+		return errors.ErrUserIDEmpty
 	}
 	if req.GetAsset() == "" {
-		return ErrAssetEmpty
+		return errors.ErrAssetEmpty
 	}
 	if req.GetAmount().Currency == "" {
-		return ErrAmountEmpty
+		return errors.ErrAmountEmpty
 	}
 
 	return nil
