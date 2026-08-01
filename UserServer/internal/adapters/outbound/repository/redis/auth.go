@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"reflect"
-	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -90,14 +89,10 @@ func (s *Storage) toRedisSave(ctx context.Context, jti string, value *dto.Sessio
 	return nil
 }
 
-func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (dto.SessionModel, error) {
-	key = "session:" + key
+func (s *Storage) fromRedisByJTI(ctx context.Context, jti string) (dto.SessionModel, error) {
+	key := "session:" + jti
 
-	data, err := s.client.HGetAll(
-		ctx,
-		key,
-	).Result()
-
+	data, err := s.client.HGetAll(ctx, key).Result()
 	if err != nil {
 		return dto.SessionModel{}, err
 	}
@@ -107,63 +102,58 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, key string) (dto.SessionMo
 	}
 
 	expiresAt, err := time.Parse(
-		time.RFC3339,
+		time.RFC3339Nano,
 		data["expires_at"],
 	)
 	if err != nil {
 		return dto.SessionModel{}, err
 	}
 
-	createsAt, err := time.Parse(
-		time.RFC3339,
+	createdAt, err := time.Parse(
+		time.RFC3339Nano,
 		data["created_at"],
 	)
 	if err != nil {
 		return dto.SessionModel{}, err
 	}
 
-	ns, err := strconv.ParseInt(data["ttl"], 10, 64)
-	if err != nil {
-		return dto.SessionModel{}, err
-	}
+	ttl := time.Until(expiresAt)
 
-	duration := time.Duration(ns)
+	if ttl <= 0 {
+		return dto.SessionModel{}, redis.Nil
+	}
 
 	return dto.SessionModel{
 		UserID:           data["user_id"],
 		DeviceID:         data["device_id"],
 		RefreshTokenHash: data["refresh_token_hash"],
-		TTL:              duration,
+		TTL:              ttl,
 		ExpiresAt:        expiresAt,
-		CreatedAt:        createsAt,
+		CreatedAt:        createdAt,
 	}, nil
 }
 
-func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti string, value *dto.SessionModel) error {
+func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti string, model *dto.SessionModel) error {
 	key := "session:" + jti
-
-	val := reflect.ValueOf(value).Elem()
-
-	if val.NumField() == 0 {
-		return errors.New("value is empty")
-	}
 
 	setter := func(p redis.Pipeliner) error {
 
-		for i := 0; i < val.NumField(); i++ {
-			field := val.Type().Field(i)
-
-			tag := field.Tag.Get("redis")
-
-			if err := p.HSet(ctx, key, tag, val.Field(i).Interface()).Err(); err != nil {
-				return err
-			}
-
+		fields := map[string]interface{}{
+			"user_id":            model.UserID,
+			"device_id":          model.DeviceID,
+			"refresh_token_hash": model.RefreshTokenHash,
+			"created_at":         model.CreatedAt.UTC().Format(time.RFC3339Nano),
+			"expires_at":         model.ExpiresAt.UTC().Format(time.RFC3339Nano),
 		}
-		if err := p.Expire(ctx, key, value.TTL).Err(); err != nil {
+
+		if err := p.HSet(ctx, key, fields).Err(); err != nil {
 			return err
 		}
-		if err := p.SAdd(ctx, "user:"+value.UserID, "session:"+jti).Err(); err != nil {
+
+		if err := p.Expire(ctx, key, model.TTL).Err(); err != nil {
+			return err
+		}
+		if err := p.SAdd(ctx, "user:"+model.UserID, "session:"+jti).Err(); err != nil {
 			return err
 		}
 
@@ -178,7 +168,7 @@ func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti strin
 
 		if err := p.SRem(
 			ctx,
-			"user:"+value.UserID,
+			"user:"+model.UserID,
 			restoreSession,
 		).Err(); err != nil {
 			return err
