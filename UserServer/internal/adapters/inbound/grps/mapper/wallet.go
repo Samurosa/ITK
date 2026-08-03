@@ -1,7 +1,7 @@
 package mapper
 
 import (
-	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/wallet"
 	"errors"
 
 	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
@@ -9,23 +9,23 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-func WithProtoMoney(protoMoney *shared.Money) (dto.Money, error) {
+func WithProtoMoney(protoMoney *shared.Money) (wallet.Money, error) {
 	if protoMoney == nil {
-		return dto.Money{}, errors.New("money is nil")
+		return wallet.Money{}, errors.New("money is nil")
 	}
 
 	amount, err := decimal.NewFromString(protoMoney.Amount)
 	if err != nil {
-		return dto.Money{}, err
+		return wallet.Money{}, err
 	}
 
-	return dto.Money{
+	return wallet.Money{
 		Currency: protoMoney.Currency,
 		Amount:   amount,
 	}, nil
 }
 
-func ToProtoBalance(balance dto.Balance) *pb.Balance {
+func ToProtoBalance(balance wallet.Balance) *pb.Balance {
 	return &pb.Balance{
 		Asset:     balance.Asset,
 		Available: balance.Available.String(),
@@ -34,7 +34,7 @@ func ToProtoBalance(balance dto.Balance) *pb.Balance {
 }
 
 func ToProtoBalances(
-	balance []dto.Balance,
+	balance []wallet.Balance,
 ) []*pb.Balance {
 	result := make(
 		[]*pb.Balance,

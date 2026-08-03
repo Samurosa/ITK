@@ -3,6 +3,7 @@ package jwt
 import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -37,7 +38,7 @@ func generateRefreshToken(
 func generateAccessToken(
 	secret string,
 	accessTokenTTL time.Duration,
-	user dto.User,
+	user user.User,
 	deviceId string,
 ) (string, dto.AccessTokenParse, error) {
 

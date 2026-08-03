@@ -3,6 +3,7 @@ package jwt
 import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -21,7 +22,7 @@ func NewJWT(log *zap.Logger, jwtConfig dto.JWTConfig) *Token {
 	}
 }
 
-func (j *Token) Generate(user dto.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error) {
+func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error) {
 	accessTokenString, accessToken, err := generateAccessToken(
 		j.jwtConfig.Secret,
 		j.jwtConfig.AccessTokenTTL,

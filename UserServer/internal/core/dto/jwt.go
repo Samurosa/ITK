@@ -13,16 +13,6 @@ type JWTConfig struct {
 	RefreshTokenTTL time.Duration
 }
 
-type SessionModel struct {
-	UserID   string
-	DeviceID string
-
-	RefreshTokenHash string
-	TTL              time.Duration
-	ExpiresAt        time.Time
-	CreatedAt        time.Time
-}
-
 type TokensModel struct {
 	AccessToken  string
 	RefreshToken string

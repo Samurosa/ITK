@@ -1,8 +1,6 @@
 package errors
 
-import (
-	"errors"
-)
+import "errors"
 
 var (
 	ErrUserIDEmpty      = errors.New("user id empty")
@@ -13,9 +11,4 @@ var (
 	ErrAmountEmpty      = errors.New("amount empty")
 	ErrAmountIsZero     = errors.New("amount is zero value")
 	ErrAmountIsNegative = errors.New("amount is negative")
-
-	ErrPasswordEmpty            = errors.New("password empty")
-	ErrPasswordsMatch           = errors.New("new password matches the old password")
-	ErrPasswordWrongUpperSymbol = errors.New("password wrong, upper symbol not found")
-	ErrPasswordWrongDigitSymbol = errors.New("password wrong, digit not found")
 )

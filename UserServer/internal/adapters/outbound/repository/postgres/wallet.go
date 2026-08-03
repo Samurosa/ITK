@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/wallet"
 	"context"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,7 +17,7 @@ func NewBalanceStorage(pool *pgxpool.Pool) *BalanceRepository {
 	}
 }
 
-func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset string, amount dto.Money) (dto.Balance, error) {
+func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset string, amount wallet.Money) (wallet.Balance, error) {
 	query := `
 		INSERT INTO balances (user_id, asset, available, locked) VALUES ($1, $2, $3, 0)
 		ON CONFLICT (user_id, asset)
@@ -25,7 +25,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 		RETURNING id, user_id, asset, available, locked
 	`
 
-	var balance dto.Balance
+	var balance wallet.Balance
 
 	err := b.pool.QueryRow(ctx,
 		query,
@@ -40,13 +40,13 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 		&balance.Locked,
 	)
 	if err != nil {
-		return dto.Balance{}, err
+		return wallet.Balance{}, err
 	}
 
 	return balance, nil
 }
 
-func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]dto.Balance, error) {
+func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet.Balance, error) {
 
 	query := `
 		SELECT id, user_id, asset, available, locked
@@ -66,11 +66,11 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]dto.Ba
 
 	defer rows.Close()
 
-	result := make([]dto.Balance, 0)
+	result := make([]wallet.Balance, 0)
 
 	for rows.Next() {
 
-		var balance dto.Balance
+		var balance wallet.Balance
 
 		err = rows.Scan(
 			&balance.UserID,

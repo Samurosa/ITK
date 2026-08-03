@@ -1,7 +1,6 @@
 package user
 
 import (
-	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"time"
 )
@@ -9,14 +8,14 @@ import (
 type Service interface {
 	GetUser(ctx context.Context,
 	) (
-		user dto.User,
+		user User,
 		err error,
 	)
 
 	GetUserByEmail(ctx context.Context,
 		email string,
 	) (
-		user dto.User,
+		user User,
 		err error,
 	)
 

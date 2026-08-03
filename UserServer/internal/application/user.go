@@ -3,8 +3,9 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
-	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/user"
 	"context"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 func (u *User) GetUser(ctx context.Context,
 ) (
-	dto.User,
+	user.User,
 	error,
 ) {
 	log := u.log.Named("GetUser")
@@ -21,14 +22,14 @@ func (u *User) GetUser(ctx context.Context,
 	id, err := requestContext.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return dto.User{}, errors.ErrInvalidContext
+		return user.User{}, errors.ErrInvalidContext
 	}
 	log.Info("user id from context", zap.String("id", id))
 
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return dto.User{}, errors.ErrUserNotFound
+		return user.User{}, user.ErrUserNotFound
 	}
 	log.Info("got user id:", zap.String("id", id))
 
@@ -53,14 +54,14 @@ func (u *User) DeleteUser(ctx context.Context,
 	err = u.userProvider.Delete(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, errors.ErrUserNotFound
+		return false, time.Time{}, user.ErrUserNotFound
 	}
 	log.Info("user deleted", zap.String("id", id))
 
 	err = u.sessionStorage.DeleteByUser(ctx, id)
 	if err != nil {
 		log.Error("session not found", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, errors.ErrUserNotFound
+		return false, time.Time{}, user.ErrUserNotFound
 	}
 	log.Info("user sessions deleted", zap.String("id", id))
 
@@ -94,7 +95,7 @@ func (u *User) IsAdmin(ctx context.Context,
 func (u *User) GetUserByEmail(ctx context.Context,
 	email string,
 ) (
-	dto.User,
+	user.User,
 	error,
 ) {
 	log := u.log.Named("GetUserByEmail")
@@ -126,7 +127,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 	}
 	log.Info("user id from context", zap.String("id", id))
 
-	updated := dto.UpdateUser{}
+	updated := user.UpdateUser{}
 	if name != "" {
 		updated.Name = &name
 	}
@@ -137,7 +138,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 	success, err := u.userProvider.Update(ctx, id, updated)
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return false, time.Time{}, errors.ErrUpdateUser
+		return false, time.Time{}, user.ErrUpdateUser
 	}
 	log.Info("user updated", zap.String("id", id))
 
@@ -164,14 +165,14 @@ func (u *User) ChangePassword(ctx context.Context,
 	current, err := u.userProvider.Get(ctx, id)
 	if err != nil {
 		log.Error("error getting user", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, errors.ErrUserNotFound
+		return false, time.Time{}, user.ErrUserNotFound
 	}
 	log.Info("health check user successful, got user:", zap.String("id", current.ID))
 
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return false, time.Time{}, errors.ErrIncorrectCredentials
+		return false, time.Time{}, auth.ErrIncorrectCredentials
 	}
 	log.Info("verify password successful")
 
@@ -185,7 +186,7 @@ func (u *User) ChangePassword(ctx context.Context,
 	success, err := u.userProvider.UpdatePassword(ctx, current, string(newPassHash))
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return false, time.Time{}, errors.ErrUpdateUser
+		return false, time.Time{}, user.ErrUpdateUser
 	}
 	log.Info("success updated password", zap.String("id", current.ID))
 

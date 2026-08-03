@@ -1,20 +1,20 @@
 package mapper
 
 import (
-	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/user"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 )
 
-func ToProtoRole(role dto.Role) pb.Role {
+func ToProtoRole(role user.Role) pb.Role {
 	switch role {
-	case dto.UserRole:
+	case user.UserRole:
 		return pb.Role_ROLE_USER
-	case dto.GuestRole:
+	case user.GuestRole:
 		return pb.Role_ROLE_GUEST
-	case dto.PremiumRole:
+	case user.PremiumRole:
 		return pb.Role_ROLE_PREMIUM
-	case dto.AdminRole:
+	case user.AdminRole:
 		return pb.Role_ROLE_ADMIN
 	default:
 		return pb.Role_ROLE_UNSPECIFIED
