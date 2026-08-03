@@ -23,7 +23,7 @@ type SyncPrimitiveForRedis interface {
 }
 
 type RateLimiting interface {
-	Allow(ctx context.Context, userIP string) (bool, error)
+	Allow(ctx context.Context) (bool, error)
 }
 
 type TokenManager interface {

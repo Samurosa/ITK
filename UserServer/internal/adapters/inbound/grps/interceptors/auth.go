@@ -1,7 +1,7 @@
 package interceptors
 
 import (
-	context2 "ITK_Code/m/v2/internal/adapters/outbound/context"
+	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"strings"
@@ -62,10 +62,10 @@ func AuthInterceptor(
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		ctx = context2.WithUserID(ctx, userID)
-		ctx = context2.WithRole(ctx, role)
-		ctx = context2.WithDeviceID(ctx, deviceID)
-		ctx = context2.WithJTI(ctx, jti)
+		ctx = requestContext.WithUserID(ctx, userID)
+		ctx = requestContext.WithRole(ctx, role)
+		ctx = requestContext.WithDeviceID(ctx, deviceID)
+		ctx = requestContext.WithJTI(ctx, jti)
 
 		return handler(ctx, req)
 	}

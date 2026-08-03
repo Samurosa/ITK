@@ -12,7 +12,7 @@ services:
       timeout: 2s
       retries: 10
     ports:
-      - "5432:5432"
+      - "5433:5433"
     volumes:
       - db_data:/var/lib/postgresql/data
 
@@ -22,29 +22,22 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - ./UserServer/migrations/up:/migrations
+      - ./SpotServer/migrations/up:/migrations
     command:
       [
         "-path",
         "/migrations",
         "-database",
-        "postgres://admin:admin@db:5432/db?sslmode=disable",
+        "postgres://admin:admin@db:5433/db?sslmode=disable",
         "up"
       ]
 
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    command: redis-SpotServer --requirepass admin
-    ports:
-      - "6379:6379"
-
-  user-api:
+  spot-server:
     build:
-      context: UserServer
+      context: SpotServer
       dockerfile: Dockerfile
     ports:
-      - "50051:50051"
+      - "50052:50052"
     depends_on:
       migrate:
         condition: service_completed_successfully

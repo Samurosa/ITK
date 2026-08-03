@@ -76,4 +76,5 @@ func (a *GRPCApp) Run() error {
 func (a *GRPCApp) Stop() {
 	a.log.Info("GRPC SpotServer stopped")
 	a.grpcServer.GracefulStop()
+	//добавить таймаут
 }

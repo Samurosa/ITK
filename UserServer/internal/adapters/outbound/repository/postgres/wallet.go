@@ -89,6 +89,8 @@ func (b *BalanceRepository) Get(ctx context.Context, userID string, currency str
 	return balance, nil
 }
 
+//транзикции
+
 func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, currency string) (dto.Balance, error) {
 
 	query := `
@@ -121,6 +123,8 @@ func (b *BalanceRepository) GetOrCreate(ctx context.Context, userID string, curr
 		currency,
 	)
 }
+
+//транзикции
 
 func (b *BalanceRepository) Save(ctx context.Context, balance dto.Balance) error {
 
@@ -201,7 +205,7 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]dto.Ba
 	}
 
 	if len(result) == 0 {
-		return result, err
+		return result, nil
 	}
 
 	return result, nil

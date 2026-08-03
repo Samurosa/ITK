@@ -4,6 +4,10 @@ github.com/Samurosa/exchange-contract v0.2.2 h1:mSiY4A77f9U2coM7PM8Vqpkj/fcV2mBA
 github.com/Samurosa/exchange-contract v0.2.2/go.mod h1:cFVMb78CxIpfZiQES0ZkkRWhH2ExlZeVZnqOb6Ycg80=
 github.com/Samurosa/exchange-contract v0.2.3 h1:JIj+G+QJ9rjSStCJPOhDQ8DCiYrrgM6o8Gwldfey1Lc=
 github.com/Samurosa/exchange-contract v0.2.3/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
+github.com/Samurosa/exchange-contract v0.2.5 h1:CMT98IpnaTv/Gn01e261DzD1B5rmDCpFwNIxRffQJN4=
+github.com/Samurosa/exchange-contract v0.2.5/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
+github.com/Samurosa/exchange-contract v0.2.6 h1:bCOaoWysuofNthUgY3ZxWTzt6H+9wVEVjFFdGaxsdg0=
+github.com/Samurosa/exchange-contract v0.2.6/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
 github.com/cespare/xxhash/v2 v2.3.0 h1:UL815xU9SqsFlibzuggzjXhog7bL6oX9BbNZnL2UFvs=
 github.com/cespare/xxhash/v2 v2.3.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

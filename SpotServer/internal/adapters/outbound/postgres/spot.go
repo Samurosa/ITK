@@ -16,7 +16,7 @@ type SpotRepository struct {
 	pool *pgxpool.Pool
 }
 
-func NewUserStorage(pool *pgxpool.Pool) *SpotRepository {
+func NewSpotStorage(pool *pgxpool.Pool) *SpotRepository {
 	return &SpotRepository{
 		pool: pool,
 	}

@@ -41,7 +41,7 @@ func NewServices(log *zap.Logger,
 			RefreshTokenTTL: cfg.TokenTTl.RefreshTokenTTL,
 		})
 
-	rateLimiter := redis.NewLimiter(cfg.Limiter, redisStorage.GetClient())
+	rateLimiter := redis.NewLimiter(log, cfg.Limiter, redisStorage.GetClient())
 
 	userService := application.NewUserService(log,
 		userStorage,

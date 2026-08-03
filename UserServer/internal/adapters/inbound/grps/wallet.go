@@ -30,6 +30,10 @@ func (s *ServerApi) Deposit(
 		return nil, mapper.ToGRPC(err)
 	}
 
+	if err := validate.Money(amount); err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+
 	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)

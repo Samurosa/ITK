@@ -20,8 +20,14 @@ func ToGRPC(err error) error {
 		return status.Error(codes.InvalidArgument, "the username in the request is empty")
 	case errors.Is(err, coreErrors.ErrAssetEmpty):
 		return status.Error(codes.InvalidArgument, "the asset in the request is empty")
+	case errors.Is(err, coreErrors.ErrInvalidAsset):
+		return status.Error(codes.InvalidArgument, "the asset in the request is invalid")
 	case errors.Is(err, coreErrors.ErrAmountEmpty):
 		return status.Error(codes.InvalidArgument, "the amount in the request is empty")
+	case errors.Is(err, coreErrors.ErrAmountIsZero):
+		return status.Error(codes.InvalidArgument, "the amount in the request is zero value")
+	case errors.Is(err, coreErrors.ErrAmountIsNegative):
+		return status.Error(codes.InvalidArgument, "the amount in the request is negative value")
 	case errors.Is(err, coreErrors.ErrPasswordEmpty):
 		return status.Error(codes.InvalidArgument, "the password in the request is empty")
 	case errors.Is(err, coreErrors.ErrPasswordsMatch):

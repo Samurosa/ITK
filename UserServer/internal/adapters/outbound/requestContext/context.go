@@ -1,4 +1,4 @@
-package context
+package requestContext
 
 import (
 	"ITK_Code/m/v2/internal/core/dto"
@@ -15,10 +15,6 @@ func GetJTIFromContext(ctx context.Context) (string, error) {
 	return value, nil
 }
 
-func WithJTI(ctx context.Context, ip string) context.Context {
-	return context.WithValue(ctx, dto.JtiContextKey, ip)
-}
-
 func GetUserIDFromContext(ctx context.Context) (string, error) {
 	value, ok := ctx.Value(dto.UserIDContextKey).(string)
 	if !ok || value == "" {
@@ -26,10 +22,6 @@ func GetUserIDFromContext(ctx context.Context) (string, error) {
 	}
 
 	return value, nil
-}
-
-func WithUserID(ctx context.Context, ip string) context.Context {
-	return context.WithValue(ctx, dto.UserIDContextKey, ip)
 }
 
 func GetClientIPFromContext(ctx context.Context) (string, error) {
@@ -42,14 +34,22 @@ func GetClientIPFromContext(ctx context.Context) (string, error) {
 	return ip, nil
 }
 
+func WithUserID(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, dto.UserIDContextKey, userID)
+}
+
+func WithRole(ctx context.Context, role string) context.Context {
+	return context.WithValue(ctx, dto.RoleContextKey, role)
+}
+
 func WithClientIP(ctx context.Context, ip string) context.Context {
 	return context.WithValue(ctx, dto.ClientIPKey, ip)
 }
 
-func WithRole(ctx context.Context, ip string) context.Context {
-	return context.WithValue(ctx, dto.RoleContextKey, ip)
+func WithDeviceID(ctx context.Context, deviceID string) context.Context {
+	return context.WithValue(ctx, dto.DeviceContextKey, deviceID)
 }
 
-func WithDeviceID(ctx context.Context, ip string) context.Context {
-	return context.WithValue(ctx, dto.DeviceContextKey, ip)
+func WithJTI(ctx context.Context, jti string) context.Context {
+	return context.WithValue(ctx, dto.JtiContextKey, jti)
 }

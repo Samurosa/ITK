@@ -1,6 +1,7 @@
 package validate
 
 import (
+	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -13,9 +14,24 @@ func Deposit(req *pb.DepositRequest) error {
 	if req.GetAsset() == "" {
 		return errors.ErrAssetEmpty
 	}
+	if req.GetAmount() == nil {
+		return errors.ErrAmountEmpty
+	}
 	if req.GetAmount().Currency == "" {
 		return errors.ErrAmountEmpty
 	}
+	if req.GetAsset() != req.GetAmount().Currency {
+		return errors.ErrInvalidAsset
+	}
 
 	return nil
+}
+
+func Money(money dto.Money) error {
+	if money.Amount.IsZero() {
+		return errors.ErrAmountIsZero
+	}
+	if money.Amount.IsNegative() {
+		return errors.ErrAmountIsNegative
+	}
 }

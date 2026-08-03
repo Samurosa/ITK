@@ -1,7 +1,7 @@
 package application
 
 import (
-	context2 "ITK_Code/m/v2/internal/adapters/outbound/context"
+	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
 	"context"
@@ -44,6 +44,8 @@ func (w *Wallet) Deposit(ctx context.Context,
 	log.Info("deposit successful", zap.String("id", id))
 
 	return true, newBalance, nil
+
+	//сделать атомарным на уровне бд
 }
 
 func (w *Wallet) GetBalances(ctx context.Context,
@@ -53,7 +55,7 @@ func (w *Wallet) GetBalances(ctx context.Context,
 ) {
 	log := w.log.Named("GetBalances")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	id, err := requestContext.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return []dto.Balance{}, errors.ErrInvalidContext
