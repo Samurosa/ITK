@@ -4,6 +4,7 @@ import (
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
 	coreErrors "ITK_Code/m/v2/internal/core/errors"
+	"context"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -77,6 +78,11 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Internal, "failed connect to database")
 	case errors.Is(err, redis.ErrPingToRedis):
 		return status.Error(codes.Internal, "failed connect to redis")
+
+	case errors.Is(err, context.Canceled):
+		return status.Error(codes.Canceled, "request canceled")
+	case errors.Is(err, context.DeadlineExceeded):
+		return status.Error(codes.DeadlineExceeded, "request timeout")
 
 	default:
 		return status.Error(codes.Internal, "internal UserServer error")

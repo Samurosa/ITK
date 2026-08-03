@@ -8,6 +8,7 @@ import (
 	"ITK_Code/m/v2/internal/core/wallet"
 	"fmt"
 	"net"
+	"time"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -75,6 +76,20 @@ func (a *GRPCApp) Run() error {
 
 func (a *GRPCApp) Stop() {
 	a.log.Info("GRPC UserServer stopped")
-	a.grpcServer.GracefulStop()
-	//добавить таймаут
+
+	done := make(chan struct{})
+
+	go func() {
+		a.grpcServer.GracefulStop()
+		close(done)
+	}()
+	select {
+
+	case <-done:
+		a.log.Info("GRPC UserServer gracefully stopped")
+
+	case <-time.After(10 * time.Second):
+		a.log.Info("GRPC UserServer timeout")
+		a.grpcServer.Stop()
+	}
 }
