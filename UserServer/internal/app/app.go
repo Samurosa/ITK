@@ -85,8 +85,10 @@ func (app *App) Stop() {
 	if err != nil {
 		app.logger.Error("redis stop", zap.Error(err))
 	}
+
 	err = app.logger.Sync()
 	if err != nil {
 		app.logger.Error("error sync logger: ", zap.Error(err))
 	}
+
 }

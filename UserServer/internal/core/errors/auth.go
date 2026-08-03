@@ -13,10 +13,10 @@ var (
 
 	ErrInvalidContext = errors.New("invalid context")
 
-	ErrInvalidLoginCredentials = errors.New("invalid login credentials")
-	Unauthorized               = errors.New("unauthorized")
-	ErrNoAccess                = errors.New("no access")
-	ErrTooManyRequests         = errors.New("too many requests")
+	ErrIncorrectCredentials = errors.New("incorrect login or password")
+	ErrUnauthorized         = errors.New("unauthorized")
+	ErrNoAccess             = errors.New("no access")
+	ErrTooManyRequests      = errors.New("too many requests")
 
 	ErrSyncRedis = errors.New("sync redis error")
 )

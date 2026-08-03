@@ -6,13 +6,7 @@ import (
 )
 
 type Repository interface {
-	Create(ctx context.Context, userID string, currency string) (dto.Balance, error)
-
-	Get(ctx context.Context, userID string, currency string) (dto.Balance, error)
-
-	GetOrCreate(ctx context.Context, userID string, currency string) (dto.Balance, error)
-
-	Save(ctx context.Context, balance dto.Balance) error
+	Deposit(ctx context.Context, userID string, asset string, amount dto.Money) (dto.Balance, error)
 
 	GetAll(ctx context.Context, userID string) ([]dto.Balance, error)
 }

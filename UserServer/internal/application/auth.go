@@ -85,14 +85,14 @@ func (a *Auth) Login(ctx context.Context,
 	gotUser, err := a.userProvider.GetByEmail(ctx, email)
 	if err != nil {
 		log.Error("error getting user by email", zap.String("email", email), zap.Error(err))
-		return dto.TokensModel{}, errors.ErrInvalidLoginCredentials
+		return dto.TokensModel{}, errors.ErrIncorrectCredentials
 	}
 	log.Info("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
 	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrInvalidLoginCredentials
+		return dto.TokensModel{}, errors.ErrIncorrectCredentials
 	}
 	log.Info("verify password passed", zap.String("id", gotUser.ID))
 
@@ -185,7 +185,7 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, errors.Unauthorized
+		return false, time.Time{}, errors.ErrUnauthorized
 	}
 	log.Info("got session", zap.String("id", sessionInfo.UserID))
 

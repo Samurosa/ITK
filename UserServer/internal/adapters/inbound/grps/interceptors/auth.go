@@ -14,9 +14,9 @@ import (
 )
 
 var publicMethods = map[string]struct{}{
-	"/user.UserServer/Login":        {},
-	"/user.UserServer/Registration": {},
-	"/user.UserServer/RefreshToken": {},
+	"/user.UserService/Login":        {},
+	"/user.UserService/Registration": {},
+	"/user.UserService/RefreshToken": {},
 }
 
 func AuthInterceptor(

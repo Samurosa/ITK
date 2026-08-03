@@ -5,13 +5,13 @@ import (
 )
 
 type Balance struct {
-	UserID string
+	ID string
 
-	Asset string
+	UserID string
+	Asset  string
 
 	Available decimal.Decimal
-
-	Locked decimal.Decimal
+	Locked    decimal.Decimal
 }
 
 type Money struct {

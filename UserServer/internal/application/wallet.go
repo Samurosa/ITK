@@ -21,22 +21,12 @@ func (w *Wallet) Deposit(ctx context.Context,
 	log := w.log.Named("Deposit")
 
 	if _, err := w.userProvider.Get(ctx, id); err != nil {
-		log.Error("failed to get balance", zap.String("id", id), zap.Error(err))
+		log.Error("failed to get user", zap.String("id", id), zap.Error(err))
 		return false, dto.Balance{}, errors.ErrUserNotFound
 	}
 	log.Info("health check user successful")
 
-	balance, err := w.balanceRepository.GetOrCreate(ctx, id, asset)
-	if err != nil {
-		log.Error("balance not found, error creating new balance", zap.String("id", id), zap.Error(err))
-		return false, dto.Balance{}, errors.ErrCreateNewBalance
-	}
-	log.Info("balance created", zap.String("id", id))
-
-	newBalance := balance
-	newBalance.Available = balance.Available.Add(amount.Amount)
-
-	err = w.balanceRepository.Save(ctx, newBalance)
+	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
 		return false, dto.Balance{}, errors.ErrSaveBalance
@@ -44,8 +34,6 @@ func (w *Wallet) Deposit(ctx context.Context,
 	log.Info("deposit successful", zap.String("id", id))
 
 	return true, newBalance, nil
-
-	//сделать атомарным на уровне бд
 }
 
 func (w *Wallet) GetBalances(ctx context.Context,

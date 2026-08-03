@@ -34,4 +34,5 @@ func Money(money dto.Money) error {
 	if money.Amount.IsNegative() {
 		return errors.ErrAmountIsNegative
 	}
+	return nil
 }

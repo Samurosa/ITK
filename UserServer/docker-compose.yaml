@@ -35,13 +35,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: redis
-    command: redis-UserServer --requirepass admin
+    command: redis-server --requirepass admin
     ports:
       - "6379:6379"
 
   user-server:
     build:
-      context: UserServer
+      context: /
       dockerfile: Dockerfile
     ports:
       - "50051:50051"

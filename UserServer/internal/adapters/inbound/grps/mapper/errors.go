@@ -65,10 +65,10 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Unauthenticated, "session not found")
 	case errors.Is(err, coreErrors.ErrInvalidContext):
 		return status.Error(codes.Internal, "invalid context")
-	case errors.Is(err, coreErrors.ErrInvalidLoginCredentials):
-		return status.Error(codes.InvalidArgument, "invalid login")
-	case errors.Is(err, coreErrors.Unauthorized):
+	case errors.Is(err, coreErrors.ErrIncorrectCredentials):
 		return status.Error(codes.Unauthenticated, "incorrect login or password")
+	case errors.Is(err, coreErrors.ErrUnauthorized):
+		return status.Error(codes.Unauthenticated, "not authorized")
 	case errors.Is(err, coreErrors.ErrNoAccess):
 		return status.Error(codes.PermissionDenied, "no access")
 	case errors.Is(err, coreErrors.ErrTooManyRequests):
