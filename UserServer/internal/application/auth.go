@@ -94,7 +94,7 @@ func (a *Auth) Login(ctx context.Context,
 	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return dto.TokensModel{}, auth.ErrIncorrectCredentials
+		return dto.TokensModel{}, auth.ErrIncorrectPassword
 	}
 	log.Info("verify password passed", zap.String("id", gotUser.ID))
 

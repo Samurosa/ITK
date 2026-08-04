@@ -4,7 +4,6 @@ import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
 	"errors"
-	"reflect"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -53,36 +52,33 @@ func (s *Storage) DeleteByUser(ctx context.Context, userID string) error {
 	return nil
 }
 
-func (s *Storage) toRedisSave(ctx context.Context, jti string, value *auth.SessionModel) error {
+func (s *Storage) toRedisSave(ctx context.Context, jti string, model *auth.SessionModel) error {
 	key := "session:" + jti
-
-	val := reflect.ValueOf(value).Elem()
-
-	if val.NumField() == 0 {
-		return errors.New("value is empty")
-	}
 
 	setter := func(p redis.Pipeliner) error {
 
-		for i := 0; i < val.NumField(); i++ {
-			field := val.Type().Field(i)
-
-			tag := field.Tag.Get("redis")
-
-			if err := p.HSet(ctx, key, tag, val.Field(i).Interface()).Err(); err != nil {
-				return err
-			}
-
+		fields := map[string]interface{}{
+			"user_id":            model.UserID,
+			"device_id":          model.DeviceID,
+			"refresh_token_hash": model.RefreshTokenHash,
+			"created_at":         model.CreatedAt.UTC().Format(time.RFC3339Nano),
+			"expires_at":         model.ExpiresAt.UTC().Format(time.RFC3339Nano),
 		}
-		if err := p.Expire(ctx, key, value.TTL).Err(); err != nil {
+
+		if err := p.HSet(ctx, key, fields).Err(); err != nil {
 			return err
 		}
-		if err := p.SAdd(ctx, "user:"+value.UserID, "session:"+jti).Err(); err != nil {
+
+		if err := p.Expire(ctx, key, model.TTL).Err(); err != nil {
+			return err
+		}
+		if err := p.SAdd(ctx, "user:"+model.UserID, "session:"+jti).Err(); err != nil {
 			return err
 		}
 
 		return nil
 	}
+
 	if _, err := s.client.TxPipelined(ctx, setter); err != nil {
 		return err
 	}

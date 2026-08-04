@@ -70,7 +70,9 @@ func ToGRPC(err error) error {
 	case errors.Is(err, coreErrors.ErrInvalidContext):
 		return status.Error(codes.Internal, "invalid context")
 	case errors.Is(err, auth.ErrIncorrectCredentials):
-		return status.Error(codes.Unauthenticated, "incorrect login or password")
+		return status.Error(codes.Aborted, "incorrect login or password")
+	case errors.Is(err, auth.ErrIncorrectPassword):
+		return status.Error(codes.Aborted, "incorrect password")
 	case errors.Is(err, auth.ErrUnauthorized):
 		return status.Error(codes.Unauthenticated, "not authorized")
 	case errors.Is(err, auth.ErrNoAccess):

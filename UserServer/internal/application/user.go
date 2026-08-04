@@ -177,7 +177,7 @@ func (u *User) ChangePassword(ctx context.Context,
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return false, time.Time{}, auth.ErrIncorrectCredentials
+		return false, time.Time{}, auth.ErrIncorrectPassword
 	}
 	log.Info("verify password successful")
 

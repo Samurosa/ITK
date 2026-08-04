@@ -21,7 +21,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 	query := `
 		INSERT INTO balances (user_id, asset, available, locked) VALUES ($1, $2, $3, 0)
 		ON CONFLICT (user_id, asset)
-    	DO UPDATE SET avalible = balances.available + EXCLUDED.available
+    	DO UPDATE SET available = balances.available + EXCLUDED.available
 		RETURNING id, user_id, asset, available, locked
 	`
 
@@ -31,7 +31,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 		query,
 		userID,
 		asset,
-		amount,
+		amount.Amount,
 	).Scan(
 		&balance.ID,
 		&balance.UserID,
@@ -73,6 +73,7 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet
 		var balance wallet.Balance
 
 		err = rows.Scan(
+			&balance.ID,
 			&balance.UserID,
 			&balance.Asset,
 			&balance.Available,

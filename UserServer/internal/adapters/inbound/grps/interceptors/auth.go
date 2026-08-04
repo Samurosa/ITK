@@ -54,8 +54,8 @@ func AuthInterceptor(
 		}
 
 		if _, err := sessions.GetByJTI(ctx, claims.Jti); err != nil {
-			log.Error("invalid token", zap.Error(err))
-			return nil, status.Error(codes.Unauthenticated, "invalid token")
+			log.Error("session not found", zap.Error(err))
+			return nil, status.Error(codes.NotFound, "session not found")
 		}
 
 		ctx, err = requestContext.UpdateRequestContext(ctx,
