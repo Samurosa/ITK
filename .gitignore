@@ -11,4 +11,4 @@
 # Editor-based HTTP Client requests
 /httpRequests/
 # Enviroment files
-UserApi/.env
+UserServer/.env
