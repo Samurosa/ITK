@@ -2,7 +2,7 @@ package infrastructure
 
 import (
 	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grps"
-	interceptors2 "ITK_Code/m/v2/internal/adapters/inbound/grps/interceptors"
+	"ITK_Code/m/v2/internal/adapters/inbound/grps/interceptors"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
@@ -35,8 +35,9 @@ func NewGRPC(
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptors2.ClientIPInterceptor(log),
-			interceptors2.AuthInterceptor(log,
+			interceptors.RequestContextInterceptor(log),
+			interceptors.ClientIPInterceptor(log),
+			interceptors.AuthInterceptor(log,
 				services.TokenManager(),
 				services.SessionStorage(),
 			),

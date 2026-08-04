@@ -3,7 +3,7 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	context2 "ITK_Code/m/v2/internal/core/context"
+	requestContext "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
@@ -134,14 +134,14 @@ func (a *Auth) Logout(ctx context.Context,
 ) {
 	log := a.log.Named("Logout")
 
-	jtiFromContext, err := context2.GetJTIFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("error getting jti from context", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
 	}
 	log.Info("got token jti from context")
 
-	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jtiFromContext)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, requestCtx.JTI)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, auth.ErrSessionNotFound
@@ -158,7 +158,7 @@ func (a *Auth) Logout(ctx context.Context,
 	}
 	log.Info("verify password passed", zap.String("id", sessionInfo.UserID))
 
-	err = a.sessionStorage.DeleteByJTI(ctx, jtiFromContext, sessionInfo.DeviceID)
+	err = a.sessionStorage.DeleteByJTI(ctx, requestCtx.JTI, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
 		return false, time.Time{}, auth.ErrSessionNotFound
@@ -177,14 +177,14 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 ) {
 	log := a.log.Named("Logout all devices")
 
-	jti, err := context2.GetJTIFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
-		log.Error("error getting user id by context", zap.Error(err))
+		log.Error("error getting value by context", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
 	}
 	log.Info("got token jti from context")
 
-	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, requestCtx.JTI)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
 		return false, time.Time{}, auth.ErrUnauthorized

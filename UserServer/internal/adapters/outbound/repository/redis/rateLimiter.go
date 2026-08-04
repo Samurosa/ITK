@@ -2,8 +2,8 @@ package redis
 
 import (
 	"ITK_Code/m/v2/internal/config"
-	context2 "ITK_Code/m/v2/internal/core/context"
-	"ITK_Code/m/v2/internal/core/errors"
+	requestContext "ITK_Code/m/v2/internal/core/context"
+	coreErorrs "ITK_Code/m/v2/internal/core/errors"
 	"context"
 	"time"
 
@@ -12,18 +12,18 @@ import (
 )
 
 type Limiter struct {
-	log    *zap.Logger
-	limit  int
-	timer  time.Duration
-	client *redis.Client
+	log      *zap.Logger
+	client   *redis.Client
+	capacity float64
+	timer    time.Duration
 }
 
 func NewLimiter(log *zap.Logger, cfg config.Limiter, client *redis.Client) *Limiter {
 	return &Limiter{
-		log:    log,
-		limit:  cfg.Limit,
-		timer:  cfg.Timer,
-		client: client,
+		log:      log,
+		capacity: cfg.Capacity,
+		timer:    cfg.Timer,
+		client:   client,
 	}
 }
 
@@ -32,20 +32,23 @@ func (l *Limiter) Allow(
 ) (bool, error) {
 	log := l.log.Named("limiter allow")
 
-	ip, err := context2.GetClientIPFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("Failed to get user ip from context", zap.Error(err))
-		return false, errors.ErrInvalidContext
+		return false, coreErorrs.ErrInvalidContext
 	}
+	ip := requestCtx.Metadata.ClientIP
 
-	count, err := l.client.Incr(ctx, ip).Result()
+	pipe := l.client.TxPipeline()
+
+	count, err := pipe.Incr(ctx, ip).Result()
 
 	if err != nil {
 		return false, err
 	}
 
 	if count == 1 {
-		if err := l.client.Expire(
+		if err = pipe.Expire(
 			ctx,
 			ip,
 			l.timer,
@@ -54,5 +57,10 @@ func (l *Limiter) Allow(
 		}
 	}
 
-	return count <= int64(l.limit), nil
+	_, err = pipe.Exec(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	return count <= int64(l.capacity), nil
 }

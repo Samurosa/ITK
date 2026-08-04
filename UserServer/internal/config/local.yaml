@@ -16,5 +16,5 @@ redis:
   dial_timeout: 10s
   timeout: 5s
 limiter:
-  limit: 5
-  timer: 1m
+  capacity: 5
+  refill_rate_in_minutes: 1m

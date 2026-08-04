@@ -1,7 +1,8 @@
 package interceptors
 
 import (
-	context2 "ITK_Code/m/v2/internal/core/context"
+	reqCtx "ITK_Code/m/v2/internal/core/context"
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"net"
 
@@ -25,16 +26,23 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		value, ok := peer.FromContext(ctx)
 		if !ok {
 			log.Error("No peer info found", zap.String("value", value.String()))
-			return nil, status.Error(codes.FailedPrecondition, "Client IP address is missing")
+			return nil, status.Error(codes.NotFound, "Client IP address is missing")
 		}
 
 		host, _, err := net.SplitHostPort(value.Addr.String())
 		if err != nil {
 			log.Error("failed to split host and port", zap.Error(err))
-			return nil, status.Error(codes.FailedPrecondition, "Client IP address is invalid")
+			return nil, status.Error(codes.InvalidArgument, "Client IP address is invalid")
 		}
 
-		ctx = context2.WithClientIP(ctx, host)
+		ctx, err = reqCtx.UpdateRequestContext(ctx,
+			func(baseContext *dto.RequestContext) {
+				baseContext.Metadata.ClientIP = host
+			})
+		if err != nil {
+			log.Info("failed to update request context", zap.Error(err))
+			return nil, status.Error(codes.Internal, "failed to update request context")
+		}
 
 		return handler(ctx, req)
 	}

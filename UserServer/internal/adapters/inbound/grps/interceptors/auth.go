@@ -36,7 +36,7 @@ func AuthInterceptor(
 		meta, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Error("missing metadata")
-			return nil, status.Errorf(codes.Unauthenticated, "missing metadata")
+			return nil, status.Errorf(codes.NotFound, "missing metadata")
 		}
 
 		values := meta.Get("authorization")
@@ -53,25 +53,22 @@ func AuthInterceptor(
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		rCtx := dto.RequestContext{
-			Principal: dto.Principal{
-				UserID: claims.UserID,
-				Role:   claims.Role,
-			},
-			Metadata: dto.RequestMetadata{
-				ClientIP: "",
-				DeviceID: claims.Device,
-			},
-
-			JTI: claims.Jti,
-		}
-
-		if _, err := sessions.GetByJTI(ctx, rCtx.JTI); err != nil {
+		if _, err := sessions.GetByJTI(ctx, claims.Jti); err != nil {
 			log.Error("invalid token", zap.Error(err))
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		ctx = requestContext.WithRequestContext(ctx, rCtx)
+		ctx, err = requestContext.UpdateRequestContext(ctx,
+			func(baseContext *dto.RequestContext) {
+				baseContext.Principal.UserID = claims.UserID
+				baseContext.Principal.Role = claims.Role
+				baseContext.Metadata.DeviceID = claims.Device
+				baseContext.JTI = claims.Jti
+			})
+		if err != nil {
+			log.Info("failed to update request context", zap.Error(err))
+			return nil, status.Error(codes.Internal, "failed to update request context")
+		}
 
 		return handler(ctx, req)
 	}

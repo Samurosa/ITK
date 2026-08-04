@@ -38,12 +38,15 @@ func GetRequestContext(
 func UpdateRequestContext(
 	ctx context.Context,
 	update func(*dto.RequestContext),
-) context.Context {
+) (
+	context.Context,
+	error,
+) {
 
 	requestCtx, ok := ctx.Value(requestContextKey{}).(dto.RequestContext)
 
 	if !ok {
-		requestCtx = dto.RequestContext{}
+		return ctx, errors.ErrCtxForUpdateNotFound
 	}
 
 	update(&requestCtx)
@@ -52,5 +55,5 @@ func UpdateRequestContext(
 		ctx,
 		requestContextKey{},
 		requestCtx,
-	)
+	), nil
 }

@@ -41,8 +41,8 @@ type Redis struct {
 }
 
 type Limiter struct {
-	Limit int           `yaml:"limit"`
-	Timer time.Duration `yaml:"timer"`
+	Capacity float64       `yaml:"capacity"`
+	Timer    time.Duration `yaml:"timer"`
 }
 
 func Load(

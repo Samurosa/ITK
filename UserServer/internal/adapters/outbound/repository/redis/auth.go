@@ -206,8 +206,11 @@ func (s *Storage) deleteFromRedisByJTI(
 	}
 
 	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return err
+	}
 
-	return err
+	return nil
 }
 
 func (s *Storage) deleteFromRedisByUser(

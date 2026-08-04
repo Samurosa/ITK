@@ -3,7 +3,7 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	context2 "ITK_Code/m/v2/internal/core/context"
+	requestContext "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -19,11 +19,12 @@ func (u *User) GetUser(ctx context.Context,
 ) {
 	log := u.log.Named("GetUser")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return user.User{}, errors.ErrInvalidContext
 	}
+	id := requestCtx.Principal.UserID
 	log.Info("user id from context", zap.String("id", id))
 
 	current, err := u.userProvider.Get(ctx, id)
@@ -44,11 +45,12 @@ func (u *User) DeleteUser(ctx context.Context,
 ) {
 	log := u.log.Named("DeleteUser")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
 	}
+	id := requestCtx.Principal.UserID
 	log.Info("user id from context", zap.String("id", id))
 
 	err = u.userProvider.Delete(ctx, id)
@@ -75,11 +77,12 @@ func (u *User) IsAdmin(ctx context.Context,
 ) {
 	log := u.log.Named("IsAdmin")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, errors.ErrInvalidContext
 	}
+	id := requestCtx.Principal.UserID
 	log.Info("user id from context", zap.String("id", id))
 
 	isAdmin, err := u.userProvider.IsAdmin(ctx, id)
@@ -120,11 +123,12 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 ) {
 	log := u.log.Named("update user")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
 	}
+	id := requestCtx.Principal.UserID
 	log.Info("user id from context", zap.String("id", id))
 
 	updated := user.UpdateUser{}
@@ -155,11 +159,12 @@ func (u *User) ChangePassword(ctx context.Context,
 ) {
 	log := u.log.Named("change Password")
 
-	id, err := context2.GetUserIDFromContext(ctx)
+	requestCtx, err := requestContext.GetRequestContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
 	}
+	id := requestCtx.Principal.UserID
 	log.Info("user id from context", zap.String("id", id))
 
 	current, err := u.userProvider.Get(ctx, id)
