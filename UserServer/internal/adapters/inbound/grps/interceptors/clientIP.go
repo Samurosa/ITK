@@ -1,7 +1,7 @@
 package interceptors
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
+	context2 "ITK_Code/m/v2/internal/core/context"
 	"context"
 	"net"
 
@@ -34,7 +34,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 			return nil, status.Error(codes.FailedPrecondition, "Client IP address is invalid")
 		}
 
-		ctx = requestContext.WithClientIP(ctx, host)
+		ctx = context2.WithClientIP(ctx, host)
 
 		return handler(ctx, req)
 	}

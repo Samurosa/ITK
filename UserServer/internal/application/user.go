@@ -2,8 +2,8 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/core/auth"
+	context2 "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -19,7 +19,7 @@ func (u *User) GetUser(ctx context.Context,
 ) {
 	log := u.log.Named("GetUser")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return user.User{}, errors.ErrInvalidContext
@@ -44,7 +44,7 @@ func (u *User) DeleteUser(ctx context.Context,
 ) {
 	log := u.log.Named("DeleteUser")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
@@ -75,7 +75,7 @@ func (u *User) IsAdmin(ctx context.Context,
 ) {
 	log := u.log.Named("IsAdmin")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, errors.ErrInvalidContext
@@ -120,7 +120,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 ) {
 	log := u.log.Named("update user")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
@@ -155,7 +155,7 @@ func (u *User) ChangePassword(ctx context.Context,
 ) {
 	log := u.log.Named("change Password")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext

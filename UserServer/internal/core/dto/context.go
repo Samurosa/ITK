@@ -1,11 +1,18 @@
 package dto
 
-type ContextKey string
+type Principal struct {
+	UserID string
+	Role   string
+}
 
-const (
-	UserIDContextKey ContextKey = "user_id"
-	RoleContextKey   ContextKey = "role"
-	DeviceContextKey ContextKey = "device"
-	JtiContextKey    ContextKey = "jti"
-	ClientIPKey      ContextKey = "client_ip"
-)
+type RequestMetadata struct {
+	ClientIP string
+	DeviceID string
+}
+
+type RequestContext struct {
+	Principal Principal
+	Metadata  RequestMetadata
+
+	JTI string
+}

@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
+	context2 "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
@@ -44,7 +44,7 @@ func (w *Wallet) GetBalances(ctx context.Context,
 ) {
 	log := w.log.Named("GetBalances")
 
-	id, err := requestContext.GetUserIDFromContext(ctx)
+	id, err := context2.GetUserIDFromContext(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
 		return []wallet.Balance{}, errors.ErrInvalidContext

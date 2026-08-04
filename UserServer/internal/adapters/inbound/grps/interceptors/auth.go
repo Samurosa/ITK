@@ -1,8 +1,9 @@
 package interceptors
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/core/auth"
+	requestContext "ITK_Code/m/v2/internal/core/context"
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"strings"
 
@@ -52,20 +53,25 @@ func AuthInterceptor(
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		userID := claims.UserID
-		role := claims.Role
-		deviceID := claims.Device
-		jti := claims.Jti
+		rCtx := dto.RequestContext{
+			Principal: dto.Principal{
+				UserID: claims.UserID,
+				Role:   claims.Role,
+			},
+			Metadata: dto.RequestMetadata{
+				ClientIP: "",
+				DeviceID: claims.Device,
+			},
 
-		if _, err := sessions.GetByJTI(ctx, jti); err != nil {
+			JTI: claims.Jti,
+		}
+
+		if _, err := sessions.GetByJTI(ctx, rCtx.JTI); err != nil {
 			log.Error("invalid token", zap.Error(err))
 			return nil, status.Error(codes.Unauthenticated, "invalid token")
 		}
 
-		ctx = requestContext.WithUserID(ctx, userID)
-		ctx = requestContext.WithRole(ctx, role)
-		ctx = requestContext.WithDeviceID(ctx, deviceID)
-		ctx = requestContext.WithJTI(ctx, jti)
+		ctx = requestContext.WithRequestContext(ctx, rCtx)
 
 		return handler(ctx, req)
 	}

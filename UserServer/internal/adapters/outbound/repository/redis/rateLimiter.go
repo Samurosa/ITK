@@ -1,8 +1,8 @@
 package redis
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/config"
+	context2 "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 	"time"
@@ -32,7 +32,7 @@ func (l *Limiter) Allow(
 ) (bool, error) {
 	log := l.log.Named("limiter allow")
 
-	ip, err := requestContext.GetClientIPFromContext(ctx)
+	ip, err := context2.GetClientIPFromContext(ctx)
 	if err != nil {
 		log.Error("Failed to get user ip from context", zap.Error(err))
 		return false, errors.ErrInvalidContext

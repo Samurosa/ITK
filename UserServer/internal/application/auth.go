@@ -2,8 +2,8 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
-	"ITK_Code/m/v2/internal/adapters/outbound/requestContext"
 	"ITK_Code/m/v2/internal/core/auth"
+	context2 "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
@@ -134,7 +134,7 @@ func (a *Auth) Logout(ctx context.Context,
 ) {
 	log := a.log.Named("Logout")
 
-	jtiFromContext, err := requestContext.GetJTIFromContext(ctx)
+	jtiFromContext, err := context2.GetJTIFromContext(ctx)
 	if err != nil {
 		log.Error("error getting jti from context", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
@@ -177,7 +177,7 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 ) {
 	log := a.log.Named("Logout all devices")
 
-	jti, err := requestContext.GetJTIFromContext(ctx)
+	jti, err := context2.GetJTIFromContext(ctx)
 	if err != nil {
 		log.Error("error getting user id by context", zap.Error(err))
 		return false, time.Time{}, errors.ErrInvalidContext
