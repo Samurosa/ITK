@@ -38,7 +38,7 @@ func New(
 		log.Error("failed to initialize infrastructure", zap.Error(err))
 		return nil, err
 	}
-	log.Info("infrastructure initialized")
+	log.Debug("infrastructure initialized")
 
 	services := NewServices(logger, cfg, storages, secret)
 

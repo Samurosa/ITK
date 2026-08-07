@@ -25,7 +25,7 @@ func (w *Wallet) Deposit(ctx context.Context,
 		log.Error("failed to get user", zap.String("id", id), zap.Error(err))
 		return false, wallet.Balance{}, user.ErrUserNotFound
 	}
-	log.Info("health check user successful")
+	log.Debug("health check user successful")
 
 	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount)
 	if err != nil {
@@ -50,7 +50,7 @@ func (w *Wallet) GetBalances(ctx context.Context,
 		return []wallet.Balance{}, errors.ErrInvalidContext
 	}
 	id := requestCtx.Principal.UserID
-	log.Info("user id from context", zap.String("id", id))
+	log.Debug("user id from context", zap.String("id", id))
 
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
