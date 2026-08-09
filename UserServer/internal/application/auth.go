@@ -3,7 +3,6 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	requestContext "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
@@ -53,7 +52,7 @@ func (a *Auth) Registration(ctx context.Context,
 		UpdateTime:   now,
 	}
 
-	uid, err := a.userSaver.SaveUser(ctx, newUser)
+	uid, err := a.userRepository.SaveUser(ctx, newUser)
 	if err != nil {
 		log.Error("error saving user", zap.Error(err))
 		return "", time.Time{}, err
@@ -84,7 +83,7 @@ func (a *Auth) Login(ctx context.Context,
 	}
 	log.Debug("validate rate limiting")
 
-	gotUser, err := a.userProvider.GetByEmail(ctx, email)
+	gotUser, err := a.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		log.Error("error getting user by email", zap.String("email", email), zap.Error(err))
 		gotUser.PasswordHash = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
@@ -126,25 +125,17 @@ func (a *Auth) Login(ctx context.Context,
 }
 
 func (a *Auth) Logout(ctx context.Context,
+	jti string,
 	refreshToken string,
 ) (
-	success bool,
-	loggedOutAt time.Time,
 	err error,
 ) {
 	log := a.log.Named("Logout")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("error getting jti from context", zap.Error(err))
-		return false, time.Time{}, errors.ErrInvalidContext
-	}
-	log.Debug("got token jti from context")
-
-	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, requestCtx.JTI)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, auth.ErrSessionNotFound
+		return auth.ErrSessionNotFound
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
@@ -154,40 +145,30 @@ func (a *Auth) Logout(ctx context.Context,
 			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
-		return false, time.Time{}, auth.ErrNoAccess
+		return auth.ErrNoAccess
 	}
 	log.Debug("verify password passed", zap.String("id", sessionInfo.UserID))
 
-	err = a.sessionStorage.DeleteByJTI(ctx, requestCtx.JTI, sessionInfo.DeviceID)
+	err = a.sessionStorage.DeleteByJTI(ctx, jti, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
-		return false, time.Time{}, auth.ErrSessionNotFound
+		return auth.ErrSessionNotFound
 	}
 	log.Info("session deleted", zap.String("id", sessionInfo.UserID))
 
-	return true, time.Now(), nil
+	return nil
 }
 
 func (a *Auth) LogoutAllDevices(ctx context.Context,
+	jti string,
 	refreshToken string,
-) (
-	bool,
-	time.Time,
-	error,
-) {
+) error {
 	log := a.log.Named("Logout all devices")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("error getting value by context", zap.Error(err))
-		return false, time.Time{}, errors.ErrInvalidContext
-	}
-	log.Debug("got token jti from context")
-
-	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, requestCtx.JTI)
+	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return false, time.Time{}, auth.ErrUnauthorized
+		return auth.ErrUnauthorized
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
@@ -197,18 +178,18 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
-		return false, time.Time{}, auth.ErrNoAccess
+		return auth.ErrNoAccess
 	}
 	log.Debug("verify password passed", zap.String("id", sessionInfo.UserID))
 
 	err = a.sessionStorage.DeleteByUser(ctx, sessionInfo.UserID)
 	if err != nil {
 		log.Error("error deleting sessions", zap.Error(err))
-		return false, time.Time{}, err
+		return auth.ErrSessionNotFound
 	}
 	log.Info("user sessions deleted", zap.String("id", sessionInfo.UserID))
 
-	return true, time.Now(), nil
+	return nil
 }
 
 func (a *Auth) RefreshToken(ctx context.Context,
@@ -267,7 +248,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
 	userID := sessionInfo.UserID
-	gotUser, err := a.userProvider.Get(ctx, userID)
+	gotUser, err := a.userRepository.Get(ctx, userID)
 	if err != nil {
 		log.Error("error getting user by id", zap.Error(err))
 		return dto.TokensModel{}, user.ErrUserNotFound

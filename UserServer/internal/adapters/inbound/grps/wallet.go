@@ -3,9 +3,12 @@ package grps
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
+	requestContext "ITK_Code/m/v2/internal/core/context"
+	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -47,19 +50,25 @@ func (s *ServerApi) Deposit(
 
 func (s *ServerApi) GetBalances(
 	ctx context.Context,
-	req *pb.EmptyRequest,
+	_ *pb.Empty,
 ) (
 	*pb.UserBalancesInfoResponse,
 	error,
 ) {
-	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
-	}
+	log := s.log.Named("GetBalances")
 
-	balancesResponse, err := s.wallet.GetBalances(ctx)
+	id, err := requestContext.UserID(ctx)
+	if err != nil {
+		log.Error("context is not valid", zap.Error(err))
+		return &pb.UserBalancesInfoResponse{}, errors.ErrInvalidContext
+	}
+	log.Debug("user id from context", zap.String("id", id))
+
+	balancesResponse, err := s.wallet.GetBalances(ctx, id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
+
 	return &pb.UserBalancesInfoResponse{
 		Balances: mapper.ToProtoBalances(balancesResponse),
 	}, nil

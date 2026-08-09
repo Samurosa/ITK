@@ -3,6 +3,7 @@ package grps
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
+	requestContext "ITK_Code/m/v2/internal/core/context"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -12,23 +13,22 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *ServerApi) Registration(
-	ctx context.Context,
+func (s *ServerApi) Registration(ctx context.Context,
 	req *pb.RegisterUserRequest,
 ) (
 	*pb.RegisterUserResponse,
 	error,
 ) {
+	log := s.log.Named("Registration")
+
 	if err := req.Validate(); err != nil {
+		log.Error("invalid request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	if err := validate.Registration(req); err != nil {
-		return nil, err
-	}
-
 	if err := validate.Password(req.GetPassword()); err != nil {
-		return nil, err
+		log.Error("invalid password", zap.Error(err))
+		return nil, mapper.ToGRPC(err)
 	}
 
 	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
@@ -42,19 +42,17 @@ func (s *ServerApi) Registration(
 	}, nil
 }
 
-func (s *ServerApi) Login(
-	ctx context.Context,
+func (s *ServerApi) Login(ctx context.Context,
 	req *pb.LoginRequest,
 ) (
 	*pb.TokenPairResponse,
 	error,
 ) {
-	if err := req.Validate(); err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
-	}
+	log := s.log.Named("Login")
 
-	if err := validate.Login(req); err != nil {
-		return nil, err
+	if err := req.Validate(); err != nil {
+		log.Error("invalid request", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
@@ -66,58 +64,72 @@ func (s *ServerApi) Login(
 	return mapper.ToProtoTokens(tokens), nil
 }
 
-func (s *ServerApi) Logout(
-	ctx context.Context,
+func (s *ServerApi) Logout(ctx context.Context,
 	req *pb.LogoutRequest,
 ) (
-	*pb.LogoutResponse,
+	*pb.Empty,
 	error,
 ) {
+	log := s.log.Named("Logout")
+
 	if err := req.Validate(); err != nil {
+		log.Error("invalid request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	success, loggedOutAt, err := s.auth.Logout(ctx, req.RefreshToken)
+	jti, err := requestContext.JTI(ctx)
+	if err != nil {
+		log.Error("error getting jti from context", zap.Error(err))
+		return nil, mapper.ToGRPC(err)
+	}
+	log.Debug("got token jti from context")
+
+	err = s.auth.Logout(ctx, jti, req.RefreshToken)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.LogoutResponse{
-		Success:     success,
-		LoggedOutAt: timestamppb.New(loggedOutAt),
-	}, nil
+	return &pb.Empty{}, nil
 }
 
-func (s *ServerApi) LogoutAllDevices(
-	ctx context.Context,
+func (s *ServerApi) LogoutAllDevices(ctx context.Context,
 	req *pb.LogoutAllRequest,
 ) (
-	*pb.LogoutResponse,
+	*pb.Empty,
 	error,
 ) {
+	log := s.log.Named("LogoutAllDevices")
+
 	if err := req.Validate(); err != nil {
+		log.Error("invalid request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	success, loggedOutAt, err := s.auth.LogoutAllDevices(ctx, req.RefreshToken)
+	jti, err := requestContext.JTI(ctx)
+	if err != nil {
+		log.Error("error getting jti from context", zap.Error(err))
+		return nil, mapper.ToGRPC(err)
+	}
+	log.Debug("got token jti from context")
+
+	err = s.auth.LogoutAllDevices(ctx, jti, req.RefreshToken)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.LogoutResponse{
-		Success:     success,
-		LoggedOutAt: timestamppb.New(loggedOutAt),
-	}, nil
+	return &pb.Empty{}, nil
 }
 
-func (s *ServerApi) RefreshToken(
-	ctx context.Context,
+func (s *ServerApi) RefreshToken(ctx context.Context,
 	req *pb.RefreshTokenRequest,
 ) (
 	*pb.TokenPairResponse,
 	error,
 ) {
+	log := s.log.Named("RefreshToken")
+
 	if err := req.Validate(); err != nil {
+		log.Error("invalid request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 

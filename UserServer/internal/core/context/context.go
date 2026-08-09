@@ -35,6 +35,30 @@ func GetRequestContext(
 	return requestCtx, nil
 }
 
+func UserID(ctx context.Context) (string, error) {
+	requestCtx, ok := ctx.Value(
+		requestContextKey{},
+	).(dto.RequestContext)
+
+	if !ok {
+		return "", errors.ErrInvalidContext
+	}
+
+	return requestCtx.Principal.UserID, nil
+}
+
+func JTI(ctx context.Context) (string, error) {
+	requestCtx, ok := ctx.Value(
+		requestContextKey{},
+	).(dto.RequestContext)
+
+	if !ok {
+		return "", errors.ErrInvalidContext
+	}
+
+	return requestCtx.JTI, nil
+}
+
 func UpdateRequestContext(
 	ctx context.Context,
 	update func(*dto.RequestContext),

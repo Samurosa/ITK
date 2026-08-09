@@ -1,8 +1,6 @@
 package application
 
 import (
-	requestContext "ITK_Code/m/v2/internal/core/context"
-	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
 	"context"
@@ -15,42 +13,34 @@ func (w *Wallet) Deposit(ctx context.Context,
 	asset string,
 	amount wallet.Money,
 ) (
-	bool,
 	wallet.Balance,
 	error,
 ) {
 	log := w.log.Named("Deposit")
 
-	if _, err := w.userProvider.Get(ctx, id); err != nil {
+	if _, err := w.userRepository.Get(ctx, id); err != nil {
 		log.Error("failed to get user", zap.String("id", id), zap.Error(err))
-		return false, wallet.Balance{}, user.ErrUserNotFound
+		return wallet.Balance{}, user.ErrUserNotFound
 	}
 	log.Debug("health check user successful")
 
 	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
-		return false, wallet.Balance{}, wallet.ErrSaveBalance
+		return wallet.Balance{}, wallet.ErrSaveBalance
 	}
 	log.Info("deposit successful", zap.String("id", id))
 
-	return true, newBalance, nil
+	return newBalance, nil
 }
 
 func (w *Wallet) GetBalances(ctx context.Context,
+	id string,
 ) (
 	[]wallet.Balance,
 	error,
 ) {
 	log := w.log.Named("GetBalances")
-
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return []wallet.Balance{}, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
 
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {

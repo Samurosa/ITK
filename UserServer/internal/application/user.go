@@ -3,31 +3,22 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	requestContext "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
-	"time"
 
 	"go.uber.org/zap"
 )
 
 func (u *User) GetUser(ctx context.Context,
+	id string,
 ) (
 	user.User,
 	error,
 ) {
 	log := u.log.Named("GetUser")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return user.User{}, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
-
-	current, err := u.userProvider.Get(ctx, id)
+	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return user.User{}, user.ErrUserNotFound
@@ -38,54 +29,36 @@ func (u *User) GetUser(ctx context.Context,
 }
 
 func (u *User) DeleteUser(ctx context.Context,
-) (
-	bool,
-	time.Time,
-	error,
-) {
+	id string,
+) error {
 	log := u.log.Named("DeleteUser")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return false, time.Time{}, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
-
-	err = u.userProvider.Delete(ctx, id)
+	err := u.userRepository.Delete(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, user.ErrUserNotFound
+		return user.ErrUserNotFound
 	}
 	log.Debug("user deleted", zap.String("id", id))
 
 	err = u.sessionStorage.DeleteByUser(ctx, id)
 	if err != nil {
 		log.Error("session not found", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, user.ErrUserNotFound
+		return user.ErrUserNotFound
 	}
 	log.Info("user deleted", zap.String("id", id))
 
-	return true, time.Now(), nil
+	return nil
 }
 
 func (u *User) IsAdmin(ctx context.Context,
+	id string,
 ) (
 	bool,
 	error,
 ) {
 	log := u.log.Named("IsAdmin")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return false, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
-
-	isAdmin, err := u.userProvider.IsAdmin(ctx, id)
+	isAdmin, err := u.userRepository.IsAdmin(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
 		return false, err
@@ -103,7 +76,7 @@ func (u *User) GetUserByEmail(ctx context.Context,
 ) {
 	log := u.log.Named("GetUserByEmail")
 
-	current, err := u.userProvider.GetByEmail(ctx, email)
+	current, err := u.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		log.Error("user not found", zap.String("email", email), zap.Error(err))
 		return current, err
@@ -114,22 +87,11 @@ func (u *User) GetUserByEmail(ctx context.Context,
 }
 
 func (u *User) UpdateUserInfo(ctx context.Context,
+	id string,
 	name string,
 	email string,
-) (
-	bool,
-	time.Time,
-	error,
-) {
+) error {
 	log := u.log.Named("update user")
-
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return false, time.Time{}, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
 
 	updated := user.UpdateUser{}
 	if name != "" {
@@ -139,61 +101,50 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 		updated.Email = &email
 	}
 
-	success, err := u.userProvider.Update(ctx, id, updated)
+	err := u.userRepository.Update(ctx, id, updated)
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return false, time.Time{}, user.ErrUpdateUser
+		return user.ErrUpdateUser
 	}
 	log.Info("user updated", zap.String("id", id))
 
-	return success, time.Now(), nil
+	return nil
 }
 
 func (u *User) ChangePassword(ctx context.Context,
+	id string,
 	oldPassword string,
 	newPassword string,
-) (
-	bool,
-	time.Time,
-	error,
-) {
+) error {
 	log := u.log.Named("change Password")
 
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return false, time.Time{}, errors.ErrInvalidContext
-	}
-	id := requestCtx.Principal.UserID
-	log.Debug("user id from context", zap.String("id", id))
-
-	current, err := u.userProvider.Get(ctx, id)
+	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
 		log.Error("error getting user", zap.String("id", id), zap.Error(err))
-		return false, time.Time{}, user.ErrUserNotFound
+		return user.ErrUserNotFound
 	}
 	log.Debug("health check user successful, got user:", zap.String("id", current.ID))
 
 	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
-		return false, time.Time{}, auth.ErrIncorrectPassword
+		return auth.ErrIncorrectPassword
 	}
 	log.Debug("verify password successful")
 
 	newPassHash, err := hash.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return false, time.Time{}, errors.ErrPassGenHash
+		return errors.ErrPassGenHash
 	}
 	log.Debug("password hash generated")
 
-	success, err := u.userProvider.UpdatePassword(ctx, current, string(newPassHash))
+	err = u.userRepository.UpdatePassword(ctx, current, string(newPassHash))
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return false, time.Time{}, user.ErrUpdateUser
+		return user.ErrUpdateUser
 	}
 	log.Info("success updated password", zap.String("id", current.ID))
 
-	return success, time.Now(), nil
+	return nil
 }
