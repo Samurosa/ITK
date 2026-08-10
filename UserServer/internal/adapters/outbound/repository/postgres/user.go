@@ -156,7 +156,7 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	return userModel, nil
 }
 
-func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) (bool, error) {
+func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) error {
 
 	query := `
 		UPDATE users
@@ -179,26 +179,22 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		if pgErr.Code == "23505" {
-			return false, userCore.ErrEmailIsExist
+			return userCore.ErrEmailIsExist
 		}
 	}
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if result.RowsAffected() == 0 {
-		return false, userCore.ErrUserNotFound
+		return userCore.ErrUserNotFound
 	}
 
-	return true, nil
+	return nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) (bool, error) {
-
-	if newPass == "" {
-		return false, errors.New("password hash is empty")
-	}
+func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) error {
 
 	query := `
 		UPDATE users
@@ -217,14 +213,14 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	)
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if result.RowsAffected() == 0 {
-		return false, userCore.ErrUserNotFound
+		return userCore.ErrUserNotFound
 	}
 
-	return true, nil
+	return nil
 }
 
 func (r *UserRepository) Delete(ctx context.Context,

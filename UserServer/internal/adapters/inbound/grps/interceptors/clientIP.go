@@ -22,14 +22,20 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 
+		var ip string
+
 		log := log.Named("client-ip-interceptor")
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
-			log.Info("ip from metadata not found")
+			log.Debug("metadata not found")
 		}
 
-		ip := md.Get("x-forwarded-for")[0]
+		values := md.Get("x-forwarded-for")
+
+		if len(values) > 0 {
+			ip = values[0]
+		}
 
 		if ip == "" {
 			p, ok := peer.FromContext(ctx)
@@ -43,7 +49,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 				log.Error("invalid peer address", zap.Error(err))
 				return nil, status.Error(codes.Internal, "invalid client ip")
 			}
-			log.Info("peer address received")
+			log.Debug("peer address received")
 
 			ip = host
 		}

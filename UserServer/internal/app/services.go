@@ -10,7 +10,6 @@ import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
-	"ITK_Code/m/v2/internal/infrastructure"
 
 	"go.uber.org/zap"
 )
@@ -25,11 +24,10 @@ type Dependencies struct {
 
 func NewServices(log *zap.Logger,
 	cfg *config.Config,
-	storages *infrastructure.Storages,
+	postgresStorage *postgres.Storage,
+	redisStorage *redis.Storage,
 	secret string,
 ) *Dependencies {
-	postgresStorage := storages.Postgres
-	redisStorage := storages.Redis
 
 	walletStorage := postgres.NewBalanceStorage(postgresStorage.GetPool())
 	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
@@ -45,7 +43,6 @@ func NewServices(log *zap.Logger,
 
 	userService := application.NewUserService(log,
 		userStorage,
-		userStorage,
 		redisStorage,
 	)
 
@@ -54,7 +51,6 @@ func NewServices(log *zap.Logger,
 		redisStorage,
 		redisStorage,
 		rateLimiter,
-		userStorage,
 		userStorage,
 	)
 

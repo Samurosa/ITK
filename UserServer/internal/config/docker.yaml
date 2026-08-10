@@ -17,4 +17,4 @@ redis:
   timeout: 5s
 limiter:
   capacity: 5
-  timer: 1m
+  refill_rate_in_minutes: 1m

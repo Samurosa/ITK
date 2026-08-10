@@ -16,6 +16,7 @@ type Service interface {
 	)
 
 	GetBalances(ctx context.Context,
+		id string,
 	) (
 		[]Balance,
 		error,

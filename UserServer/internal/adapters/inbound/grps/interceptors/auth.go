@@ -29,7 +29,7 @@ func AuthInterceptor(
 		log := log.Named("auth interceptor")
 
 		if _, ok := publicMethods[info.FullMethod]; ok {
-			log.Info("A verification token is not required for this RPS.")
+			log.Debug("A verification token is not required for this RPS.")
 			return handler(ctx, req)
 		}
 
@@ -66,9 +66,10 @@ func AuthInterceptor(
 				baseContext.JTI = claims.Jti
 			})
 		if err != nil {
-			log.Info("failed to update request context", zap.Error(err))
+			log.Error("failed to update request context", zap.Error(err))
 			return nil, status.Error(codes.Internal, "failed to update request context")
 		}
+		log.Debug("success pulling data in request context from access token", zap.String("id", claims.ID))
 
 		return handler(ctx, req)
 	}

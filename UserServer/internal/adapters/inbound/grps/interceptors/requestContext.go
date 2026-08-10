@@ -25,7 +25,7 @@ func RequestContextInterceptor(
 			ctx,
 			requestCtx,
 		)
-		log.Info("made request context")
+		log.Debug("made request context")
 
 		return handler(ctx, req)
 	}
