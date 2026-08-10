@@ -76,7 +76,6 @@ func (a *GRPCApp) Run() error {
 }
 
 func (a *GRPCApp) Stop() {
-	a.log.Info("GRPC UserServer stopped")
 
 	done := make(chan struct{})
 

@@ -7,5 +7,6 @@ CREATE TABLE users (
     password_hash BYTEA NOT NULL,
     role VARCHAR(50) NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL
+    updated_at TIMESTAMP NOT NULL,
+    deleted_at TIMESTAMP NULL
 );

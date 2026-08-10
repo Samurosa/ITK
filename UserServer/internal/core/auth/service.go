@@ -27,18 +27,16 @@ type Service interface {
 	)
 
 	Logout(ctx context.Context,
+		jti string,
 		refreshToken string,
 	) (
-		success bool,
-		loggedOutAt time.Time,
 		err error,
 	)
 
 	LogoutAllDevices(ctx context.Context,
+		jti string,
 		refreshToken string,
 	) (
-		success bool,
-		loggedOutAt time.Time,
 		err error,
 	)
 

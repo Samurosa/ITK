@@ -43,6 +43,8 @@ services:
     build:
       context: /
       dockerfile: Dockerfile
+    secrets:
+      - jwt_secret
     ports:
       - "50051:50051"
     depends_on:
@@ -51,3 +53,7 @@ services:
 
 volumes:
   db_data:
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret
