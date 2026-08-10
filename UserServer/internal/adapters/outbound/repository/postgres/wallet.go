@@ -39,6 +39,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 		&balance.Available,
 		&balance.Locked,
 	)
+	//TODO: добавить валидацию на существование userID
 	if err != nil {
 		return wallet.Balance{}, err
 	}

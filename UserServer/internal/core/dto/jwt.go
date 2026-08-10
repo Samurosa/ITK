@@ -2,8 +2,6 @@ package dto
 
 import (
 	"time"
-
-	"github.com/golang-jwt/jwt/v5"
 )
 
 type JWTConfig struct {
@@ -22,20 +20,4 @@ type TokensModel struct {
 	RefreshExpiresAt time.Time
 	RefreshCreatedAt time.Time
 	RefreshTTL       time.Duration
-}
-
-type AccessTokenParse struct {
-	UserID string
-	Role   string
-	Device string
-	Jti    string
-
-	jwt.RegisteredClaims
-}
-
-type RefreshTokenParse struct {
-	AccessTokenJTI  string
-	RefreshTokenJTI string
-
-	jwt.RegisteredClaims
 }

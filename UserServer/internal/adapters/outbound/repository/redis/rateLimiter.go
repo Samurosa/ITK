@@ -38,6 +38,7 @@ func (l *Limiter) Allow(
 		return false, coreErorrs.ErrInvalidContext
 	}
 	ip := requestCtx.Metadata.ClientIP
+	//TODO: сделать девайс+ip
 
 	pipe := l.client.TxPipeline()
 
