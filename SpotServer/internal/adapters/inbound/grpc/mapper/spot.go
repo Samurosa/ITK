@@ -23,7 +23,7 @@ func FromProtoCreateSpot(req *pb.CreateSpotRequest) dto.CreateSpot {
 }
 
 func ToProtoSpot(spot dto.Spot) *pb.GetSpotResponse {
-	return &pb.GetSpotResponse{
+	response := &pb.GetSpotResponse{
 		Id:                spot.ID,
 		Symbol:            spot.Symbol,
 		BaseAsset:         spot.BaseAsset,
@@ -38,8 +38,13 @@ func ToProtoSpot(spot dto.Spot) *pb.GetSpotResponse {
 		Status:            ToProtoStatus(spot.Status),
 		CreatedAt:         timestamppb.New(spot.CreatedAt),
 		UpdatedAt:         timestamppb.New(spot.UpdatedAt),
-		DisableAt:         timestamppb.New(spot.DisabledAt),
 	}
+
+	if spot.DisabledAt != nil {
+		response.DisableAt = timestamppb.New(*spot.DisabledAt)
+	}
+
+	return response
 }
 
 func ToProtoStatus(status dto.SpotStatus) pb.SpotStatus {
@@ -57,45 +62,57 @@ func ToProtoStatus(status dto.SpotStatus) pb.SpotStatus {
 }
 
 func ToProtoRoles(roles []dto.Role) []userPB.Role {
-	result := make([]userPB.Role, len(roles))
-	for _, role := range roles {
-		switch role {
-		case dto.UnspecifiedRole:
-			result = append(result, userPB.Role_ROLE_UNSPECIFIED)
-		case dto.UserRole:
-			result = append(result, userPB.Role_ROLE_USER)
-		case dto.GuestRole:
-			result = append(result, userPB.Role_ROLE_GUEST)
-		case dto.PremiumRole:
-			result = append(result, userPB.Role_ROLE_PREMIUM)
-		case dto.AdminRole:
-			result = append(result, userPB.Role_ROLE_ADMIN)
+	result := make([]userPB.Role, 0, len(roles))
 
-		default:
-			result = append(result, userPB.Role_ROLE_UNSPECIFIED)
-		}
+	for _, role := range roles {
+		result = append(result, ToProtoRole(role))
 	}
+
 	return result
 }
 
-func FromProtoRoles(roles []userPB.Role) []dto.Role {
-	result := make([]dto.Role, len(roles))
-	for _, role := range roles {
-		switch role {
-		case userPB.Role_ROLE_UNSPECIFIED:
-			result = append(result, dto.UnspecifiedRole)
-		case userPB.Role_ROLE_USER:
-			result = append(result, dto.UserRole)
-		case userPB.Role_ROLE_GUEST:
-			result = append(result, dto.GuestRole)
-		case userPB.Role_ROLE_PREMIUM:
-			result = append(result, dto.PremiumRole)
-		case userPB.Role_ROLE_ADMIN:
-			result = append(result, dto.AdminRole)
+func ToProtoRole(role dto.Role) userPB.Role {
+	switch role {
+	case dto.UnspecifiedRole:
+		return userPB.Role_ROLE_UNSPECIFIED
+	case dto.UserRole:
+		return userPB.Role_ROLE_USER
+	case dto.GuestRole:
+		return userPB.Role_ROLE_GUEST
+	case dto.PremiumRole:
+		return userPB.Role_ROLE_PREMIUM
+	case dto.AdminRole:
+		return userPB.Role_ROLE_ADMIN
 
-		default:
-			result = append(result, dto.UnspecifiedRole)
-		}
+	default:
+		return userPB.Role_ROLE_UNSPECIFIED
 	}
+}
+
+func FromProtoRoles(roles []userPB.Role) []dto.Role {
+	result := make([]dto.Role, 0, len(roles))
+
+	for _, role := range roles {
+		result = append(result, FromProtoRole(role))
+	}
+
 	return result
+}
+
+func FromProtoRole(role userPB.Role) dto.Role {
+	switch role {
+	case userPB.Role_ROLE_UNSPECIFIED:
+		return dto.UnspecifiedRole
+	case userPB.Role_ROLE_USER:
+		return dto.UserRole
+	case userPB.Role_ROLE_GUEST:
+		return dto.GuestRole
+	case userPB.Role_ROLE_PREMIUM:
+		return dto.PremiumRole
+	case userPB.Role_ROLE_ADMIN:
+		return dto.AdminRole
+
+	default:
+		return dto.UnspecifiedRole
+	}
 }

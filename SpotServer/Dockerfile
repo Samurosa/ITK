@@ -21,3 +21,4 @@ COPY --from=build ./internal/config /internal/config
 WORKDIR /
 EXPOSE 50052
 ENTRYPOINT ["/spotserver"]
+CMD ["-config=/internal/config/docker.yaml"]

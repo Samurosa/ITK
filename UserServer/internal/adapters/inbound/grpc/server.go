@@ -1,4 +1,4 @@
-package grps
+package grpc
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"

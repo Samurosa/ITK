@@ -9,15 +9,12 @@ import (
 type Spot struct {
 	log *zap.Logger
 
-	spotService spot.Service
-
 	spotRepository spot.Repository
 }
 
-func NewSpot(log *zap.Logger, spotService spot.Service, spotRepository spot.Repository) *Spot {
+func NewSpot(log *zap.Logger, spotRepository spot.Repository) *Spot {
 	return &Spot{
 		log:            log,
-		spotService:    spotService,
 		spotRepository: spotRepository,
 	}
 }
