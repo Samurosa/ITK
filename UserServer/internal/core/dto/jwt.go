@@ -16,8 +16,20 @@ type TokensModel struct {
 	RefreshToken string
 
 	AccessExpiresAt  time.Time
-	AccessCreatedAt  time.Time
+	AccessIssuedAt   time.Time
 	RefreshExpiresAt time.Time
-	RefreshCreatedAt time.Time
+	RefreshIssuedAt  time.Time
 	RefreshTTL       time.Duration
+}
+
+type AccessTokenParse struct {
+	UserID string
+	Role   string
+	Device string
+	Jti    string
+}
+
+type RefreshTokenParse struct {
+	AccessTokenJTI  string
+	RefreshTokenJTI string
 }

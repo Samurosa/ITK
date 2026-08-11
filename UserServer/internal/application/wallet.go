@@ -1,7 +1,6 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
 	"context"
 
@@ -12,24 +11,19 @@ func (w *Wallet) Deposit(ctx context.Context,
 	id string,
 	asset string,
 	amount wallet.Money,
+	idempotentKey string,
 ) (
 	wallet.Balance,
 	error,
 ) {
 	log := w.log.Named("Deposit")
 
-	if _, err := w.userRepository.Get(ctx, id); err != nil {
-		log.Error("failed to get user", zap.String("id", id), zap.Error(err))
-		return wallet.Balance{}, user.ErrUserNotFound
-	}
-	log.Debug("health check user successful")
-
-	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount)
+	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount, idempotentKey)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
 		return wallet.Balance{}, wallet.ErrSaveBalance
 	}
-	log.Info("deposit successful", zap.String("id", id))
+	log.Info("deposit successful", zap.String("balance id", newBalance.ID))
 
 	return newBalance, nil
 }

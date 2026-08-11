@@ -42,34 +42,6 @@ func ToProtoSpot(spot dto.Spot) *pb.GetSpotResponse {
 	}
 }
 
-func ToProtoMarkets(markets []dto.Market) []*pb.Market {
-	protoMarkets := make([]*pb.Market, len(markets))
-	for _, market := range markets {
-		protoMarkets = append(protoMarkets, &pb.Market{
-			SpotId:                 market.SpotID,
-			Symbol:                 market.Symbol,
-			BaseAsset:              market.BaseAsset,
-			QuoteAsset:             market.QuoteAsset,
-			Status:                 ToProtoStatus(market.Status),
-			LastPrice:              market.LastPrice,
-			PriceChange_24H:        market.PriceChange24h,
-			PriceChangePercent_24H: market.PriceChangePercent24h,
-			UpdatedAt:              timestamppb.New(market.UpdatedAt),
-		})
-	}
-
-	return protoMarkets
-}
-
-func ToProtoDescriptionMarket(market dto.DescriptionMarket) *pb.DescribeMarketResponse {
-	return &pb.DescribeMarketResponse{
-		BaseAsset:   market.BaseAsset,
-		QuoteAsset:  market.QuoteAsset,
-		Name:        market.Name,
-		Description: market.Description,
-	}
-}
-
 func ToProtoStatus(status dto.SpotStatus) pb.SpotStatus {
 	switch status {
 	case dto.UnspecifiedStatus:

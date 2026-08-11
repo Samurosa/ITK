@@ -12,8 +12,8 @@ func ToProtoTokens(tokens dto.TokensModel) *pb.TokenPairResponse {
 		AccessToken:      tokens.AccessToken,
 		RefreshToken:     tokens.RefreshToken,
 		AccessExpiresAt:  timestamppb.New(tokens.AccessExpiresAt),
-		AccessCreatesAt:  timestamppb.New(tokens.AccessCreatedAt),
+		AccessIssuedAt:   timestamppb.New(tokens.AccessIssuedAt),
 		RefreshExpiresAt: timestamppb.New(tokens.RefreshExpiresAt),
-		RefreshCreatesAt: timestamppb.New(tokens.RefreshCreatedAt),
+		RefreshIssuedAt:  timestamppb.New(tokens.RefreshIssuedAt),
 	}
 }

@@ -35,28 +35,28 @@ func (s *Spot) GetSpot(ctx context.Context, log *zap.Logger, spotID string) (dto
 	panic("implement me")
 }
 
-func (s *Spot) EnableSpot(ctx context.Context, log *zap.Logger, spotID string) (bool, time.Time, error) {
+func (s *Spot) EnableSpot(ctx context.Context, log *zap.Logger, spotID string) error {
 	log.Named("EnableSpot")
 
 	err := s.spotRepository.Enable(ctx, spotID)
 	if err != nil {
 		log.Error("spot enable failed", zap.Error(err))
-		return false, time.Time{}, errors.ErrEnableSpot
+		return errors.ErrEnableSpot
 	}
 	log.Info("spot enable", zap.String("id", spotID))
 
-	return true, time.Now(), nil
+	return nil
 }
 
-func (s *Spot) DisableSpot(ctx context.Context, log *zap.Logger, spotID string) (bool, time.Time, error) {
+func (s *Spot) DisableSpot(ctx context.Context, log *zap.Logger, spotID string) error {
 	log.Named("DisableSpot")
 
 	err := s.spotRepository.Disable(ctx, spotID)
 	if err != nil {
 		log.Error("spot disable failed", zap.Error(err))
-		return false, time.Time{}, errors.ErrDisableSpot
+		return errors.ErrDisableSpot
 	}
 	log.Info("spot disabled", zap.String("id", spotID))
 
-	return true, time.Now(), nil
+	return nil
 }

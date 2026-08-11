@@ -5,7 +5,6 @@ import (
 	coreErrors "ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
-
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -76,10 +75,10 @@ func ToGRPC(err error) error {
 	case errors.Is(err, coreErrors.ErrTooManyRequests):
 		return status.Error(codes.ResourceExhausted, "too many requests")
 
-		//TODO: 	case errors.Is(err, context.Canceled):
-		//		return status.Error(codes.Canceled, "request canceled")
-		//	case errors.Is(err, context.DeadlineExceeded):
-		//		return status.Error(codes.DeadlineExceeded, "request timeout")
+	case errors.Is(err, coreErrors.Canceled):
+		return status.Error(codes.Canceled, "request canceled")
+	case errors.Is(err, coreErrors.DeadlineExceeded):
+		return status.Error(codes.DeadlineExceeded, "request timeout")
 
 	default:
 		return status.Error(codes.Internal, "internal UserServer error")

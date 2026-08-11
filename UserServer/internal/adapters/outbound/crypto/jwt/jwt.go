@@ -43,22 +43,32 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 	}
 
 	return dto.TokensModel{
-		AccessToken:  accessTokenString,
-		RefreshToken: refreshTokenString,
+			AccessToken:  accessTokenString,
+			RefreshToken: refreshTokenString,
 
-		AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
-		AccessCreatedAt:  time.Now(),
-		RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
-		RefreshCreatedAt: time.Now(),
-		RefreshTTL:       j.jwtConfig.RefreshTokenTTL,
-	}, accessToken, refreshToken, nil
+			AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
+			AccessIssuedAt:   time.Now(),
+			RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
+			RefreshIssuedAt:  time.Now(),
+			RefreshTTL:       j.jwtConfig.RefreshTokenTTL,
+		},
+		dto.AccessTokenParse{
+			UserID: accessToken.UserID,
+			Role:   accessToken.Role,
+			Device: deviceID,
+			Jti:    accessToken.Jti,
+		},
+		dto.RefreshTokenParse{
+			AccessTokenJTI:  refreshToken.AccessTokenJTI,
+			RefreshTokenJTI: refreshToken.RefreshTokenJTI,
+		}, nil
 }
 
 func (j *Token) ParseAccessToken(accessToken string) (dto.AccessTokenParse, error) {
 	log := j.log.Named("Parse Access Token")
 	token, err := jwt.ParseWithClaims(
 		accessToken,
-		&dto.AccessTokenParse{},
+		&AccessTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, errors.ErrInvalidToken
@@ -83,7 +93,7 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, e
 	log := j.log.Named("Parse Refresh Token")
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
-		&dto.RefreshTokenParse{},
+		&RefreshTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, errors.ErrInvalidToken
