@@ -111,7 +111,7 @@ func (a *Auth) Login(ctx context.Context,
 		RefreshTokenHash: tokenHash,
 		TTL:              tokens.RefreshTTL,
 		ExpiresAt:        tokens.RefreshExpiresAt,
-		CreatedAt:        tokens.RefreshCreatedAt,
+		CreatedAt:        tokens.RefreshIssuedAt,
 	}
 
 	err = a.sessionStorage.Create(ctx, accessToken.Jti, session)
@@ -275,7 +275,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		RefreshTokenHash: tokenHash,
 		TTL:              newTokens.RefreshTTL,
 		ExpiresAt:        newTokens.RefreshExpiresAt,
-		CreatedAt:        newTokens.RefreshCreatedAt,
+		CreatedAt:        newTokens.RefreshIssuedAt,
 	}
 
 	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)

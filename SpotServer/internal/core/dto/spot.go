@@ -45,7 +45,7 @@ type Spot struct {
 
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
-	DisabledAt time.Time
+	DisabledAt *time.Time
 }
 
 type CreateSpot struct {

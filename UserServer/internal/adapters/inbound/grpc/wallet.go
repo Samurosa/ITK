@@ -1,8 +1,8 @@
-package grps
+package grpc
 
 import (
-	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
-	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	requestContext "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/errors"
 	"context"
@@ -37,13 +37,12 @@ func (s *ServerApi) Deposit(
 		return nil, mapper.ToGRPC(err)
 	}
 
-	success, balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount)
+	balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount, req.IdempotencyKey)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
 	return &pb.DepositResponse{
-		Success: success,
 		Balance: mapper.ToProtoBalance(balances),
 	}, nil
 }

@@ -69,7 +69,7 @@ func AuthInterceptor(
 			log.Error("failed to update request context", zap.Error(err))
 			return nil, status.Error(codes.Internal, "failed to update request context")
 		}
-		log.Debug("success pulling data in request context from access token", zap.String("id", claims.ID))
+		log.Debug("success pulling data in request context from access token", zap.String("id", claims.Jti))
 
 		return handler(ctx, req)
 	}

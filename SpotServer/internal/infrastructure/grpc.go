@@ -1,11 +1,9 @@
 package infrastructure
 
 import (
-	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
-	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
-	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user"
-	"ITK_Code/m/v2/internal/core/wallet"
+	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+	"ITK_Code/m/v2/internal/core/spot"
+
 	"fmt"
 	"net"
 	"time"
@@ -13,14 +11,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
-
-type Services interface {
-	TokenManager() auth.TokenManager
-	UserService() user.Service
-	AuthService() auth.Service
-	WalletService() wallet.Service
-	SessionStorage() auth.SessionRepository
-}
 
 type GRPCApp struct {
 	log        *zap.Logger
@@ -30,25 +20,15 @@ type GRPCApp struct {
 
 func NewGRPC(
 	log *zap.Logger,
-	services Services,
+	spotService spot.Service,
 	port int,
 ) *GRPCApp {
-	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			interceptors.RequestContextInterceptor(log),
-			interceptors.ClientIPInterceptor(log),
-			interceptors.AuthInterceptor(log,
-				services.TokenManager(),
-				services.SessionStorage(),
-			),
-		),
-	)
+	grpcServer := grpc.NewServer()
 
-	usergrps.RegisterUserService(grpcServer,
-		services.UserService(),
-		services.AuthService(),
-		services.WalletService(),
-		log)
+	spGRPC.RegisterUserService(grpcServer,
+		spotService,
+		log,
+	)
 
 	return &GRPCApp{
 		log:        log,

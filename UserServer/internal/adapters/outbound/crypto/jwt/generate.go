@@ -15,9 +15,9 @@ func generateRefreshToken(
 	secret string,
 	refreshTokenTTL time.Duration,
 	jti string,
-) (string, dto.RefreshTokenParse, error) {
+) (string, RefreshTokenParse, error) {
 
-	claimsRefreshToken := dto.RefreshTokenParse{
+	claimsRefreshToken := RefreshTokenParse{
 		AccessTokenJTI:  jti,
 		RefreshTokenJTI: uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -29,7 +29,7 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", dto.RefreshTokenParse{}, errors.ErrGenerateToken
+		return "", RefreshTokenParse{}, errors.ErrGenerateToken
 	}
 
 	return refreshTokenString, claimsRefreshToken, nil
@@ -40,11 +40,11 @@ func generateAccessToken(
 	accessTokenTTL time.Duration,
 	user user.User,
 	deviceId string,
-) (string, dto.AccessTokenParse, error) {
+) (string, AccessTokenParse, error) {
 
 	tokenID := uuid.NewString()
 
-	claimsAccessToken := dto.AccessTokenParse{
+	claimsAccessToken := AccessTokenParse{
 		UserID: user.ID,
 		Role:   string(user.Role),
 		Device: deviceId,
@@ -58,7 +58,7 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", dto.AccessTokenParse{}, errors.ErrGenerateToken
+		return "", AccessTokenParse{}, errors.ErrGenerateToken
 	}
 
 	return accessTokenString, claimsAccessToken, nil
@@ -71,13 +71,18 @@ func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*dto.AccessTok
 		return &dto.AccessTokenParse{}, errors.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*dto.AccessTokenParse)
+	claims, ok := token.Claims.(*AccessTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
 		return &dto.AccessTokenParse{}, errors.ErrInvalidToken
 	}
 
-	return claims, nil
+	return &dto.AccessTokenParse{
+		UserID: claims.UserID,
+		Role:   claims.Role,
+		Device: claims.Device,
+		Jti:    claims.Jti,
+	}, nil
 }
 
 func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*dto.RefreshTokenParse, error) {
@@ -87,11 +92,14 @@ func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*dto.RefreshT
 		return &dto.RefreshTokenParse{}, errors.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*dto.RefreshTokenParse)
+	claims, ok := token.Claims.(*RefreshTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
 		return &dto.RefreshTokenParse{}, errors.ErrInvalidToken
 	}
 
-	return claims, nil
+	return &dto.RefreshTokenParse{
+		AccessTokenJTI:  claims.AccessTokenJTI,
+		RefreshTokenJTI: claims.RefreshTokenJTI,
+	}, nil
 }

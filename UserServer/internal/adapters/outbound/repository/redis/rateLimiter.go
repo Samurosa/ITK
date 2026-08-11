@@ -38,10 +38,13 @@ func (l *Limiter) Allow(
 		return false, coreErorrs.ErrInvalidContext
 	}
 	ip := requestCtx.Metadata.ClientIP
+	deviceID := requestCtx.Metadata.DeviceID
+
+	key := ip + deviceID
 
 	pipe := l.client.TxPipeline()
 
-	count, err := pipe.Incr(ctx, ip).Result()
+	count, err := pipe.Incr(ctx, key).Result()
 
 	if err != nil {
 		return false, err
@@ -50,7 +53,7 @@ func (l *Limiter) Allow(
 	if count == 1 {
 		if err = pipe.Expire(
 			ctx,
-			ip,
+			key,
 			l.timer,
 		).Err(); err != nil {
 			return false, err

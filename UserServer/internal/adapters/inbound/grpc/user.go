@@ -1,8 +1,8 @@
-package grps
+package grpc
 
 import (
-	"ITK_Code/m/v2/internal/adapters/inbound/grps/mapper"
-	"ITK_Code/m/v2/internal/adapters/inbound/grps/validate"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	requestContext "ITK_Code/m/v2/internal/core/context"
 	"context"
 

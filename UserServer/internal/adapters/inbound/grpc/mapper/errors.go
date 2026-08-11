@@ -1,13 +1,10 @@
 package mapper
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
-	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
 	"ITK_Code/m/v2/internal/core/auth"
 	coreErrors "ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
-	"context"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -63,8 +60,6 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Internal, "failed to generate token")
 	case errors.Is(err, coreErrors.ErrInvalidToken):
 		return status.Error(codes.InvalidArgument, "invalid token")
-	case errors.Is(err, auth.ErrSessionExpired):
-		return status.Error(codes.Unauthenticated, "session expired")
 	case errors.Is(err, auth.ErrSessionNotFound):
 		return status.Error(codes.Unauthenticated, "session not found")
 	case errors.Is(err, coreErrors.ErrInvalidContext):
@@ -78,15 +73,11 @@ func ToGRPC(err error) error {
 	case errors.Is(err, auth.ErrNoAccess):
 		return status.Error(codes.PermissionDenied, "no access")
 	case errors.Is(err, coreErrors.ErrTooManyRequests):
-		return status.Error(codes.Aborted, "too many requests")
-	case errors.Is(err, postgres.ErrPingDB):
-		return status.Error(codes.Internal, "failed connect to database")
-	case errors.Is(err, redis.ErrPingToRedis):
-		return status.Error(codes.Internal, "failed connect to redis")
+		return status.Error(codes.ResourceExhausted, "too many requests")
 
-	case errors.Is(err, context.Canceled):
+	case errors.Is(err, coreErrors.Canceled):
 		return status.Error(codes.Canceled, "request canceled")
-	case errors.Is(err, context.DeadlineExceeded):
+	case errors.Is(err, coreErrors.DeadlineExceeded):
 		return status.Error(codes.DeadlineExceeded, "request timeout")
 
 	default:

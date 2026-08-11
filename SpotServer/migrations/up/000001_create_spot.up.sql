@@ -42,7 +42,7 @@ CREATE TABLE spot (
         CHECK (quantity_precision BETWEEN 0 AND 18),
 
     CONSTRAINT chk_spot_status
-        CHECK (status IN ('ACTIVE', 'DISABLED')),
+        CHECK (status IN ('SPOT_STATUS_ACTIVE', 'SPOT_STATUS_DISABLED')),
 
     CONSTRAINT uq_spot_asset_pair
         UNIQUE (base_asset, quote_asset)
