@@ -10,6 +10,8 @@ github.com/Samurosa/exchange-contract v0.2.11 h1:gCy0kIEWosS/bV/VWqJIHugy6VhYaFE
 github.com/Samurosa/exchange-contract v0.2.11/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
 github.com/Samurosa/exchange-contract v0.2.12 h1:w5CZm7eu3spAKsip3evuTS1TDaAyTUgRWBC5kV0xnBo=
 github.com/Samurosa/exchange-contract v0.2.12/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
+github.com/Samurosa/exchange-contract v0.2.14 h1:Jk4D+QqGsz02ms/wEwb8JuoyWJKmmMHzTcS9ARO+ezI=
+github.com/Samurosa/exchange-contract v0.2.14/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
