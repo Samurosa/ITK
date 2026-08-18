@@ -7,6 +7,7 @@ import (
 	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
+	errorsLib "errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -84,9 +85,13 @@ func (a *Auth) Login(ctx context.Context,
 	log.Debug("validate rate limiting")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
-	if err != nil {
-		log.Error("error getting user by email", zap.String("email", email), zap.Error(err))
+	if errorsLib.Is(err, user.ErrUserNotFound) {
+		log.Error("user not found", zap.String("email", email), zap.Error(err))
 		gotUser.PasswordHash = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
+	}
+	if err != nil {
+		log.Error("error getting user", zap.String("email", email), zap.Error(err))
+		return dto.TokensModel{}, err
 	}
 	log.Debug("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
@@ -135,7 +140,7 @@ func (a *Auth) Logout(ctx context.Context,
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return auth.ErrSessionNotFound
+		return err
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
@@ -152,7 +157,7 @@ func (a *Auth) Logout(ctx context.Context,
 	err = a.sessionStorage.DeleteByJTI(ctx, jti, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
-		return auth.ErrSessionNotFound
+		return err
 	}
 	log.Info("session deleted", zap.String("id", sessionInfo.UserID))
 
@@ -167,14 +172,14 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
 	if err != nil {
 		log.Error("error getting session info", zap.Error(err))
-		return auth.ErrUnauthorized
+		return err
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
 	err = a.sessionStorage.DeleteByUser(ctx, sessionInfo.UserID)
 	if err != nil {
 		log.Error("error deleting sessions", zap.Error(err))
-		return auth.ErrSessionNotFound
+		return err
 	}
 	log.Info("user sessions deleted", zap.String("id", sessionInfo.UserID))
 
@@ -232,7 +237,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, storedJTI)
 	if err != nil {
 		log.Error("error getting session", zap.Error(err))
-		return dto.TokensModel{}, auth.ErrSessionNotFound
+		return dto.TokensModel{}, err
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
@@ -240,7 +245,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	gotUser, err := a.userRepository.Get(ctx, userID)
 	if err != nil {
 		log.Error("error getting user by id", zap.Error(err))
-		return dto.TokensModel{}, user.ErrUserNotFound
+		return dto.TokensModel{}, err
 	}
 	log.Debug("got user from session info", zap.String("id", userID))
 

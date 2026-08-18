@@ -94,7 +94,7 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, jti string) (auth.SessionM
 	}
 
 	if len(data) == 0 {
-		return auth.SessionModel{}, redis.Nil
+		return auth.SessionModel{}, auth.ErrSessionNotFound
 	}
 
 	expiresAt, err := time.Parse(
@@ -116,7 +116,7 @@ func (s *Storage) fromRedisByJTI(ctx context.Context, jti string) (auth.SessionM
 	ttl := time.Until(expiresAt)
 
 	if ttl <= 0 {
-		return auth.SessionModel{}, redis.Nil
+		return auth.SessionModel{}, auth.ErrSessionNotFound
 	}
 
 	return auth.SessionModel{

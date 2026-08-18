@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -108,6 +107,10 @@ func (r *UserRepository) Get(ctx context.Context,
 		&userModel.UpdateTime,
 	)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return userCore.User{}, userCore.ErrUserNotFound
+	}
+
 	if err != nil {
 		return userCore.User{}, err
 	}
@@ -152,6 +155,10 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		&userModel.UpdateTime,
 	)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return userCore.User{}, userCore.ErrUserNotFound
+	}
+
 	if err != nil {
 		return userCore.User{}, err
 	}
@@ -176,13 +183,6 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		update.Name,
 		userID,
 	)
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" {
-			return userCore.ErrEmailIsExist
-		}
-	}
 
 	if err != nil {
 		return err
@@ -275,6 +275,10 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		query,
 		id,
 	).Scan(&role)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, userCore.ErrUserNotFound
+	}
 
 	if err != nil {
 		return false, err
