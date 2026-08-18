@@ -165,9 +165,8 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		UPDATE users
 		SET
 			name = COALESCE($1, name),
-			email = COALESCE($2, email),
 			updated_at = NOW()
-		WHERE id = $3
+		WHERE id = $2
 		AND deleted_at IS NULL;
 	`
 
@@ -175,7 +174,6 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		ctx,
 		query,
 		update.Name,
-		update.Email,
 		userID,
 	)
 

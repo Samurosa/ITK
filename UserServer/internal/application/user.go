@@ -89,16 +89,12 @@ func (u *User) GetUserByEmail(ctx context.Context,
 func (u *User) UpdateUserInfo(ctx context.Context,
 	id string,
 	name string,
-	email string,
 ) error {
 	log := u.log.Named("update user")
 
 	updated := user.UpdateUser{}
 	if name != "" {
 		updated.Name = &name
-	}
-	if email != "" {
-		updated.Email = &email
 	}
 
 	err := u.userRepository.Update(ctx, id, updated)

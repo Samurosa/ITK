@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -55,7 +56,12 @@ func (s *ServerApi) Login(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	tokens, err := s.auth.Login(ctx, req.Email, req.Password, req.DeviceId)
+	deviceID, err := requestContext.DeviceID(ctx)
+	if err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+
+	tokens, err := s.auth.Login(ctx, req.Email, req.Password, deviceID)
 	if err != nil {
 		s.log.Error("failed to login", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
@@ -67,7 +73,7 @@ func (s *ServerApi) Login(ctx context.Context,
 func (s *ServerApi) Logout(ctx context.Context,
 	req *pb.LogoutRequest,
 ) (
-	*pb.Empty,
+	*emptypb.Empty,
 	error,
 ) {
 	log := s.log.Named("Logout")
@@ -89,21 +95,16 @@ func (s *ServerApi) Logout(ctx context.Context,
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ServerApi) LogoutAllDevices(ctx context.Context,
-	req *pb.LogoutAllRequest,
+	_ *emptypb.Empty,
 ) (
-	*pb.Empty,
+	*emptypb.Empty,
 	error,
 ) {
 	log := s.log.Named("LogoutAllDevices")
-
-	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
-	}
 
 	jti, err := requestContext.JTI(ctx)
 	if err != nil {
@@ -112,12 +113,12 @@ func (s *ServerApi) LogoutAllDevices(ctx context.Context,
 	}
 	log.Debug("got token jti from context")
 
-	err = s.auth.LogoutAllDevices(ctx, jti, req.RefreshToken)
+	err = s.auth.LogoutAllDevices(ctx, jti)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ServerApi) RefreshToken(ctx context.Context,

@@ -65,7 +65,7 @@ func (a *Auth) Registration(ctx context.Context,
 func (a *Auth) Login(ctx context.Context,
 	email string,
 	password string,
-	deviceId string,
+	deviceID string,
 ) (
 	dto.TokensModel,
 	error,
@@ -97,7 +97,7 @@ func (a *Auth) Login(ctx context.Context,
 	}
 	log.Debug("verify password passed", zap.String("id", gotUser.ID))
 
-	tokens, accessToken, _, err := a.tokenManager.Generate(gotUser, deviceId)
+	tokens, accessToken, _, err := a.tokenManager.Generate(gotUser, deviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return dto.TokensModel{}, err
@@ -107,7 +107,7 @@ func (a *Auth) Login(ctx context.Context,
 	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
 	session := auth.SessionModel{
 		UserID:           gotUser.ID,
-		DeviceID:         deviceId,
+		DeviceID:         deviceID,
 		RefreshTokenHash: tokenHash,
 		TTL:              tokens.RefreshTTL,
 		ExpiresAt:        tokens.RefreshExpiresAt,
@@ -161,7 +161,6 @@ func (a *Auth) Logout(ctx context.Context,
 
 func (a *Auth) LogoutAllDevices(ctx context.Context,
 	jti string,
-	refreshToken string,
 ) error {
 	log := a.log.Named("Logout all devices")
 
@@ -171,16 +170,6 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		return auth.ErrUnauthorized
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
-
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
-		log.Error("error comparing refresh token",
-			zap.Error(err),
-			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
-			zap.String("storedHash", sessionInfo.RefreshTokenHash),
-		)
-		return auth.ErrNoAccess
-	}
-	log.Debug("verify password passed", zap.String("id", sessionInfo.UserID))
 
 	err = a.sessionStorage.DeleteByUser(ctx, sessionInfo.UserID)
 	if err != nil {
