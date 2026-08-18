@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -26,9 +27,9 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	string,
 	error,
 ) {
+	var id string
 
-	query := `
-		INSERT INTO users
+	query := ` INSERT INTO users
 		(
 			email,
 			name,
@@ -38,10 +39,15 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 			updated_at
 		)
 		VALUES($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (email) DO UPDATE SET
+			deleted_at = NULL,
+    		name = EXCLUDED.name,
+    		password_hash = EXCLUDED.password_hash,
+    		role = EXCLUDED.role,
+    		updated_at = EXCLUDED.updated_at
+		WHERE users.deleted_at IS NOT NULL
 		RETURNING id
 	`
-
-	var id string
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -54,11 +60,8 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 		user.UpdateTime,
 	).Scan(&id)
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" {
-			return "", userCore.ErrEmailIsExist
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", userCore.ErrEmailIsExist
 	}
 
 	if err != nil {

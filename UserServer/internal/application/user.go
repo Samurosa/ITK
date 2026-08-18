@@ -36,7 +36,7 @@ func (u *User) DeleteUser(ctx context.Context,
 	err := u.userRepository.Delete(ctx, id)
 	if err != nil {
 		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return user.ErrUserNotFound
+		return err
 	}
 	log.Debug("user deleted", zap.String("id", id))
 

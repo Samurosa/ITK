@@ -27,6 +27,7 @@ func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Debug("metadata not found")
+			return handler(ctx, req)
 		}
 
 		deviceID := md.Get("device-id")
@@ -37,7 +38,7 @@ func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		if device == "" {
 			log.Error("device not found in metadata")
-			return nil, nil
+			return handler(ctx, req)
 		}
 
 		ctx, err := reqCtx.UpdateRequestContext(ctx, func(rc *dto.RequestContext) {
