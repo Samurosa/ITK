@@ -24,7 +24,7 @@ func (s *ServerApi) GetUser(ctx context.Context,
 	userID, err := requestContext.UserID(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return &pb.UserInfoResponse{}, mapper.ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 	log.Debug("user id from context", zap.String("id", userID))
 

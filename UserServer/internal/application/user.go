@@ -43,7 +43,7 @@ func (u *User) DeleteUser(ctx context.Context,
 	err = u.sessionStorage.DeleteByUser(ctx, id)
 	if err != nil {
 		log.Error("session not found", zap.String("id", id), zap.Error(err))
-		return user.ErrUserNotFound
+		return user.ErrUserNotFound //TODO
 	}
 	log.Info("user deleted", zap.String("id", id))
 

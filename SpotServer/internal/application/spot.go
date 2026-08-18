@@ -12,8 +12,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *Spot) CreateSpot(ctx context.Context, log *zap.Logger, reqSpot dto.CreateSpot) (string, time.Time, error) {
-	log = log.Named("Create spot")
+func (s *Spot) CreateSpot(ctx context.Context, reqSpot dto.CreateSpot) (string, time.Time, error) {
+	log := s.log.Named("Create spot")
 
 	err := validate.CreateSpot(log, reqSpot)
 	if err != nil {
@@ -33,8 +33,8 @@ func (s *Spot) CreateSpot(ctx context.Context, log *zap.Logger, reqSpot dto.Crea
 	return spotID, time.Now(), nil
 }
 
-func (s *Spot) GetSpot(ctx context.Context, log *zap.Logger, spotID string) (dto.Spot, error) {
-	log.Named("Get spot")
+func (s *Spot) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
+	log := s.log.Named("Get spot")
 
 	gotSpot, err := s.spotRepository.Get(ctx, spotID)
 	if err != nil {
@@ -46,8 +46,8 @@ func (s *Spot) GetSpot(ctx context.Context, log *zap.Logger, spotID string) (dto
 	return gotSpot, nil
 }
 
-func (s *Spot) EnableSpot(ctx context.Context, log *zap.Logger, spotID string) error {
-	log.Named("Enable spot")
+func (s *Spot) EnableSpot(ctx context.Context, spotID string) error {
+	log := s.log.Named("Enable spot")
 
 	err := s.spotRepository.Enable(ctx, spotID)
 	if errors.Is(err, errorsCore.ErrSpotNotFound) {
@@ -63,8 +63,8 @@ func (s *Spot) EnableSpot(ctx context.Context, log *zap.Logger, spotID string) e
 	return nil
 }
 
-func (s *Spot) DisableSpot(ctx context.Context, log *zap.Logger, spotID string) error {
-	log.Named("Disable spot")
+func (s *Spot) DisableSpot(ctx context.Context, spotID string) error {
+	log := s.log.Named("Disable spot")
 
 	err := s.spotRepository.Disable(ctx, spotID)
 	if errors.Is(err, errorsCore.ErrSpotNotFound) {

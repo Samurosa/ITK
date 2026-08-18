@@ -41,7 +41,7 @@ type Redis struct {
 }
 
 type Limiter struct {
-	Capacity float64       `yaml:"capacity"`
+	Capacity int64         `yaml:"capacity"`
 	Timer    time.Duration `yaml:"timer"`
 }
 

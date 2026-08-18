@@ -4,17 +4,15 @@ import (
 	reqCtx "ITK_Code/m/v2/internal/core/context"
 	"ITK_Code/m/v2/internal/core/dto"
 	"context"
-	"net"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
-func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
+func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -22,40 +20,28 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
 
-		var ip string
+		var device string
 
-		log := log.Named("client-ip-interceptor")
+		log := log.Named("device-id-interceptor")
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Debug("metadata not found")
 		}
 
-		clientIP := md.Get("x-forwarded-for")
+		deviceID := md.Get("device-id")
 
-		if len(clientIP) > 0 {
-			ip = clientIP[0]
+		if len(deviceID) > 0 {
+			device = deviceID[0]
 		}
 
-		if ip == "" {
-			p, ok := peer.FromContext(ctx)
-			if !ok {
-				log.Error("peer not found")
-				return nil, status.Error(codes.Internal, "client ip not found")
-			}
-
-			host, _, err := net.SplitHostPort(p.Addr.String())
-			if err != nil {
-				log.Error("invalid peer address", zap.Error(err))
-				return nil, status.Error(codes.Internal, "invalid client ip")
-			}
-			log.Debug("peer address received")
-
-			ip = host
+		if device == "" {
+			log.Error("device not found in metadata")
+			return nil, nil
 		}
 
 		ctx, err := reqCtx.UpdateRequestContext(ctx, func(rc *dto.RequestContext) {
-			rc.Metadata.ClientIP = ip
+			rc.Metadata.DeviceID = device
 		})
 		if err != nil {
 			log.Error("update request context", zap.Error(err))

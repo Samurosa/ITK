@@ -59,7 +59,7 @@ func (s *ServerApi) GetBalances(
 	id, err := requestContext.UserID(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return &pb.UserBalancesInfoResponse{}, errors.ErrInvalidContext
+		return nil, errors.ErrInvalidContext
 	}
 	log.Debug("user id from context", zap.String("id", id))
 

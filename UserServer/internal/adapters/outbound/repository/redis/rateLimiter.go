@@ -14,7 +14,7 @@ import (
 type Limiter struct {
 	log      *zap.Logger
 	client   *redis.Client
-	capacity float64
+	capacity int64
 	timer    time.Duration
 }
 
@@ -40,30 +40,33 @@ func (l *Limiter) Allow(
 	ip := requestCtx.Metadata.ClientIP
 	deviceID := requestCtx.Metadata.DeviceID
 
-	key := ip + deviceID
+	key := "rate-limiter:" + ip + deviceID
 
-	pipe := l.client.TxPipeline()
+	addLimiterByKeyScript := redis.NewScript(`
+	local rate = redis.call("INCR", KEYS[1])
+	
+	if rate == 1 then
+		redis.call("EXPIRE", KEYS[1], ARGV[1])
+	end
 
-	count, err := pipe.Incr(ctx, key).Result()
+	return rate
+`)
+
+	result, err := addLimiterByKeyScript.Run(ctx,
+		l.client,
+		[]string{key},
+		int(l.timer.Seconds()),
+	).Result()
 
 	if err != nil {
+		log.Error("Failed to add rate limiter", zap.Error(err))
+		return false, err
+	}
+	count, ok := result.(int64)
+	if !ok {
+		log.Error("Failed to get rate limiter count", zap.Error(err))
 		return false, err
 	}
 
-	if count == 1 {
-		if err = pipe.Expire(
-			ctx,
-			key,
-			l.timer,
-		).Err(); err != nil {
-			return false, err
-		}
-	}
-
-	_, err = pipe.Exec(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	return count <= int64(l.capacity), nil
+	return count <= l.capacity, nil
 }

@@ -36,7 +36,7 @@ func AuthInterceptor(
 		meta, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Error("missing metadata")
-			return nil, status.Errorf(codes.NotFound, "missing metadata")
+			return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated")
 		}
 
 		values := meta.Get("authorization")
