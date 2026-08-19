@@ -7,6 +7,7 @@ import (
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -41,7 +42,7 @@ func (s *Server) GetSpot(ctx context.Context, req *pb.GetSpotRequest) (*pb.GetSp
 	return mapper.ToProtoSpot(spot), nil
 }
 
-func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*pb.Empty, error) {
+func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*emptypb.Empty, error) {
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
@@ -51,10 +52,10 @@ func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*pb
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*pb.Empty, error) {
+func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*emptypb.Empty, error) {
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
@@ -64,5 +65,5 @@ func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

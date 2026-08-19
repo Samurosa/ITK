@@ -1,3 +1,4 @@
+-- +goose Up
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE users (
@@ -10,3 +11,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP NOT NULL,
     deleted_at TIMESTAMP NULL
 );
+
+-- +goose Down
+DROP TABLE users;

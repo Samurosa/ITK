@@ -25,7 +25,6 @@ func FromProtoCreateSpot(req *pb.CreateSpotRequest) dto.CreateSpot {
 func ToProtoSpot(spot dto.Spot) *pb.GetSpotResponse {
 	response := &pb.GetSpotResponse{
 		Id:                spot.ID,
-		Symbol:            spot.Symbol,
 		BaseAsset:         spot.BaseAsset,
 		QuoteAsset:        spot.QuoteAsset,
 		PricePrecision:    spot.PricePrecision,

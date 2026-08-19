@@ -21,8 +21,6 @@ func (s *Spot) CreateSpot(ctx context.Context, reqSpot dto.CreateSpot) (string, 
 	}
 	log.Info("data validation passed")
 
-	reqSpot.Symbol = reqSpot.BaseAsset + "/" + reqSpot.QuoteAsset
-
 	spotID, err := s.spotRepository.Save(ctx, reqSpot)
 	if err != nil {
 		log.Error("spot save failed", zap.Error(err))

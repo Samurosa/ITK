@@ -1,6 +1,6 @@
 module ITK_Code/m/v2
 
-go 1.25.4
+go 1.25.7
 
 require (
 	github.com/Samurosa/exchange-contract v0.2.14

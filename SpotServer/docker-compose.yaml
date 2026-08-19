@@ -17,20 +17,19 @@ services:
       - SpotPostgres_data:/var/lib/postgresql/data
 
   migrate:
-    image: migrate/migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrations
+
     depends_on:
       spot-postgres:
         condition: service_healthy
-    volumes:
-      - ./migrations/up:/migrations
+
     command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "postgres://admin:admin@SpotPostgres:5432/spot?sslmode=disable",
-        "up"
-      ]
+      - "-dir=/app/migrations"
+      - "postgres"
+      - "postgres://admin:admin@spot-postgres:5432/spot?sslmode=disable"
+      - "up"
 
   spot-server:
     build:
