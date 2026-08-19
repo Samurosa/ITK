@@ -20,8 +20,8 @@ func (u *User) GetUser(ctx context.Context,
 
 	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
-		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return user.User{}, user.ErrUserNotFound
+		log.Error("failed get user", zap.String("id", id), zap.Error(err))
+		return user.User{}, err
 	}
 	log.Info("got user id:", zap.String("id", id))
 
@@ -35,15 +35,15 @@ func (u *User) DeleteUser(ctx context.Context,
 
 	err := u.userRepository.Delete(ctx, id)
 	if err != nil {
-		log.Error("user not found", zap.String("id", id), zap.Error(err))
-		return user.ErrUserNotFound
+		log.Error("failed delete user", zap.String("id", id), zap.Error(err))
+		return err
 	}
 	log.Debug("user deleted", zap.String("id", id))
 
 	err = u.sessionStorage.DeleteByUser(ctx, id)
 	if err != nil {
 		log.Error("session not found", zap.String("id", id), zap.Error(err))
-		return user.ErrUserNotFound
+		return err
 	}
 	log.Info("user deleted", zap.String("id", id))
 
@@ -60,7 +60,7 @@ func (u *User) IsAdmin(ctx context.Context,
 
 	isAdmin, err := u.userRepository.IsAdmin(ctx, id)
 	if err != nil {
-		log.Error("user not found", zap.String("id", id), zap.Error(err))
+		log.Error("failed check user", zap.String("id", id), zap.Error(err))
 		return false, err
 	}
 	log.Info("checked role user", zap.Bool("admin role", isAdmin))
@@ -89,7 +89,6 @@ func (u *User) GetUserByEmail(ctx context.Context,
 func (u *User) UpdateUserInfo(ctx context.Context,
 	id string,
 	name string,
-	email string,
 ) error {
 	log := u.log.Named("update user")
 
@@ -97,14 +96,11 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 	if name != "" {
 		updated.Name = &name
 	}
-	if email != "" {
-		updated.Email = &email
-	}
 
 	err := u.userRepository.Update(ctx, id, updated)
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return user.ErrUpdateUser
+		return err
 	}
 	log.Info("user updated", zap.String("id", id))
 
@@ -121,7 +117,7 @@ func (u *User) ChangePassword(ctx context.Context,
 	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
 		log.Error("error getting user", zap.String("id", id), zap.Error(err))
-		return user.ErrUserNotFound
+		return err
 	}
 	log.Debug("health check user successful, got user:", zap.String("id", current.ID))
 
@@ -142,7 +138,7 @@ func (u *User) ChangePassword(ctx context.Context,
 	err = u.userRepository.UpdatePassword(ctx, current, string(newPassHash))
 	if err != nil {
 		log.Error("error updating user", zap.Error(err))
-		return user.ErrUpdateUser
+		return err
 	}
 	log.Info("success updated password", zap.String("id", current.ID))
 

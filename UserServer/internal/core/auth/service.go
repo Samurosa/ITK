@@ -20,7 +20,7 @@ type Service interface {
 	Login(ctx context.Context,
 		email string,
 		password string,
-		deviceId string,
+		deviceID string,
 	) (
 		tokensPairs dto.TokensModel,
 		err error,
@@ -35,7 +35,6 @@ type Service interface {
 
 	LogoutAllDevices(ctx context.Context,
 		jti string,
-		refreshToken string,
 	) (
 		err error,
 	)

@@ -18,6 +18,8 @@ func main() {
 
 	flag.Parse()
 
+	fmt.Printf("cfgPath = %q\n", *cfgPath)
+
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		fmt.Printf(

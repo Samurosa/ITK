@@ -16,7 +16,6 @@ func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error)
 	query := `
 		INSERT INTO spot
 		(
-			 symbol,
 			 base_asset,
 			 quote_asset,
 			 price_precision,
@@ -28,7 +27,7 @@ func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error)
 			 description,
 			 status
 		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		ON CONFLICT (base_asset, quote_asset) 
 		DO NOTHING
 		RETURNING id
@@ -36,7 +35,6 @@ func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error)
 
 	err := s.pool.QueryRow(ctx,
 		query,
-		spot.Symbol,
 		spot.BaseAsset,
 		spot.QuoteAsset,
 		spot.PricePrecision,
@@ -53,9 +51,10 @@ func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error)
 	if errors.Is(err, pgx.ErrNoRows) {
 		err = s.pool.QueryRow(ctx,
 			`
-			SELECT id FROM spot WHERE symbol = $1
+			SELECT id FROM spot WHERE base_asset = $1 AND quote_asset = $2
 		`,
-			spot.Symbol,
+			spot.BaseAsset,
+			spot.QuoteAsset,
 		).Scan(
 			&spotID,
 		)
@@ -78,7 +77,6 @@ func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 		`
 		SELECT
 		    id,
-			symbol,
 			base_asset,
 			quote_asset,
 			price_precision,
@@ -98,7 +96,6 @@ func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 		spotID,
 	).Scan(
 		&spot.ID,
-		&spot.Symbol,
 		&spot.BaseAsset,
 		&spot.QuoteAsset,
 		&spot.PricePrecision,

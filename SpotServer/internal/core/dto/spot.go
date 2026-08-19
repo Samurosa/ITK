@@ -27,7 +27,6 @@ const (
 type Spot struct {
 	ID string
 
-	Symbol     string //USD/USDT
 	BaseAsset  string //USD
 	QuoteAsset string //USDT
 
@@ -49,7 +48,6 @@ type Spot struct {
 }
 
 type CreateSpot struct {
-	Symbol            string
 	BaseAsset         string
 	QuoteAsset        string
 	PricePrecision    int32

@@ -21,7 +21,7 @@ func (w *Wallet) Deposit(ctx context.Context,
 	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount, idempotentKey)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
-		return wallet.Balance{}, wallet.ErrSaveBalance
+		return wallet.Balance{}, err
 	}
 	log.Info("deposit successful", zap.String("balance id", newBalance.ID))
 
@@ -39,7 +39,7 @@ func (w *Wallet) GetBalances(ctx context.Context,
 	gotBalances, err := w.balanceRepository.GetAll(ctx, id)
 	if err != nil {
 		log.Error("failed to get balances", zap.String("id", id), zap.Error(err))
-		return nil, wallet.ErrBalanceNotFound
+		return nil, err
 	}
 	log.Info("balances retrieved", zap.Int("count elements in wallet", len(gotBalances)))
 

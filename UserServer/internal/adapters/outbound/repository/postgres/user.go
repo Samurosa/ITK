@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -26,9 +26,9 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 	string,
 	error,
 ) {
+	var id string
 
-	query := `
-		INSERT INTO users
+	query := ` INSERT INTO users
 		(
 			email,
 			name,
@@ -38,10 +38,15 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 			updated_at
 		)
 		VALUES($1,$2,$3,$4,$5,$6)
+		ON CONFLICT (email) DO UPDATE SET
+			deleted_at = NULL,
+    		name = EXCLUDED.name,
+    		password_hash = EXCLUDED.password_hash,
+    		role = EXCLUDED.role,
+    		updated_at = EXCLUDED.updated_at
+		WHERE users.deleted_at IS NOT NULL
 		RETURNING id
 	`
-
-	var id string
 
 	err := r.pool.QueryRow(
 		ctx,
@@ -54,11 +59,8 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 		user.UpdateTime,
 	).Scan(&id)
 
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" {
-			return "", userCore.ErrEmailIsExist
-		}
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", userCore.ErrEmailIsExist
 	}
 
 	if err != nil {
@@ -105,6 +107,10 @@ func (r *UserRepository) Get(ctx context.Context,
 		&userModel.UpdateTime,
 	)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return userCore.User{}, userCore.ErrUserNotFound
+	}
+
 	if err != nil {
 		return userCore.User{}, err
 	}
@@ -149,6 +155,10 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 		&userModel.UpdateTime,
 	)
 
+	if errors.Is(err, pgx.ErrNoRows) {
+		return userCore.User{}, userCore.ErrUserNotFound
+	}
+
 	if err != nil {
 		return userCore.User{}, err
 	}
@@ -162,9 +172,8 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		UPDATE users
 		SET
 			name = COALESCE($1, name),
-			email = COALESCE($2, email),
 			updated_at = NOW()
-		WHERE id = $3
+		WHERE id = $2
 		AND deleted_at IS NULL;
 	`
 
@@ -172,16 +181,8 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		ctx,
 		query,
 		update.Name,
-		update.Email,
 		userID,
 	)
-
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if pgErr.Code == "23505" {
-			return userCore.ErrEmailIsExist
-		}
-	}
 
 	if err != nil {
 		return err
@@ -274,6 +275,10 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 		query,
 		id,
 	).Scan(&role)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, userCore.ErrUserNotFound
+	}
 
 	if err != nil {
 		return false, err

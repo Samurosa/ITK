@@ -14,6 +14,6 @@ type Server struct {
 	spot spot.Service
 }
 
-func RegisterUserService(grpc *grpc.Server, spot spot.Service, log *zap.Logger) {
+func RegisterSpotService(grpc *grpc.Server, spot spot.Service, log *zap.Logger) {
 	pb.RegisterSpotInstrumentServiceServer(grpc, &Server{log: log, spot: spot})
 }

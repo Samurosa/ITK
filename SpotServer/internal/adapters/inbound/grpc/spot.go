@@ -7,6 +7,7 @@ import (
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -17,7 +18,7 @@ func (s *Server) CreateSpot(ctx context.Context, req *pb.CreateSpotRequest) (*pb
 
 	reqSpot := mapper.FromProtoCreateSpot(req)
 
-	idSpot, createdTo, err := s.spot.CreateSpot(ctx, s.log, reqSpot)
+	idSpot, createdTo, err := s.spot.CreateSpot(ctx, reqSpot)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -33,7 +34,7 @@ func (s *Server) GetSpot(ctx context.Context, req *pb.GetSpotRequest) (*pb.GetSp
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	spot, err := s.spot.GetSpot(ctx, s.log, req.Id)
+	spot, err := s.spot.GetSpot(ctx, req.Id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -41,28 +42,28 @@ func (s *Server) GetSpot(ctx context.Context, req *pb.GetSpotRequest) (*pb.GetSp
 	return mapper.ToProtoSpot(spot), nil
 }
 
-func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*pb.Empty, error) {
+func (s *Server) EnableSpot(ctx context.Context, req *pb.EnableSpotRequest) (*emptypb.Empty, error) {
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	err := s.spot.EnableSpot(ctx, s.log, req.Id)
+	err := s.spot.EnableSpot(ctx, req.Id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*pb.Empty, error) {
+func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*emptypb.Empty, error) {
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	err := s.spot.DisableSpot(ctx, s.log, req.Id)
+	err := s.spot.DisableSpot(ctx, req.Id)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

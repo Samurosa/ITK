@@ -10,11 +10,12 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *ServerApi) GetUser(ctx context.Context,
-	_ *pb.Empty,
+	_ *emptypb.Empty,
 ) (
 	*pb.UserInfoResponse,
 	error,
@@ -24,7 +25,7 @@ func (s *ServerApi) GetUser(ctx context.Context,
 	userID, err := requestContext.UserID(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return &pb.UserInfoResponse{}, mapper.ToGRPC(err)
+		return nil, mapper.ToGRPC(err)
 	}
 	log.Debug("user id from context", zap.String("id", userID))
 
@@ -46,7 +47,7 @@ func (s *ServerApi) GetUser(ctx context.Context,
 func (s *ServerApi) UpdateUserInfo(ctx context.Context,
 	req *pb.UpdateUserInfoRequest,
 ) (
-	*pb.Empty,
+	*emptypb.Empty,
 	error,
 ) {
 	log := s.log.Named("UpdateUserInfo")
@@ -56,12 +57,8 @@ func (s *ServerApi) UpdateUserInfo(ctx context.Context,
 	}
 
 	name := ""
-	email := ""
 	if req.Name != nil {
 		name = req.GetName()
-	}
-	if req.Email != nil {
-		email = req.GetEmail()
 	}
 
 	userID, err := requestContext.UserID(ctx)
@@ -75,19 +72,18 @@ func (s *ServerApi) UpdateUserInfo(ctx context.Context,
 		ctx,
 		userID,
 		name,
-		email,
 	)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ServerApi) DeleteUser(ctx context.Context,
-	_ *pb.Empty,
+	_ *emptypb.Empty,
 ) (
-	*pb.Empty,
+	*emptypb.Empty,
 	error,
 ) {
 	log := s.log.Named("DeleteUser")
@@ -104,13 +100,13 @@ func (s *ServerApi) DeleteUser(ctx context.Context,
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *ServerApi) ChangePassword(ctx context.Context,
 	req *pb.ChangeUserRequest,
 ) (
-	*pb.Empty,
+	*emptypb.Empty,
 	error,
 ) {
 	log := s.log.Named("ChangePassword")
@@ -140,5 +136,5 @@ func (s *ServerApi) ChangePassword(ctx context.Context,
 		return nil, mapper.ToGRPC(err)
 	}
 
-	return &pb.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }

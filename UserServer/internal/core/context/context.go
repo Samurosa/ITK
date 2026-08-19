@@ -47,6 +47,18 @@ func UserID(ctx context.Context) (string, error) {
 	return requestCtx.Principal.UserID, nil
 }
 
+func DeviceID(ctx context.Context) (string, error) {
+	requestCtx, ok := ctx.Value(
+		requestContextKey{},
+	).(dto.RequestContext)
+
+	if !ok {
+		return "", errors.ErrInvalidContext
+	}
+
+	return requestCtx.Metadata.DeviceID, nil
+}
+
 func JTI(ctx context.Context) (string, error) {
 	requestCtx, ok := ctx.Value(
 		requestContextKey{},

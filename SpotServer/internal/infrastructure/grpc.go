@@ -25,7 +25,7 @@ func NewGRPC(
 ) *GRPCApp {
 	grpcServer := grpc.NewServer()
 
-	spGRPC.RegisterUserService(grpcServer,
+	spGRPC.RegisterSpotService(grpcServer,
 		spotService,
 		log,
 	)

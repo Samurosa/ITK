@@ -37,6 +37,7 @@ func NewGRPC(
 		grpc.ChainUnaryInterceptor(
 			interceptors.RequestContextInterceptor(log),
 			interceptors.ClientIPInterceptor(log),
+			interceptors.DeviceIDInterceptor(log),
 			interceptors.AuthInterceptor(log,
 				services.TokenManager(),
 				services.SessionStorage(),

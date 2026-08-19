@@ -36,7 +36,7 @@ func AuthInterceptor(
 		meta, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Error("missing metadata")
-			return nil, status.Errorf(codes.NotFound, "missing metadata")
+			return nil, status.Errorf(codes.Unauthenticated, "Unauthenticated")
 		}
 
 		values := meta.Get("authorization")
@@ -55,7 +55,7 @@ func AuthInterceptor(
 
 		if _, err := sessions.GetByJTI(ctx, claims.Jti); err != nil {
 			log.Error("session not found", zap.Error(err))
-			return nil, status.Error(codes.NotFound, "session not found")
+			return nil, status.Error(codes.Unauthenticated, "session not found")
 		}
 
 		ctx, err = requestContext.UpdateRequestContext(ctx,

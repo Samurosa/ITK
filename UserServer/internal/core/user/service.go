@@ -9,7 +9,7 @@ type Service interface {
 
 	GetUserByEmail(ctx context.Context, email string) (user User, err error)
 
-	UpdateUserInfo(ctx context.Context, id string, name string, email string) (err error)
+	UpdateUserInfo(ctx context.Context, id string, name string) (err error)
 
 	DeleteUser(ctx context.Context, id string) (err error)
 
