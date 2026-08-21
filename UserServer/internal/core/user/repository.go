@@ -4,23 +4,16 @@ import (
 	"context"
 )
 
-type Save interface {
-	SaveUser(ctx context.Context,
-		user User,
-	) (
-		string,
-		error,
-	)
-}
+type Repository interface {
+	SaveUser(ctx context.Context, user User) (string, error)
 
-type Provider interface {
 	Get(ctx context.Context, uid string) (User, error)
 
 	GetByEmail(ctx context.Context, email string) (User, error)
 
-	Update(ctx context.Context, userID string, update UpdateUser) (bool, error)
+	Update(ctx context.Context, userID string, update UpdateUser) error
 
-	UpdatePassword(ctx context.Context, user User, newPass string) (bool, error)
+	UpdatePassword(ctx context.Context, user User, newPass string) error
 
 	Delete(ctx context.Context, uid string) error
 

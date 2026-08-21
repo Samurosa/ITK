@@ -11,8 +11,7 @@ import (
 type User struct {
 	log *zap.Logger
 
-	userSaver    userCore.Save
-	userProvider userCore.Provider
+	userRepository userCore.Repository
 
 	sessionStorage authCore.SessionRepository
 }
@@ -25,8 +24,7 @@ type Auth struct {
 	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis
 	rateLimiting          authCore.RateLimiting
 
-	userSaver    userCore.Save
-	userProvider userCore.Provider
+	userRepository userCore.Repository
 }
 
 type Wallet struct {
@@ -34,19 +32,17 @@ type Wallet struct {
 
 	balanceRepository wallet.Repository
 
-	userProvider userCore.Provider
+	userRepository userCore.Repository
 }
 
 func NewUserService(
 	log *zap.Logger,
-	userSaver userCore.Save,
-	userProvider userCore.Provider,
+	userRepository userCore.Repository,
 	sessionStorage authCore.SessionRepository,
 ) *User {
 	return &User{
 		log:            log,
-		userSaver:      userSaver,
-		userProvider:   userProvider,
+		userRepository: userRepository,
 		sessionStorage: sessionStorage,
 	}
 }
@@ -57,8 +53,7 @@ func NewAuthService(
 	sessionStorage authCore.SessionRepository,
 	syncPrimitiveForRedis authCore.SyncPrimitiveForRedis,
 	rateLimiting authCore.RateLimiting,
-	userSaver userCore.Save,
-	userProvider userCore.Provider,
+	userRepository userCore.Repository,
 
 ) *Auth {
 	return &Auth{
@@ -67,19 +62,18 @@ func NewAuthService(
 		sessionStorage:        sessionStorage,
 		syncPrimitiveForRedis: syncPrimitiveForRedis,
 		rateLimiting:          rateLimiting,
-		userSaver:             userSaver,
-		userProvider:          userProvider,
+		userRepository:        userRepository,
 	}
 }
 
 func NewWalletService(
 	log *zap.Logger,
 	balanceRepository wallet.Repository,
-	userProvider userCore.Provider,
+	userRepository userCore.Repository,
 ) *Wallet {
 	return &Wallet{
 		log:               log,
 		balanceRepository: balanceRepository,
-		userProvider:      userProvider,
+		userRepository:    userRepository,
 	}
 }

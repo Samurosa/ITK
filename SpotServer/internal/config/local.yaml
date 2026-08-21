@@ -2,5 +2,5 @@ grpc:
   port: 50052
   timeout: 1m
 postgres:
-  link: "postgres://admin:admin@db:5432/db?sslmode=disable"
+  link: "postgres://admin:admin@localhost:5433/spot?sslmode=disable"
   max_retries: 10

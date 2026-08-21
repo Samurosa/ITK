@@ -16,21 +16,21 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
 
+
   migrate:
-    image: migrate/migrate
+    build:
+      context: .
+      dockerfile: Dockerfile.migrations
+
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./migrations/up:/migrations
+
     command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "postgres://admin:admin@db:5432/db?sslmode=disable",
-        "up"
-      ]
+      - "-dir=/app/migrations"
+      - "postgres"
+      - "postgres://admin:admin@db:5432/db?sslmode=disable"
+      - "up"
 
   redis:
     image: redis:7-alpine
@@ -43,6 +43,8 @@ services:
     build:
       context: /
       dockerfile: Dockerfile
+    secrets:
+      - jwt_secret
     ports:
       - "50051:50051"
     depends_on:
@@ -51,3 +53,7 @@ services:
 
 volumes:
   db_data:
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret

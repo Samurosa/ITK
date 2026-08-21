@@ -9,13 +9,14 @@ type Service interface {
 		id string,
 		asset string,
 		amount Money,
+		idempotentKey string,
 	) (
-		success bool,
 		balance Balance,
 		err error,
 	)
 
 	GetBalances(ctx context.Context,
+		id string,
 	) (
 		[]Balance,
 		error,

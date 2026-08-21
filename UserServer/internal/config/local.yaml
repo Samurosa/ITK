@@ -1,4 +1,4 @@
-env: ".env"
+jwt_secret_path: "./secrets/jwt_secret"
 token_ttl:
   refresh_token_ttl: 168h
   access_token_ttl: 12h
@@ -6,10 +6,10 @@ grpc:
   port: 50051
   timeout: 1m
 postgres:
-  link: "postgres://admin:admin@db:5432/db?sslmode=disable"
+  link: "postgres://admin:admin@localhost:5432/db?sslmode=disable"
   max_retries: 10
 redis:
-  addr: "redis:6379"
+  addr: "localhost:6379"
   password: "admin"
   db: 0
   max_retries: 10
@@ -17,4 +17,4 @@ redis:
   timeout: 5s
 limiter:
   capacity: 5
-  refill_rate_in_minutes: 1m
+  timer: 1m

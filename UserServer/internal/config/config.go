@@ -8,12 +8,12 @@ import (
 )
 
 type Config struct {
-	TokenTTl TokensTTL  `yaml:"token_ttl"`
-	GRPC     GRPCConfig `yaml:"grpc"`
-	Env      string     `yaml:"env"`
-	Postgres Postgres   `yaml:"postgres"`
-	Redis    Redis      `yaml:"redis"`
-	Limiter  Limiter    `yaml:"limiter"`
+	TokenTTl      TokensTTL  `yaml:"token_ttl"`
+	GRPC          GRPCConfig `yaml:"grpc"`
+	JWTSecretPath string     `yaml:"jwt_secret_path"`
+	Postgres      Postgres   `yaml:"postgres"`
+	Redis         Redis      `yaml:"redis"`
+	Limiter       Limiter    `yaml:"limiter"`
 }
 
 type TokensTTL struct {
@@ -41,7 +41,7 @@ type Redis struct {
 }
 
 type Limiter struct {
-	Capacity float64       `yaml:"capacity"`
+	Capacity int64         `yaml:"capacity"`
 	Timer    time.Duration `yaml:"timer"`
 }
 

@@ -1,4 +1,4 @@
-FROM golang:1.25.4 AS build
+FROM golang:1.25.7 AS build
 WORKDIR /
 COPY go.mod go.sum ./
 RUN go mod download
@@ -12,8 +12,6 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=build /spotserver /spotserver
 
-COPY --from=build ./migrations /migrations
-
 COPY --from=build ./internal/config /internal/config
 
 
@@ -21,3 +19,4 @@ COPY --from=build ./internal/config /internal/config
 WORKDIR /
 EXPOSE 50052
 ENTRYPOINT ["/spotserver"]
+CMD ["-config=/internal/config/docker.yaml"]

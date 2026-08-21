@@ -15,11 +15,6 @@ func CreateSpot(log *zap.Logger, reqSpot dto.CreateSpot) error {
 		return errors.ErrCompareBaseQuoteAsset
 	}
 
-	if reqSpot.MinOrderSize > reqSpot.MaxOrderSize {
-		log.Error("MinOrderSize cannot be greater than MaxOrderSize")
-		return errors.ErrInvalidMinOrderGreaterMaxOrder
-	}
-
 	minOrderSize, err := decimal.NewFromString(reqSpot.MinOrderSize)
 	if err != nil {
 		log.Error("Invalid MinOrderSize", zap.Error(err))
@@ -41,5 +36,10 @@ func CreateSpot(log *zap.Logger, reqSpot dto.CreateSpot) error {
 		log.Error("invalid max order size relative to SizePrecision")
 		return errors.ErrInvalidOrderSizePrecision
 	}
+
+	//	if reqSpot.MinOrderSize > reqSpot.MaxOrderSize {
+	//		log.Error("MinOrderSize cannot be greater than MaxOrderSize")
+	//		return errors.ErrInvalidMinOrderGreaterMaxOrder
+	//	}
 	return nil
 }

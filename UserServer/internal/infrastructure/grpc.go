@@ -1,8 +1,8 @@
 package infrastructure
 
 import (
-	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grps"
-	"ITK_Code/m/v2/internal/adapters/inbound/grps/interceptors"
+	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
@@ -37,6 +37,7 @@ func NewGRPC(
 		grpc.ChainUnaryInterceptor(
 			interceptors.RequestContextInterceptor(log),
 			interceptors.ClientIPInterceptor(log),
+			interceptors.DeviceIDInterceptor(log),
 			interceptors.AuthInterceptor(log,
 				services.TokenManager(),
 				services.SessionStorage(),
@@ -76,7 +77,6 @@ func (a *GRPCApp) Run() error {
 }
 
 func (a *GRPCApp) Stop() {
-	a.log.Info("GRPC UserServer stopped")
 
 	done := make(chan struct{})
 

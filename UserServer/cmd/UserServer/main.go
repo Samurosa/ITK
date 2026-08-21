@@ -1,34 +1,54 @@
 package main
 
 import (
-	"ITK_Code/m/v2/internal/app"
-	"ITK_Code/m/v2/internal/config"
+	"flag"
 	"fmt"
 	"os"
 
-	"github.com/joho/godotenv"
+	"ITK_Code/m/v2/internal/app"
+	"ITK_Code/m/v2/internal/config"
 )
 
 func main() {
-	cfgPath := "./internal/config/local.yaml"
-	cfg, err := config.Load(cfgPath)
+	cfgPath := flag.String(
+		"config",
+		"./internal/config/local.yaml",
+		"config file path",
+	)
+
+	flag.Parse()
+
+	fmt.Printf("cfgPath = %q\n", *cfgPath)
+
+	cfg, err := config.Load(*cfgPath)
 	if err != nil {
-		fmt.Printf("error loading config file path: %s, error: %s", cfgPath, err.Error())
-		return
-	}
-	if err := godotenv.Load(cfg.Env); err != nil {
-		fmt.Printf("error loading .env file path: %s, error: %s", cfg.Env, err.Error())
+		fmt.Printf(
+			"error loading config file path: %s, error: %s\n",
+			*cfgPath,
+			err,
+		)
 		return
 	}
 
-	secret := os.Getenv("JWT_SECRET")
+	secret, err := os.ReadFile(cfg.JWTSecretPath)
+	if err != nil {
+		fmt.Printf(
+			"error reading JWT secret from %s: %s\n",
+			cfg.JWTSecretPath,
+			err,
+		)
+		return
+	}
 
 	application, err := app.New(
 		cfg,
-		secret,
+		string(secret),
 	)
 	if err != nil {
-		fmt.Printf("create application failed error: %s", err.Error())
+		fmt.Printf(
+			"create application failed: %s\n",
+			err,
+		)
 		return
 	}
 
