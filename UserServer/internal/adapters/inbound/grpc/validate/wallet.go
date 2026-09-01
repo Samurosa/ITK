@@ -1,7 +1,7 @@
 package validate
 
 import (
-	"ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/wallet"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -9,19 +9,19 @@ import (
 
 func Deposit(req *pb.DepositRequest) error {
 	if req.GetUserId() == "" {
-		return errors.ErrUserIDEmpty
+		return coreErrors.ErrUserIDEmpty
 	}
 	if req.GetAsset() == "" {
-		return errors.ErrAssetEmpty
+		return coreErrors.ErrAssetEmpty
 	}
 	if req.GetAmount() == nil {
-		return errors.ErrAmountEmpty
+		return coreErrors.ErrAmountEmpty
 	}
 	if req.GetAmount().Currency == "" {
-		return errors.ErrAmountEmpty
+		return coreErrors.ErrAmountEmpty
 	}
 	if req.GetAsset() != req.GetAmount().Currency {
-		return errors.ErrInvalidAsset
+		return coreErrors.ErrInvalidAsset
 	}
 
 	return nil
@@ -29,10 +29,10 @@ func Deposit(req *pb.DepositRequest) error {
 
 func Money(money wallet.Money) error {
 	if money.Amount.IsZero() {
-		return errors.ErrAmountIsZero
+		return coreErrors.ErrAmountIsZero
 	}
 	if money.Amount.IsNegative() {
-		return errors.ErrAmountIsNegative
+		return coreErrors.ErrAmountIsNegative
 	}
 	return nil
 }

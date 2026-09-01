@@ -36,7 +36,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		if len(clientIP) > 0 {
 			ip = clientIP[0]
 		}
-
+		
 		if ip == "" {
 			p, ok := peer.FromContext(ctx)
 			if !ok {

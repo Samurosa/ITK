@@ -3,7 +3,6 @@ package redis
 import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"context"
-	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -225,7 +224,7 @@ func (s *Storage) deleteFromRedisByUser(
 	}
 
 	if len(tokensJTI) == 0 {
-		return errors.New("tokens not found")
+		return nil
 	}
 
 	pipe := s.client.TxPipeline()

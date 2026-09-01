@@ -37,7 +37,7 @@ func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		}
 
 		if device == "" {
-			log.Error("device not found in metadata")
+			log.Debug("device not found in metadata")
 			return handler(ctx, req)
 		}
 

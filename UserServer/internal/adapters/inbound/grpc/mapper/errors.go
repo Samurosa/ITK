@@ -2,7 +2,7 @@ package mapper
 
 import (
 	"ITK_Code/m/v2/internal/core/auth"
-	coreErrors "ITK_Code/m/v2/internal/core/errors"
+	coreErrors "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/user"
 	"ITK_Code/m/v2/internal/core/wallet"
 	"errors"

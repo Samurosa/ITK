@@ -1,8 +1,8 @@
 package jwt
 
 import (
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
@@ -71,14 +71,14 @@ func (j *Token) ParseAccessToken(accessToken string) (dto.AccessTokenParse, erro
 		&AccessTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, errors.ErrInvalidToken
+				return nil, coreErrors.ErrInvalidToken
 			}
 			return []byte(j.jwtConfig.Secret), nil
 		},
 	)
 	if err != nil {
 		log.Error("Parse Access Token Error", zap.Error(err))
-		return dto.AccessTokenParse{}, errors.ErrInvalidToken
+		return dto.AccessTokenParse{}, coreErrors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithAccessToken(log, token)
@@ -96,14 +96,14 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, e
 		&RefreshTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, errors.ErrInvalidToken
+				return nil, coreErrors.ErrInvalidToken
 			}
 			return []byte(j.jwtConfig.Secret), nil
 		},
 	)
 	if err != nil {
 		log.Error("Parse Refresh Token Error", zap.Error(err))
-		return dto.RefreshTokenParse{}, errors.ErrInvalidToken
+		return dto.RefreshTokenParse{}, coreErrors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithRefreshToken(log, token)

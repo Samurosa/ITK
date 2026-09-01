@@ -1,8 +1,8 @@
 package context
 
 import (
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 )
 
@@ -29,7 +29,7 @@ func GetRequestContext(
 	).(dto.RequestContext)
 
 	if !ok {
-		return dto.RequestContext{}, errors.ErrInvalidContext
+		return dto.RequestContext{}, coreErrors.ErrInvalidContext
 	}
 
 	return requestCtx, nil
@@ -41,7 +41,7 @@ func UserID(ctx context.Context) (string, error) {
 	).(dto.RequestContext)
 
 	if !ok {
-		return "", errors.ErrInvalidContext
+		return "", coreErrors.ErrInvalidContext
 	}
 
 	return requestCtx.Principal.UserID, nil
@@ -53,7 +53,7 @@ func DeviceID(ctx context.Context) (string, error) {
 	).(dto.RequestContext)
 
 	if !ok {
-		return "", errors.ErrInvalidContext
+		return "", coreErrors.ErrInvalidContext
 	}
 
 	return requestCtx.Metadata.DeviceID, nil
@@ -65,7 +65,7 @@ func JTI(ctx context.Context) (string, error) {
 	).(dto.RequestContext)
 
 	if !ok {
-		return "", errors.ErrInvalidContext
+		return "", coreErrors.ErrInvalidContext
 	}
 
 	return requestCtx.JTI, nil
@@ -82,7 +82,7 @@ func UpdateRequestContext(
 	requestCtx, ok := ctx.Value(requestContextKey{}).(dto.RequestContext)
 
 	if !ok {
-		return ctx, errors.ErrCtxForUpdateNotFound
+		return ctx, coreErrors.ErrCtxForUpdateNotFound
 	}
 
 	update(&requestCtx)

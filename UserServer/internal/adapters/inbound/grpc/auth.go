@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *ServerApi) Registration(ctx context.Context,
+func (s *UserServer) Registration(ctx context.Context,
 	req *pb.RegisterUserRequest,
 ) (
 	*pb.RegisterUserResponse,
@@ -43,7 +43,7 @@ func (s *ServerApi) Registration(ctx context.Context,
 	}, nil
 }
 
-func (s *ServerApi) Login(ctx context.Context,
+func (s *UserServer) Login(ctx context.Context,
 	req *pb.LoginRequest,
 ) (
 	*pb.TokenPairResponse,
@@ -70,7 +70,7 @@ func (s *ServerApi) Login(ctx context.Context,
 	return mapper.ToProtoTokens(tokens), nil
 }
 
-func (s *ServerApi) Logout(ctx context.Context,
+func (s *UserServer) Logout(ctx context.Context,
 	req *pb.LogoutRequest,
 ) (
 	*emptypb.Empty,
@@ -98,7 +98,7 @@ func (s *ServerApi) Logout(ctx context.Context,
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerApi) LogoutAllDevices(ctx context.Context,
+func (s *UserServer) LogoutAllDevices(ctx context.Context,
 	_ *emptypb.Empty,
 ) (
 	*emptypb.Empty,
@@ -121,7 +121,7 @@ func (s *ServerApi) LogoutAllDevices(ctx context.Context,
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerApi) RefreshToken(ctx context.Context,
+func (s *UserServer) RefreshToken(ctx context.Context,
 	req *pb.RefreshTokenRequest,
 ) (
 	*pb.TokenPairResponse,

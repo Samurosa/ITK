@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *ServerApi) GetUser(ctx context.Context,
+func (s *UserServer) GetUser(ctx context.Context,
 	_ *emptypb.Empty,
 ) (
 	*pb.UserInfoResponse,
@@ -44,7 +44,7 @@ func (s *ServerApi) GetUser(ctx context.Context,
 	}, nil
 }
 
-func (s *ServerApi) UpdateUserInfo(ctx context.Context,
+func (s *UserServer) UpdateUserInfo(ctx context.Context,
 	req *pb.UpdateUserInfoRequest,
 ) (
 	*emptypb.Empty,
@@ -80,7 +80,7 @@ func (s *ServerApi) UpdateUserInfo(ctx context.Context,
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerApi) DeleteUser(ctx context.Context,
+func (s *UserServer) DeleteUser(ctx context.Context,
 	_ *emptypb.Empty,
 ) (
 	*emptypb.Empty,
@@ -103,7 +103,7 @@ func (s *ServerApi) DeleteUser(ctx context.Context,
 	return &emptypb.Empty{}, nil
 }
 
-func (s *ServerApi) ChangePassword(ctx context.Context,
+func (s *UserServer) ChangePassword(ctx context.Context,
 	req *pb.ChangeUserRequest,
 ) (
 	*emptypb.Empty,
