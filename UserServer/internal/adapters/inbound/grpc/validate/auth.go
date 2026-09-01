@@ -19,20 +19,25 @@ func Password(password string) error {
 		return coreErrors.ErrPasswordEmpty
 	}
 
-	var hasUpper, hasDigit bool
+	var hasUpper, hasLower, hasDigit bool
 
 	for _, char := range password {
 
 		switch {
 		case unicode.IsUpper(char):
 			hasUpper = true
-
 		case unicode.IsLower(char):
+			hasLower = true
+		case unicode.IsDigit(char):
 			hasDigit = true
 		}
 	}
 	if !hasUpper {
 		return coreErrors.ErrPasswordWrongUpperSymbol
+	}
+
+	if !hasLower {
+		return coreErrors.ErrPasswordWrongLowerSymbol
 	}
 
 	if !hasDigit {

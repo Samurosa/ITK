@@ -33,7 +33,7 @@ services:
 
   spot-server:
     build:
-      context: ./
+      context: .
       dockerfile: Dockerfile
     ports:
       - "50052:50052"

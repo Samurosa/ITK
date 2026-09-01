@@ -41,7 +41,7 @@ services:
 
   user-server:
     build:
-      context: /
+      context: .
       dockerfile: Dockerfile
     secrets:
       - jwt_secret

@@ -7,6 +7,7 @@ import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
+	"errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -84,14 +85,15 @@ func (a *Auth) Login(ctx context.Context,
 	log.Debug("validate rate limiting")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
-	/*TODO:	if errorsLib.Is(err, user.ErrUserNotFound) {
+	if errors.Is(err, user.ErrUserNotFound) {
 		log.Error("user not found", zap.String("email", email), zap.Error(err))
 		gotUser.PasswordHash = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
+		return dto.TokensModel{}, auth.ErrIncorrectCredentials
 	}
 	if err != nil {
 		log.Error("error getting user", zap.String("email", email), zap.Error(err))
 		return dto.TokensModel{}, err
-	}*/
+	}
 	log.Debug("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
 	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)

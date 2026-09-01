@@ -35,6 +35,8 @@ func ToGRPC(err error) error {
 		return status.Error(codes.InvalidArgument, "the new password matches the old password")
 	case errors.Is(err, coreErrors.ErrPasswordWrongUpperSymbol):
 		return status.Error(codes.InvalidArgument, "the new password wrong, upper symbol not found")
+	case errors.Is(err, coreErrors.ErrPasswordWrongLowerSymbol):
+		return status.Error(codes.InvalidArgument, "the new password wrong, lower symbol not found")
 	case errors.Is(err, coreErrors.ErrPasswordWrongDigitSymbol):
 		return status.Error(codes.InvalidArgument, "the new password wrong, digit symbol not found")
 
