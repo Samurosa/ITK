@@ -60,6 +60,10 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 			&balance.Locked,
 		)
 
+		if err != nil {
+			return wallet.Balance{}, err
+		}
+
 		return balance, nil
 	}
 
@@ -113,10 +117,6 @@ func (b *BalanceRepository) GetAll(ctx context.Context, userID string) ([]wallet
 		query,
 		userID,
 	)
-
-	if errors.Is(err, pgx.ErrNoRows) {
-		return []wallet.Balance{}, wallet.ErrBalanceNotFound
-	}
 
 	if err != nil {
 		return nil, err

@@ -24,8 +24,8 @@ func NewStorage(ctx context.Context, logger *zap.Logger, connectionString string
 	if err != nil {
 		return nil, err
 	}
-	config.MaxConns = 10
-	config.MinConns = 2
+	/*	config.MaxConns = 10
+		config.MinConns = 2*/
 
 	for i := 1; i <= maxRetries; i++ {
 

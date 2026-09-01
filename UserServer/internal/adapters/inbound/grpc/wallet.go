@@ -4,7 +4,6 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	requestContext "ITK_Code/m/v2/internal/core/context"
-	"ITK_Code/m/v2/internal/core/errors"
 	"context"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -14,7 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func (s *ServerApi) Deposit(
+func (s *UserServer) Deposit(
 	ctx context.Context,
 	req *pb.DepositRequest,
 ) (
@@ -24,7 +23,6 @@ func (s *ServerApi) Deposit(
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
-
 	if err := validate.Deposit(req); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -48,7 +46,7 @@ func (s *ServerApi) Deposit(
 	}, nil
 }
 
-func (s *ServerApi) GetBalances(
+func (s *UserServer) GetBalances(
 	ctx context.Context,
 	_ *emptypb.Empty,
 ) (
@@ -60,7 +58,7 @@ func (s *ServerApi) GetBalances(
 	id, err := requestContext.UserID(ctx)
 	if err != nil {
 		log.Error("context is not valid", zap.Error(err))
-		return nil, errors.ErrInvalidContext
+		return nil, mapper.ToGRPC(err)
 	}
 	log.Debug("user id from context", zap.String("id", id))
 

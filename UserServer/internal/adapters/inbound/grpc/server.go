@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type ServerApi struct {
+type UserServer struct {
 	pb.UnimplementedUserServiceServer
 	user   user.Service
 	auth   auth.Service
@@ -20,5 +20,5 @@ type ServerApi struct {
 }
 
 func RegisterUserService(grpc *grpc.Server, user user.Service, auth auth.Service, wallet wallet.Service, log *zap.Logger) {
-	pb.RegisterUserServiceServer(grpc, &ServerApi{user: user, auth: auth, wallet: wallet, log: log})
+	pb.RegisterUserServiceServer(grpc, &UserServer{user: user, auth: auth, wallet: wallet, log: log})
 }

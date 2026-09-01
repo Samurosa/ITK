@@ -3,7 +3,7 @@ package redis
 import (
 	"ITK_Code/m/v2/internal/config"
 	requestContext "ITK_Code/m/v2/internal/core/context"
-	coreErorrs "ITK_Code/m/v2/internal/core/errors"
+	coreErorrs "ITK_Code/m/v2/internal/core/coreErrors"
 	"context"
 	"time"
 
@@ -40,7 +40,7 @@ func (l *Limiter) Allow(
 	ip := requestCtx.Metadata.ClientIP
 	deviceID := requestCtx.Metadata.DeviceID
 
-	key := "rate-limiter:" + ip + deviceID
+	key := "rate-limiter ip:" + ip + "deviceID:" + deviceID
 
 	addLimiterByKeyScript := redis.NewScript(`
 	local rate = redis.call("INCR", KEYS[1])

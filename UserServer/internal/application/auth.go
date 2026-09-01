@@ -3,11 +3,10 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	"ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
-	errorsLib "errors"
 	"time"
 
 	"go.uber.org/zap"
@@ -29,18 +28,18 @@ func (a *Auth) Registration(ctx context.Context,
 	allowed, err := a.rateLimiting.Allow(ctx)
 	if err != nil {
 		log.Error("Failed to check rate limiting", zap.Error(err))
-		return "", time.Time{}, errors.ErrTooManyRequests
+		return "", time.Time{}, coreErrors.ErrTooManyRequests
 	}
 	if !allowed {
 		log.Error("Rate limiting is not allowed")
-		return "", time.Time{}, errors.ErrTooManyRequests
+		return "", time.Time{}, coreErrors.ErrTooManyRequests
 	}
 	log.Debug("validate rate limiting")
 
 	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return "", time.Time{}, errors.ErrPassGenHash
+		return "", time.Time{}, coreErrors.ErrPassGenHash
 	}
 	log.Debug("generate password hash")
 
@@ -76,23 +75,23 @@ func (a *Auth) Login(ctx context.Context,
 	allowed, err := a.rateLimiting.Allow(ctx)
 	if err != nil {
 		log.Error("Failed to check rate limiting", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrTooManyRequests
+		return dto.TokensModel{}, coreErrors.ErrTooManyRequests
 	}
 	if !allowed {
 		log.Error("Rate limiting is not allowed")
-		return dto.TokensModel{}, errors.ErrTooManyRequests
+		return dto.TokensModel{}, coreErrors.ErrTooManyRequests
 	}
 	log.Debug("validate rate limiting")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
-	if errorsLib.Is(err, user.ErrUserNotFound) {
+	/*TODO:	if errorsLib.Is(err, user.ErrUserNotFound) {
 		log.Error("user not found", zap.String("email", email), zap.Error(err))
 		gotUser.PasswordHash = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
 	}
 	if err != nil {
 		log.Error("error getting user", zap.String("email", email), zap.Error(err))
 		return dto.TokensModel{}, err
-	}
+	}*/
 	log.Debug("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
 	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
@@ -198,7 +197,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
 	if err != nil {
 		log.Error("error parsing refresh token", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrInvalidToken
+		return dto.TokensModel{}, coreErrors.ErrInvalidToken
 	}
 	log.Debug("parsed refresh token is successful")
 
@@ -207,11 +206,11 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	ok, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
 	if err != nil {
 		log.Error("error acquiring refresh lock", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrSyncRedis
+		return dto.TokensModel{}, coreErrors.ErrSyncRedis
 	}
 	if !ok {
 		log.Error("generate tokens processing", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrGenerateTokenProcessing
+		return dto.TokensModel{}, coreErrors.ErrGenerateTokenProcessing
 	}
 	log.Debug("acquiring refresh lock success")
 
@@ -258,7 +257,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrGenerateToken
+		return dto.TokensModel{}, coreErrors.ErrGenerateToken
 	}
 	log.Debug("generated new tokens", zap.String("id", sessionInfo.UserID))
 
@@ -275,7 +274,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
-		return dto.TokensModel{}, errors.ErrGenerateToken
+		return dto.TokensModel{}, coreErrors.ErrGenerateToken
 	}
 	log.Info("session tokens refreshed", zap.String("id", sessionInfo.UserID))
 

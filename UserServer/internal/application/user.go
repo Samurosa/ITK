@@ -3,7 +3,7 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
 
@@ -131,7 +131,7 @@ func (u *User) ChangePassword(ctx context.Context,
 	newPassHash, err := hash.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return errors.ErrPassGenHash
+		return coreErrors.ErrPassGenHash
 	}
 	log.Debug("password hash generated")
 
