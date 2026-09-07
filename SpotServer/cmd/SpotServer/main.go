@@ -1,11 +1,9 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-
 	"ITK_Code/m/v2/internal/app"
-	"ITK_Code/m/v2/internal/config"
+	"flag"
+	"log"
 )
 
 func main() {
@@ -17,30 +15,7 @@ func main() {
 
 	flag.Parse()
 
-	cfg, err := config.Load(*cfgPath)
-	if err != nil {
-		fmt.Printf(
-			"error loading config file path: %s, error: %s\n",
-			*cfgPath,
-			err,
-		)
-		return
+	if err := app.Run(*cfgPath); err != nil {
+		log.Fatal(err)
 	}
-
-	application, err := app.New(
-		cfg,
-	)
-	if err != nil {
-		fmt.Printf(
-			"create application failed: %s\n",
-			err,
-		)
-		return
-	}
-
-	application.Start()
-
-	application.WaitSignal()
-
-	application.Stop()
 }

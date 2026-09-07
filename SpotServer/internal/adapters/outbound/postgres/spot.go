@@ -1,8 +1,8 @@
 package postgres
 
 import (
+	errorsCore "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	errorsCore "ITK_Code/m/v2/internal/core/errors"
 	"context"
 	"errors"
 

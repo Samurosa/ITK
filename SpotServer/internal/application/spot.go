@@ -2,8 +2,8 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/application/validate"
+	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	errorsCore "ITK_Code/m/v2/internal/core/errors"
 	"ITK_Code/m/v2/internal/core/spot"
 	"context"
 	"errors"
@@ -48,9 +48,9 @@ func (s *Spot) EnableSpot(ctx context.Context, spotID string) error {
 	log := s.log.Named("Enable spot")
 
 	err := s.spotRepository.Enable(ctx, spotID)
-	if errors.Is(err, errorsCore.ErrSpotNotFound) {
+	if errors.Is(err, coreErrors.ErrSpotNotFound) {
 		log.Error("spot not found", zap.String("id", spotID))
-		return errorsCore.ErrSpotNotFound
+		return coreErrors.ErrSpotNotFound
 	}
 	if err != nil {
 		log.Error("spot enable failed", zap.Error(err))
@@ -65,9 +65,9 @@ func (s *Spot) DisableSpot(ctx context.Context, spotID string) error {
 	log := s.log.Named("Disable spot")
 
 	err := s.spotRepository.Disable(ctx, spotID)
-	if errors.Is(err, errorsCore.ErrSpotNotFound) {
+	if errors.Is(err, coreErrors.ErrSpotNotFound) {
 		log.Error("spot not found", zap.String("id", spotID))
-		return errorsCore.ErrSpotNotFound
+		return coreErrors.ErrSpotNotFound
 	}
 	if err != nil {
 		log.Error("spot disable failed", zap.Error(err))
