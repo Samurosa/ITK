@@ -8,6 +8,8 @@ grpc:
 postgres:
   link: "postgres://admin:admin@localhost:5432/db?sslmode=disable"
   max_retries: 10
+  max_connections: 10
+  min_connections: 2
 redis:
   addr: "localhost:6379"
   password: "admin"
