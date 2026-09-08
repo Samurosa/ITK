@@ -2,14 +2,14 @@ package validate
 
 import (
 	"ITK_Code/m/v2/internal/core/coreErrors"
-	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/spot/models"
 	"strings"
 
 	"github.com/shopspring/decimal"
 	"go.uber.org/zap"
 )
 
-func CreateSpot(log *zap.Logger, reqSpot dto.CreateSpot) error {
+func CreateSpot(log *zap.Logger, reqSpot models.CreateSpot) error {
 	if strings.Compare(reqSpot.BaseAsset, reqSpot.QuoteAsset) == 0 {
 		log.Error("Base Asset cannot be equal to Quote Asset")
 		return coreErrors.ErrCompareBaseQuoteAsset

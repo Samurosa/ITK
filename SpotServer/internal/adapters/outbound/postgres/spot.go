@@ -3,13 +3,14 @@ package postgres
 import (
 	errorsCore "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/spot/models"
 	"context"
 	"errors"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error) {
+func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
 
 	var spotID string
 
@@ -169,4 +170,9 @@ func (s *Storage) Disable(ctx context.Context, spotID string) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) ([]dto.PartialSpot, error) {
+	//TODO implement me
+	panic("implement me")
 }

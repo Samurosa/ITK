@@ -3,7 +3,7 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-contract v0.2.16
+	github.com/Samurosa/exchange-contract v0.2.17
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/shopspring/decimal v1.4.0
 	go.uber.org/zap v1.28.0

@@ -67,3 +67,21 @@ func (s *Server) DisableSpot(ctx context.Context, req *pb.DisableSpotRequest) (*
 
 	return &emptypb.Empty{}, nil
 }
+
+func (s *Server) ListSpots(ctx context.Context, req *pb.SpotListRequest) (*pb.SpotListResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
+	}
+
+	request := mapper.FromProtoListSpotsRequest(req)
+
+	list, cursor, hasMore, err := s.spot.ListSpots(ctx, request)
+	if err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+	return &pb.SpotListResponse{
+		Spots:      list,
+		NextCursor: cursor,
+		HasMore:    hasMore,
+	}, nil
+}
