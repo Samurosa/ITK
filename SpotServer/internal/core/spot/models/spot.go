@@ -1,6 +1,8 @@
 package models
 
-import "ITK_Code/m/v2/internal/core/dto"
+import (
+	"ITK_Code/m/v2/internal/core/dto"
+)
 
 type CreateSpot struct {
 	BaseAsset         string

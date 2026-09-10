@@ -49,7 +49,7 @@ type Spot struct {
 	DisabledAt *time.Time
 }
 
-type PartialSpot struct {
+type SpotListItem struct {
 	ID string
 
 	BaseAsset  string
@@ -59,4 +59,6 @@ type PartialSpot struct {
 	Description string
 
 	Status SpotStatus
+
+	CreatedAt time.Time
 }

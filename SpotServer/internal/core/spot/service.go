@@ -12,5 +12,5 @@ type Service interface {
 	GetSpot(ctx context.Context, spotID string) (dto.Spot, error)
 	EnableSpot(ctx context.Context, spotID string) error
 	DisableSpot(ctx context.Context, spotID string) error
-	ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.PartialSpot, string, bool, error)
+	ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error)
 }

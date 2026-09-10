@@ -80,7 +80,7 @@ func (s *Server) ListSpots(ctx context.Context, req *pb.SpotListRequest) (*pb.Sp
 		return nil, mapper.ToGRPC(err)
 	}
 	return &pb.SpotListResponse{
-		Spots:      list,
+		Spots:      mapper.ToProtoSpotList(list),
 		NextCursor: cursor,
 		HasMore:    hasMore,
 	}, nil

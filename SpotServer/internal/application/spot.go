@@ -79,14 +79,19 @@ func (s *Spot) DisableSpot(ctx context.Context, spotID string) error {
 	return nil
 }
 
-func (s *Spot) ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.PartialSpot, string, bool, error) {
+func (s *Spot) ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error) {
 	log := s.log.Named("List spot")
 
-	listPartialSpots, err := s.spotRepository.List(ctx, request)
+	spotsList, cursor, hasMore, err := s.spotRepository.List(ctx, request)
 	if err != nil {
 		log.Error("spot list failed", zap.Error(err))
-		return []dto.PartialSpot{}, "", false, err
+		return []dto.SpotListItem{}, "", false, err
 	}
+	if len(spotsList) == 0 {
+		log.Debug("spot list is empty")
+		return []dto.SpotListItem{}, "", false, nil
+	}
+	log.Info("Slot search completed successfully")
 
-	return listPartialSpots,
+	return spotsList, cursor, hasMore, nil
 }

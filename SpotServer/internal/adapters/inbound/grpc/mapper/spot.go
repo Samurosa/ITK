@@ -34,7 +34,7 @@ func FromProtoListSpotsRequest(
 	}
 
 	if req.Status != nil {
-		result.Status = *new(FromProtoStatus(req.GetStatus()))
+		result.Status = FromProtoStatus(req.GetStatus())
 	}
 
 	return result
@@ -104,6 +104,32 @@ func ToProtoRole(role dto.Role) userPB.Role {
 	default:
 		return userPB.Role_ROLE_UNSPECIFIED
 	}
+}
+
+func ToProtoSpotListItem(spotListItem dto.SpotListItem) *pb.SpotListItem {
+	return &pb.SpotListItem{
+		Id:          spotListItem.ID,
+		BaseAsset:   spotListItem.BaseAsset,
+		QuoteAsset:  spotListItem.QuoteAsset,
+		Name:        spotListItem.Name,
+		Description: spotListItem.Description,
+		Status:      ToProtoStatus(spotListItem.Status),
+		CreatedAt:   timestamppb.New(spotListItem.CreatedAt),
+	}
+}
+
+func ToProtoSpotList(spotListItem []dto.SpotListItem) []*pb.SpotListItem {
+	if len(spotListItem) == 0 {
+		return nil
+	}
+
+	result := make([]*pb.SpotListItem, 0, len(spotListItem))
+
+	for _, spot := range spotListItem {
+		result = append(result, ToProtoSpotListItem(spot))
+	}
+
+	return result
 }
 
 func FromProtoRoles(roles []userPB.Role) []dto.Role {

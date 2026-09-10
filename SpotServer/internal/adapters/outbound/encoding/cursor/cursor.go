@@ -1,9 +1,8 @@
-package jsonBase64
+package cursor
 
 import (
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -37,15 +36,15 @@ func DecodeCursor(cursor string) (SpotCursor, error) {
 	}
 
 	if spotCursor.ID == "" {
-		return SpotCursor{}, errors.New("invalid cursor")
+		return SpotCursor{}, ErrInvalidCursor
 	}
 
 	if spotCursor.CreatedAt.IsZero() {
-		return SpotCursor{}, errors.New("invalid cursor")
+		return SpotCursor{}, ErrInvalidCursor
 	}
 
 	if _, err := uuid.Parse(spotCursor.ID); err != nil {
-		return SpotCursor{}, errors.New("invalid cursor")
+		return SpotCursor{}, ErrInvalidCursor
 	}
 
 	return spotCursor, nil

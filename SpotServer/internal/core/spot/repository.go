@@ -11,5 +11,5 @@ type Repository interface {
 	Get(ctx context.Context, spotID string) (dto.Spot, error)
 	Enable(ctx context.Context, spotID string) error
 	Disable(ctx context.Context, spotID string) error
-	List(ctx context.Context, searchReq models.ListSpotsRequest) ([]dto.PartialSpot, error)
+	List(ctx context.Context, searchReq models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error)
 }
