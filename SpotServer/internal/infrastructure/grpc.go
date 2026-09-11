@@ -1,7 +1,7 @@
 package infrastructure
 
 import (
-	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/core/spot"
 
 	"fmt"

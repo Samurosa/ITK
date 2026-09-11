@@ -25,8 +25,8 @@ func NewStorage(ctx context.Context, logger *zap.Logger, postgres config.Postgre
 	if err != nil {
 		return nil, err
 	}
-	configPool.MaxConns = 10
-	configPool.MinConns = 2
+	configPool.MaxConns = postgres.MaxConnections
+	configPool.MinConns = postgres.MinConnections
 
 	for i := 1; i <= postgres.MaxRetries; i++ {
 

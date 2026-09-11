@@ -9,8 +9,18 @@ import (
 
 type Service interface {
 	CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (string, time.Time, error)
+
 	GetSpot(ctx context.Context, spotID string) (dto.Spot, error)
+
 	EnableSpot(ctx context.Context, spotID string) error
 	DisableSpot(ctx context.Context, spotID string) error
-	ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error)
+
+	ListSpots(ctx context.Context,
+		request models.ListSpotsRequest,
+	) (
+		[]dto.SpotListItem,
+		string,
+		bool,
+		error,
+	)
 }

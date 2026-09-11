@@ -1,4 +1,4 @@
-package grpc
+package server
 
 import (
 	"ITK_Code/m/v2/internal/core/spot"
