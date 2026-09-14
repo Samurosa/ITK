@@ -11,9 +11,9 @@ import (
 type OrderServer struct {
 	pb.UnimplementedOrderServiceServer
 	order service.Order
-	log   zap.Logger
+	log   *zap.Logger
 }
 
-func NewOrderServer(grpc *grpc.Server, order service.Order, log zap.Logger) {
+func NewOrderServer(grpc *grpc.Server, order service.Order, log *zap.Logger) {
 	pb.RegisterOrderServiceServer(grpc, &OrderServer{order: order, log: log})
 }

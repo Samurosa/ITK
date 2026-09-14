@@ -8,17 +8,9 @@ import (
 )
 
 type Config struct {
-	TokenTTl      TokensTTL  `yaml:"token_ttl"`
-	GRPC          GRPCConfig `yaml:"grpc"`
 	JWTSecretPath string     `yaml:"jwt_secret_path"`
+	GRPC          GRPCConfig `yaml:"grpc"`
 	Postgres      Postgres   `yaml:"postgres"`
-	Redis         Redis      `yaml:"redis"`
-	Limiter       Limiter    `yaml:"limiter"`
-}
-
-type TokensTTL struct {
-	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
-	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
 }
 
 type GRPCConfig struct {
@@ -27,24 +19,10 @@ type GRPCConfig struct {
 }
 
 type Postgres struct {
-	Link       string `yaml:"link"`
-	MaxRetries int    `yaml:"max_retries"`
-	MaxConns   int32  `yaml:"max_connections"`
-	MinConns   int32  `yaml:"min_connections"`
-}
-
-type Redis struct {
-	Addr        string        `yaml:"addr"`
-	Password    string        `yaml:"password"`
-	DB          int           `yaml:"db"`
-	MaxRetries  int           `yaml:"max_retries"`
-	DialTimeout time.Duration `yaml:"dial_timeout"`
-	Timeout     time.Duration `yaml:"timeout"`
-}
-
-type Limiter struct {
-	Capacity int64         `yaml:"capacity"`
-	Timer    time.Duration `yaml:"timer"`
+	Link           string `yaml:"link"`
+	MaxRetries     int    `yaml:"max_retries"`
+	MaxConnections int32  `yaml:"max_connections"`
+	MinConnections int32  `yaml:"min_connections"`
 }
 
 func Load(

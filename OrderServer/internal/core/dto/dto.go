@@ -25,11 +25,6 @@ const (
 	SideSell        OrderSide = "ORDER_SIDE_SELL"
 )
 
-type Money struct {
-	Currency string
-	Amount   decimal.Decimal
-}
-
 type Order struct {
 	OrderID string
 
@@ -39,7 +34,7 @@ type Order struct {
 	OrderSide   OrderSide
 	OrderStatus OrderStatus
 
-	Money Money
+	Price decimal.Decimal
 
 	Quantity string
 

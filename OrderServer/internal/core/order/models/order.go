@@ -7,14 +7,15 @@ import (
 )
 
 type CreateOrder struct {
+	UserId string
+
 	SpotId string
 
 	OrderSide dto.OrderSide
 
 	IdempotencyKey string
 
-	Currency string
-	Amount   decimal.Decimal
+	Price decimal.Decimal
 
 	Quantity string
 }

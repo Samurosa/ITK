@@ -1,8 +1,11 @@
 package infrastructure
 
 import (
-	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
-	"ITK_Code/m/v2/internal/core/spot"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
+	"ITK_Code/m/v2/internal/core/order/service"
+
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors"
+	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 
 	"fmt"
 	"net"
@@ -20,13 +23,16 @@ type GRPCApp struct {
 
 func NewGRPC(
 	log *zap.Logger,
-	spotService spot.Service,
+	orderService service.Order,
+	jwtParser *jwt.Parser,
 	port int,
 ) *GRPCApp {
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		interceptors.AuthInterceptor(log, jwtParser),
+	))
 
-	spGRPC.RegisterSpotService(grpcServer,
-		spotService,
+	server.NewOrderServer(grpcServer,
+		orderService,
 		log,
 	)
 
@@ -45,7 +51,7 @@ func (a *GRPCApp) Run() error {
 	}
 
 	a.log.Info(
-		"grpcs Spot server started",
+		"grpcs Order Server started",
 		zap.Any("port", a.port),
 	)
 

@@ -3,7 +3,7 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-contract v0.2.18
+	github.com/Samurosa/exchange-contract v0.2.21
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/shopspring/decimal v1.4.0

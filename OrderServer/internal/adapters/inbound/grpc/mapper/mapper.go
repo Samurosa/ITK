@@ -5,7 +5,6 @@ import (
 	"ITK_Code/m/v2/internal/core/order/models"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
-	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
 	"github.com/shopspring/decimal"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -16,7 +15,7 @@ func ToProtoOrder(dtoOrder dto.Order) *pb.Order {
 		UserId:      dtoOrder.UserID,
 		SpotId:      dtoOrder.SpotID,
 		OrderSide:   ToProtoSide(dtoOrder.OrderSide),
-		Price:       ToProtoMoney(dtoOrder.Money),
+		Price:       dtoOrder.Price.String(),
 		Quantity:    dtoOrder.Quantity,
 		OrderStatus: ToProtoStatus(dtoOrder.OrderStatus),
 		CreatedAt:   timestamppb.New(dtoOrder.CreatedAt),
@@ -72,20 +71,12 @@ func ToProtoSide(side dto.OrderSide) pb.OrderSide {
 	}
 }
 
-func ToProtoMoney(dtoMoney dto.Money) *shared.Money {
-	return &shared.Money{
-		Currency: dtoMoney.Currency,
-		Amount:   dtoMoney.Amount.String(),
-	}
-}
-
 func FromProtoCreateOrder(req *pb.CreateOrderRequest) models.CreateOrder {
 	return models.CreateOrder{
 		SpotId:         req.SpotId,
 		OrderSide:      FromProtoOrderSide(req.OrderSide),
 		IdempotencyKey: req.IdempotencyKey,
-		Currency:       req.GetPrice().GetCurrency(),
-		Amount:         ConvertToDecimal(req.GetPrice().GetAmount()),
+		Price:          ConvertToDecimal(req.Price),
 		Quantity:       req.Quantity,
 	}
 }

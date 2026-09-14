@@ -1,3 +1,4 @@
+jwt_secret_path: "./secrets/jwt_secret"
 grpc:
   port: 50053
   timeout: 1m

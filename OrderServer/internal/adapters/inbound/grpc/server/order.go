@@ -104,12 +104,12 @@ func (o *OrderServer) ListOrders(ctx context.Context,
 
 	request := mapper.FromProtoListOrdersRequest(req)
 
-	list, cursor, hasMore, err := o.order.ListOrders(ctx, request)
+	listOrders, cursor, hasMore, err := o.order.ListOrders(ctx, request)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 	return &pb.ListOrdersResponse{
-		Orders:     mapper.ToProtoOrderList(list),
+		Orders:     mapper.ToProtoOrderList(listOrders),
 		NextCursor: cursor,
 		HasMore:    hasMore,
 	}, nil
