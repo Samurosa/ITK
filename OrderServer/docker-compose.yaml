@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: order
+    networks:
+      - exchange-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d order"]
       interval: 2s
@@ -20,11 +22,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.migrations
-
+    networks:
+      - exchange-network
     depends_on:
       order-postgres:
         condition: service_healthy
-
     command:
       - "-dir=/app/migrations"
       - "postgres"
@@ -35,11 +37,23 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    networks:
+      - exchange-network
+    secrets:
+      - jwt_secret
     ports:
       - "50053:50053"
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+secrets:
+  jwt_secret:
+    file: ./secrets/jwt_secret
+
+networks:
+  exchange-network:
+    external: true
 
 volumes:
   OrderPostgres_data:

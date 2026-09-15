@@ -10,6 +10,7 @@ import (
 type Order interface {
 	Create(ctx context.Context,
 		createOrder models.CreateOrder,
+		userRole string,
 	) (
 		orderID string,
 		orderStatus dto.OrderStatus,

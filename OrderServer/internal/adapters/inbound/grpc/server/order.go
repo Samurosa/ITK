@@ -4,6 +4,7 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,7 +23,14 @@ func (o *OrderServer) CreateOrder(ctx context.Context,
 
 	requestOrder := mapper.FromProtoCreateOrder(req)
 
-	orderID, orderStatus, createdTo, err := o.order.Create(ctx, requestOrder)
+	tokenContext, err := sharedContext.GetRequestContext(ctx)
+	if err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+
+	requestOrder.UserId = tokenContext.Principal.UserID
+
+	orderID, orderStatus, createdTo, err := o.order.Create(ctx, requestOrder, tokenContext.Principal.Role)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}

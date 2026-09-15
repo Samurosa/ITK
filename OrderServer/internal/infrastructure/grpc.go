@@ -6,6 +6,7 @@ import (
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors"
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
+	"github.com/Samurosa/exchange-common/shared/auth/session"
 
 	"fmt"
 	"net"
@@ -25,10 +26,12 @@ func NewGRPC(
 	log *zap.Logger,
 	orderService service.Order,
 	jwtParser *jwt.Parser,
+	validator session.Validator,
 	port int,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		interceptors.AuthInterceptor(log, jwtParser),
+		interceptors.RequestContextInterceptor(log),
+		interceptors.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
 	))
 
 	server.NewOrderServer(grpcServer,

@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: spot
+    networks:
+      - exchange-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U admin -d spot"]
       interval: 2s
@@ -20,11 +22,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.migrations
-
+    networks:
+      - exchange-network
     depends_on:
       spot-postgres:
         condition: service_healthy
-
     command:
       - "-dir=/app/migrations"
       - "postgres"
@@ -35,11 +37,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    networks:
+      - exchange-network
     ports:
       - "50052:50052"
     depends_on:
       migrate:
         condition: service_completed_successfully
+
+networks:
+  exchange-network:
+    external: true
 
 volumes:
   SpotPostgres_data:

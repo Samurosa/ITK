@@ -1,6 +1,7 @@
 package application
 
 import (
+	coreErorrs "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
@@ -11,6 +12,7 @@ import (
 
 func (o *OrderService) Create(ctx context.Context,
 	createOrder models.CreateOrder,
+	userRole string,
 ) (
 	string,
 	dto.OrderStatus,
@@ -18,8 +20,28 @@ func (o *OrderService) Create(ctx context.Context,
 	error,
 ) {
 	log := o.log.Named("Create order")
+	var isAllowed bool
+	start := time.Now()
 
-	createOrder.UserId = ctx.Value("user_id").(string)
+	spot, err := o.spotProvider.GetSpot(ctx, createOrder.SpotId)
+	if err != nil {
+		return "", "", time.Time{}, err
+	}
+
+	log.Info(
+		"GetSpot completed",
+		zap.Duration("duration", time.Since(start)),
+		zap.Error(err),
+	)
+
+	for _, role := range spot.AllowedRoles {
+		if string(role) == userRole {
+			isAllowed = true
+		}
+	}
+	if !isAllowed {
+		return "", "", time.Time{}, coreErorrs.ErrRolePermissionDenied
+	}
 
 	orderID, err := o.repository.Save(
 		ctx,

@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: db
+    networks:
+      - exchange-network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U admin -d db" ]
       interval: 2s
@@ -21,11 +23,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.migrations
-
+    networks:
+      - exchange-network
     depends_on:
       db:
         condition: service_healthy
-
     command:
       - "-dir=/app/migrations"
       - "postgres"
@@ -36,6 +38,8 @@ services:
     image: redis:7-alpine
     container_name: redis
     command: redis-server --requirepass admin
+    networks:
+      - exchange-network
     ports:
       - "6379:6379"
 
@@ -43,6 +47,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    networks:
+      - exchange-network
     secrets:
       - jwt_secret
     ports:
@@ -53,6 +59,10 @@ services:
 
 volumes:
   db_data:
+
+networks:
+  exchange-network:
+    external: true
 
 secrets:
   jwt_secret:

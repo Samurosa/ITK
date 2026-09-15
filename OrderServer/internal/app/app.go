@@ -2,6 +2,8 @@ package app
 
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/sessionValidator"
+	"ITK_Code/m/v2/internal/adapters/outbound/spot"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/infrastructure"
@@ -13,6 +15,8 @@ import (
 
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type App struct {
@@ -41,12 +45,31 @@ func New(cfg *config.Config, secret string) (*App, error) {
 		log.Error("Failed to connect to postgres", zap.Error(err))
 		return nil, err
 	}
+	redisClient, err := sessionValidator.NewRedisClient(ctx, log, cfg.Redis)
+	if err != nil {
+		cancel()
+		log.Error("Failed to connect to redis", zap.Error(err))
+		return nil, err
+	}
 
-	orderService := application.NewOrderService(log, storagePostgres)
+	storageSessions := sessionValidator.NewStorage(redisClient)
+
+	conn, err := grpc.NewClient(
+		cfg.Spot.GRPCAddr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+
+	spotClient := spot.NewClient(conn)
+
+	orderService := application.NewOrderService(log, storagePostgres, spotClient)
 
 	parser := jwt.NewParser(secret)
 
-	grpcServer := infrastructure.NewGRPC(log, orderService, parser, cfg.GRPC.Port)
+	grpcServer := infrastructure.NewGRPC(log, orderService, parser, storageSessions, cfg.GRPC.Port)
 
 	return &App{
 		logger: log,
