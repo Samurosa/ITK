@@ -1,15 +1,19 @@
 package postgres
 
 import (
+	"ITK_Code/m/v2/internal/adapters/outbound/encoding/cursor"
+	errorsCore "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
-	errorsCore "ITK_Code/m/v2/internal/core/errors"
+	"ITK_Code/m/v2/internal/core/spot/models"
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Storage) Save(ctx context.Context, spot dto.CreateSpot) (string, error) {
+func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
 
 	var spotID string
 
@@ -169,4 +173,149 @@ func (s *Storage) Disable(ctx context.Context, spotID string) error {
 	}
 
 	return nil
+}
+
+func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error) {
+
+	baseQuery := `
+		SELECT
+		    id,
+			base_asset,
+			quote_asset,
+			name,
+			description,
+			status,
+			created_at
+		FROM spot
+`
+	args := make([]any, 0, 5)
+	argsPos := 1
+	conditions := make([]string, 0, 4)
+
+	if searchReq.Cursor != "" {
+		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
+		if err != nil {
+			return nil, "", false, err
+		}
+
+		conditions = append(
+			conditions,
+			fmt.Sprintf(
+				"(created_at, id) < ($%d, $%d)",
+				argsPos,
+				argsPos+1,
+			),
+		)
+
+		args = append(
+			args,
+			gotCursor.CreatedAt,
+			gotCursor.ID,
+		)
+
+		argsPos += 2
+	}
+
+	if searchReq.Status != "" {
+		conditions = append(
+			conditions,
+			fmt.Sprintf("status = $%d", argsPos),
+		)
+
+		args = append(args, searchReq.Status)
+
+		argsPos++
+	}
+
+	if searchReq.BaseAsset != "" {
+		conditions = append(
+			conditions,
+			fmt.Sprintf("base_asset = $%d", argsPos),
+		)
+
+		args = append(args, searchReq.BaseAsset)
+
+		argsPos++
+	}
+	if searchReq.QuoteAsset != "" {
+		conditions = append(
+			conditions,
+			fmt.Sprintf("quote_asset = $%d", argsPos),
+		)
+
+		args = append(args, searchReq.QuoteAsset)
+
+		argsPos++
+	}
+
+	query := baseQuery
+
+	if len(conditions) > 0 {
+		query += " WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
+
+	limit := int(searchReq.PageSize) + 1
+	if limit <= 1 {
+		limit = 2
+	}
+
+	args = append(args, limit)
+
+	rows, err := s.pool.Query(ctx, query, args...)
+	if err != nil {
+		return nil, "", false, err
+	}
+	defer rows.Close()
+
+	spots := make([]dto.SpotListItem, 0, limit)
+
+	for rows.Next() {
+
+		var spot dto.SpotListItem
+
+		err = rows.Scan(
+			&spot.ID,
+			&spot.BaseAsset,
+			&spot.QuoteAsset,
+			&spot.Name,
+			&spot.Description,
+			&spot.Status,
+			&spot.CreatedAt,
+		)
+		if err != nil {
+			return nil, "", false, err
+		}
+
+		spots = append(spots, spot)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, "", false, err
+	}
+
+	if len(spots) == 0 {
+		return spots, "", false, nil
+	}
+
+	hasMore := len(spots) > int(searchReq.PageSize)
+
+	if hasMore {
+		spots = spots[:searchReq.PageSize]
+
+		newCursor, err := cursor.EncodeCursor(
+			cursor.SpotCursor{
+				CreatedAt: spots[len(spots)-1].CreatedAt,
+				ID:        spots[len(spots)-1].ID,
+			},
+		)
+		if err != nil {
+			return nil, "", false, err
+		}
+
+		return spots, newCursor, true, nil
+	}
+
+	return spots, "", false, nil
 }

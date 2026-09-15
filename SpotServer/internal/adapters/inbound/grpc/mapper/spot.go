@@ -2,14 +2,15 @@ package mapper
 
 import (
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/spot/models"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
 	userPB "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func FromProtoCreateSpot(req *pb.CreateSpotRequest) dto.CreateSpot {
-	return dto.CreateSpot{
+func FromProtoCreateSpot(req *pb.CreateSpotRequest) models.CreateSpot {
+	return models.CreateSpot{
 		BaseAsset:         req.GetBaseAsset(),
 		QuoteAsset:        req.GetQuoteAsset(),
 		PricePrecision:    req.GetPricePrecision(),
@@ -20,6 +21,23 @@ func FromProtoCreateSpot(req *pb.CreateSpotRequest) dto.CreateSpot {
 		Name:              req.GetName(),
 		Description:       req.GetDescription(),
 	}
+}
+
+func FromProtoListSpotsRequest(
+	req *pb.SpotListRequest,
+) models.ListSpotsRequest {
+	result := models.ListSpotsRequest{
+		PageSize:   req.GetPageSize(),
+		Cursor:     req.GetCursor(),
+		BaseAsset:  req.GetBaseAsset(),
+		QuoteAsset: req.GetQuoteAsset(),
+	}
+
+	if req.Status != nil {
+		result.Status = FromProtoStatus(req.GetStatus())
+	}
+
+	return result
 }
 
 func ToProtoSpot(spot dto.Spot) *pb.GetSpotResponse {
@@ -88,6 +106,32 @@ func ToProtoRole(role dto.Role) userPB.Role {
 	}
 }
 
+func ToProtoSpotListItem(spotListItem dto.SpotListItem) *pb.SpotListItem {
+	return &pb.SpotListItem{
+		Id:          spotListItem.ID,
+		BaseAsset:   spotListItem.BaseAsset,
+		QuoteAsset:  spotListItem.QuoteAsset,
+		Name:        spotListItem.Name,
+		Description: spotListItem.Description,
+		Status:      ToProtoStatus(spotListItem.Status),
+		CreatedAt:   timestamppb.New(spotListItem.CreatedAt),
+	}
+}
+
+func ToProtoSpotList(spotListItem []dto.SpotListItem) []*pb.SpotListItem {
+	if len(spotListItem) == 0 {
+		return nil
+	}
+
+	result := make([]*pb.SpotListItem, 0, len(spotListItem))
+
+	for _, spot := range spotListItem {
+		result = append(result, ToProtoSpotListItem(spot))
+	}
+
+	return result
+}
+
 func FromProtoRoles(roles []userPB.Role) []dto.Role {
 	result := make([]dto.Role, 0, len(roles))
 
@@ -113,5 +157,20 @@ func FromProtoRole(role userPB.Role) dto.Role {
 
 	default:
 		return dto.UnspecifiedRole
+	}
+}
+
+func FromProtoStatus(status pb.SpotStatus) dto.SpotStatus {
+	switch status {
+	case pb.SpotStatus_SPOT_STATUS_UNSPECIFIED:
+		return dto.UnspecifiedStatus
+	case pb.SpotStatus_SPOT_STATUS_ACTIVE:
+		return dto.ActiveStatus
+	case pb.SpotStatus_SPOT_STATUS_DISABLED:
+
+		return dto.DisabledStatus
+
+	default:
+		return dto.UnspecifiedStatus
 	}
 }

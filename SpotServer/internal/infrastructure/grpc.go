@@ -1,7 +1,7 @@
 package infrastructure
 
 import (
-	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/core/spot"
 
 	"fmt"
@@ -45,7 +45,7 @@ func (a *GRPCApp) Run() error {
 	}
 
 	a.log.Info(
-		"grpcs UserServer started",
+		"grpcs Spot server started",
 		zap.Any("port", a.port),
 	)
 

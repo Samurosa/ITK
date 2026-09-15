@@ -47,5 +47,8 @@ CREATE TABLE spot (
           UNIQUE (base_asset, quote_asset)
 );
 
+CREATE INDEX idx_spot_created_at_id
+    ON spot (created_at DESC, id DESC);
+
 -- +goose Down
 DROP TABLE spot;

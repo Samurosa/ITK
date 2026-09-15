@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"ITK_Code/m/v2/internal/config"
 	"context"
 	"errors"
 	"time"
@@ -17,19 +18,19 @@ type Storage struct {
 	pool *pgxpool.Pool
 }
 
-func NewStorage(ctx context.Context, logger *zap.Logger, connectionString string, maxRetries int) (*Storage, error) {
+func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*Storage, error) {
 	log := logger.Named("postgres")
 
-	config, err := pgxpool.ParseConfig(connectionString)
+	connectionSettings, err := pgxpool.ParseConfig(cfg.Link)
 	if err != nil {
 		return nil, err
 	}
-	/*	config.MaxConns = 10
-		config.MinConns = 2*/
+	connectionSettings.MaxConns = cfg.MaxConns
+	connectionSettings.MinConns = cfg.MinConns
 
-	for i := 1; i <= maxRetries; i++ {
+	for i := 1; i <= cfg.MaxRetries; i++ {
 
-		pool, err := pgxpool.NewWithConfig(ctx, config)
+		pool, err := pgxpool.NewWithConfig(ctx, connectionSettings)
 		if err != nil {
 			log.Error("create postgres pool failed", zap.Error(err))
 
