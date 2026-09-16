@@ -47,7 +47,37 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 }
 
 func (s *Storage) Get(ctx context.Context, orderID string) (dto.Order, error) {
-	panic("implement me")
+	query := `
+SELECT
+    id,
+	user_id,
+	spot_id,
+	order_side,
+	order_status,
+	price,
+	quantity
+FROM orders
+WHERE id = $1
+`
+
+	var order dto.Order
+
+	err := s.pool.QueryRow(ctx,
+		query,
+		orderID,
+	).Scan(
+		&order.OrderID,
+		&order.UserID,
+		&order.SpotID,
+		&order.OrderSide,
+		&order.OrderStatus,
+		&order.Price,
+		&order.Quantity,
+	)
+	if err != nil {
+		return dto.Order{}, err
+	}
+	return order, nil
 }
 
 func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) ([]dto.Order, string, bool, error) {

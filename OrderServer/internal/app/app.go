@@ -63,6 +63,8 @@ func New(cfg *config.Config, secret string) (*App, error) {
 		return nil, err
 	}
 
+	conn.Connect()
+
 	spotClient := spot.NewClient(conn)
 
 	orderService := application.NewOrderService(log, storagePostgres, spotClient)

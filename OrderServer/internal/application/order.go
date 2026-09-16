@@ -21,18 +21,11 @@ func (o *OrderService) Create(ctx context.Context,
 ) {
 	log := o.log.Named("Create order")
 	var isAllowed bool
-	start := time.Now()
 
 	spot, err := o.spotProvider.GetSpot(ctx, createOrder.SpotId)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}
-
-	log.Info(
-		"GetSpot completed",
-		zap.Duration("duration", time.Since(start)),
-		zap.Error(err),
-	)
 
 	for _, role := range spot.AllowedRoles {
 		if string(role) == userRole {
@@ -57,7 +50,18 @@ func (o *OrderService) Create(ctx context.Context,
 }
 
 func (o *OrderService) Get(ctx context.Context, orderID string) (dto.Order, error) {
-	panic("implement me")
+	log := o.log.Named("Get order")
+
+	order, err := o.repository.Get(
+		ctx,
+		orderID,
+	)
+	if err != nil {
+		log.Error("failed to get order", zap.String("orderID", orderID), zap.Error(err))
+		return dto.Order{}, err
+	}
+
+	return order, nil
 }
 
 func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderId string) (<-chan dto.UpdateOrder, error) {
