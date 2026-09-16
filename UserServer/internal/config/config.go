@@ -29,6 +29,8 @@ type GRPCConfig struct {
 type Postgres struct {
 	Link       string `yaml:"link"`
 	MaxRetries int    `yaml:"max_retries"`
+	MaxConns   int32  `yaml:"max_connections"`
+	MinConns   int32  `yaml:"min_connections"`
 }
 
 type Redis struct {

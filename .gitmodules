@@ -1,3 +1,6 @@
 [submodule "exchange-contract"]
 	path = exchange-contract
 	url = git@github.com:Samurosa/exchange-contract.git
+[submodule "exchange-common"]
+	path = exchange-common
+	url = git@github.com:Samurosa/exchange-common.git

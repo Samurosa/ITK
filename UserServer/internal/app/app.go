@@ -39,8 +39,7 @@ func New(
 
 	postgresStorage, err := postgres.NewStorage(ctx,
 		log,
-		cfg.Postgres.Link,
-		cfg.Postgres.MaxRetries,
+		cfg.Postgres,
 	)
 	if err != nil {
 		log.Error("Error starting postgres storage", zap.Error(err))

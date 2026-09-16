@@ -18,8 +18,10 @@ type GRPCConfig struct {
 }
 
 type Postgres struct {
-	Link       string `yaml:"link"`
-	MaxRetries int    `yaml:"max_retries"`
+	Link           string `yaml:"link"`
+	MaxRetries     int    `yaml:"max_retries"`
+	MaxConnections int32  `yaml:"max_connections"`
+	MinConnections int32  `yaml:"min_connections"`
 }
 
 func Load(

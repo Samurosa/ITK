@@ -5,6 +5,7 @@ import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"net"
+	"strings"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -34,9 +35,9 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		clientIP := md.Get("x-forwarded-for")
 
 		if len(clientIP) > 0 {
-			ip = clientIP[0]
+			ip = strings.Split(clientIP[0], " ")[0]
 		}
-		
+
 		if ip == "" {
 			p, ok := peer.FromContext(ctx)
 			if !ok {

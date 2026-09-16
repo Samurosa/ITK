@@ -1,6 +1,8 @@
 package dto
 
-import "time"
+import (
+	"time"
+)
 
 type SpotStatus string
 
@@ -47,14 +49,16 @@ type Spot struct {
 	DisabledAt *time.Time
 }
 
-type CreateSpot struct {
-	BaseAsset         string
-	QuoteAsset        string
-	PricePrecision    int32
-	QuantityPrecision int32
-	MinOrderSize      string
-	MaxOrderSize      string
-	AllowedRoles      []Role
-	Name              string
-	Description       string
+type SpotListItem struct {
+	ID string
+
+	BaseAsset  string
+	QuoteAsset string
+
+	Name        string
+	Description string
+
+	Status SpotStatus
+
+	CreatedAt time.Time
 }
