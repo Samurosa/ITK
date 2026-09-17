@@ -1,7 +1,6 @@
 package postgres
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/encoding/cursor"
 	errorsCore "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/spot/models"
@@ -10,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
 )
 

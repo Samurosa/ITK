@@ -2,10 +2,12 @@ package server
 
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	"context"
 
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -106,8 +108,19 @@ func (o *OrderServer) ListOrders(ctx context.Context,
 	*pb.ListOrdersResponse,
 	error,
 ) {
+	log := o.log.Named("ListOrders")
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
+	}
+
+	tokenContext, err := sharedContext.GetRequestContext(ctx)
+	if err != nil {
+		return nil, mapper.ToGRPC(err)
+	}
+
+	if validate.AccessCheck(tokenContext.Principal.Role) {
+		log.Info("attempt to gain access with a ", zap.String("role: ", tokenContext.Principal.Role))
+		return nil, status.Error(codes.PermissionDenied, "insufficient privileges")
 	}
 
 	request := mapper.FromProtoListOrdersRequest(req)
