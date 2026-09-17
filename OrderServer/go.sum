@@ -1,7 +1,5 @@
-github.com/Samurosa/exchange-common v0.0.8 h1:SVCbhloDKIL9wTVqpYMd18s+bVJDpiwtnC9wvlBmPbw=
-github.com/Samurosa/exchange-common v0.0.8/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
-github.com/Samurosa/exchange-common v0.0.9 h1:fioo66nMe7ijh6NSLSQPtSgN80TZOv9C4B6RW6CtouM=
-github.com/Samurosa/exchange-common v0.0.9/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
+github.com/Samurosa/exchange-common v0.0.10 h1:szi2UVuVyNUlOti28unW/EWcsJ89AaRpoagSe/NKseo=
+github.com/Samurosa/exchange-common v0.0.10/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
 github.com/Samurosa/exchange-contract v0.2.23 h1:yMi4GT24yAwqIYuMcnGdKYSTBtEHlOFURTjGFu7sGqg=
 github.com/Samurosa/exchange-contract v0.2.23/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=

@@ -76,5 +76,18 @@ func (o *OrderService) ListOrders(ctx context.Context,
 	bool,
 	error,
 ) {
-	panic("implement me")
+	log := o.log.Named("Order spot")
+
+	orderList, cursor, hasMore, err := o.repository.List(ctx, request)
+	if err != nil {
+		log.Error("order list failed", zap.Error(err))
+		return []dto.Order{}, "", false, err
+	}
+	if len(orderList) == 0 {
+		log.Debug("spot list is empty")
+		return []dto.Order{}, "", false, nil
+	}
+	log.Info("Slot search completed successfully")
+
+	return orderList, cursor, hasMore, nil
 }
