@@ -24,12 +24,11 @@ type SyncPrimitiveForRedis interface {
 }
 
 type RateLimiting interface {
-	Allow(ctx context.Context) (bool, error)
+	Allow(ctx context.Context, ip string, deviceID string) (bool, error)
 }
 
 type TokenManager interface {
 	Generate(user user.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error)
 
-	ParseAccessToken(token string) (dto.AccessTokenParse, error)
 	ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error)
 }

@@ -4,8 +4,9 @@ import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/spot/models"
 
+	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
-	userPB "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -78,8 +79,8 @@ func ToProtoStatus(status dto.SpotStatus) pb.SpotStatus {
 	}
 }
 
-func ToProtoRoles(roles []dto.Role) []userPB.Role {
-	result := make([]userPB.Role, 0, len(roles))
+func ToProtoRoles(roles []dto.Role) []shared.Role {
+	result := make([]shared.Role, 0, len(roles))
 
 	for _, role := range roles {
 		result = append(result, ToProtoRole(role))
@@ -88,21 +89,21 @@ func ToProtoRoles(roles []dto.Role) []userPB.Role {
 	return result
 }
 
-func ToProtoRole(role dto.Role) userPB.Role {
+func ToProtoRole(role dto.Role) shared.Role {
 	switch role {
 	case dto.UnspecifiedRole:
-		return userPB.Role_ROLE_UNSPECIFIED
+		return shared.Role_ROLE_UNSPECIFIED
 	case dto.UserRole:
-		return userPB.Role_ROLE_USER
+		return shared.Role_ROLE_USER
 	case dto.GuestRole:
-		return userPB.Role_ROLE_GUEST
+		return shared.Role_ROLE_GUEST
 	case dto.PremiumRole:
-		return userPB.Role_ROLE_PREMIUM
+		return shared.Role_ROLE_PREMIUM
 	case dto.AdminRole:
-		return userPB.Role_ROLE_ADMIN
+		return shared.Role_ROLE_ADMIN
 
 	default:
-		return userPB.Role_ROLE_UNSPECIFIED
+		return shared.Role_ROLE_UNSPECIFIED
 	}
 }
 
@@ -119,11 +120,11 @@ func ToProtoSpotListItem(spotListItem dto.SpotListItem) *pb.SpotListItem {
 }
 
 func ToProtoSpotList(spotListItem []dto.SpotListItem) []*pb.SpotListItem {
-	if len(spotListItem) == 0 {
-		return nil
-	}
-
 	result := make([]*pb.SpotListItem, 0, len(spotListItem))
+
+	if len(spotListItem) == 0 {
+		return result
+	}
 
 	for _, spot := range spotListItem {
 		result = append(result, ToProtoSpotListItem(spot))
@@ -132,7 +133,7 @@ func ToProtoSpotList(spotListItem []dto.SpotListItem) []*pb.SpotListItem {
 	return result
 }
 
-func FromProtoRoles(roles []userPB.Role) []dto.Role {
+func FromProtoRoles(roles []shared.Role) []dto.Role {
 	result := make([]dto.Role, 0, len(roles))
 
 	for _, role := range roles {
@@ -142,17 +143,17 @@ func FromProtoRoles(roles []userPB.Role) []dto.Role {
 	return result
 }
 
-func FromProtoRole(role userPB.Role) dto.Role {
+func FromProtoRole(role shared.Role) dto.Role {
 	switch role {
-	case userPB.Role_ROLE_UNSPECIFIED:
+	case shared.Role_ROLE_UNSPECIFIED:
 		return dto.UnspecifiedRole
-	case userPB.Role_ROLE_USER:
+	case shared.Role_ROLE_USER:
 		return dto.UserRole
-	case userPB.Role_ROLE_GUEST:
+	case shared.Role_ROLE_GUEST:
 		return dto.GuestRole
-	case userPB.Role_ROLE_PREMIUM:
+	case shared.Role_ROLE_PREMIUM:
 		return dto.PremiumRole
-	case userPB.Role_ROLE_ADMIN:
+	case shared.Role_ROLE_ADMIN:
 		return dto.AdminRole
 
 	default:

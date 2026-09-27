@@ -9,12 +9,13 @@ import (
 type OrderStatus string
 
 const (
-	StatusUnspecified OrderStatus = "ORDER_STATUS_UNSPECIFIED"
-	StatusNew         OrderStatus = "ORDER_STATUS_NEW"
-	StatusOpen        OrderStatus = "ORDER_STATUS_OPEN"
-	StatusFilled      OrderStatus = "ORDER_STATUS_FILLED"
-	StatusCanceled    OrderStatus = "ORDER_STATUS_CANCELED"
-	StatusRejected    OrderStatus = "ORDER_STATUS_REJECTED"
+	StatusUnspecified     OrderStatus = "ORDER_STATUS_UNSPECIFIED"
+	StatusNew             OrderStatus = "ORDER_STATUS_NEW"
+	StatusOpen            OrderStatus = "ORDER_STATUS_OPEN"
+	StatusFilled          OrderStatus = "ORDER_STATUS_FILLED"
+	StatusPartiallyFilled OrderStatus = "ORDER_STATUS_PARTIALLY_FILLED"
+	StatusCanceled        OrderStatus = "ORDER_STATUS_CANCELED"
+	StatusRejected        OrderStatus = "ORDER_STATUS_REJECTED"
 )
 
 type OrderSide string
@@ -34,9 +35,12 @@ type Order struct {
 	OrderSide   OrderSide
 	OrderStatus OrderStatus
 
-	Price decimal.Decimal
+	Price          decimal.Decimal
+	PriceCurrency  string
+	FilledQuantity string
 
-	Quantity string
+	Quantity         string
+	QuantityCurrency string
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -47,7 +51,8 @@ type UpdateOrder struct {
 
 	OrderStatus OrderStatus
 
-	Quantity string
+	Quantity         string
+	QuantityCurrency string
 
 	UpdatedAt time.Time
 }

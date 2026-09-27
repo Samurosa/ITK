@@ -2,8 +2,6 @@ package redis
 
 import (
 	"ITK_Code/m/v2/internal/config"
-	requestContext "ITK_Code/m/v2/internal/core/context"
-	coreErorrs "ITK_Code/m/v2/internal/core/coreErrors"
 	"context"
 	"time"
 
@@ -29,16 +27,10 @@ func NewLimiter(log *zap.Logger, cfg config.Limiter, client *redis.Client) *Limi
 
 func (l *Limiter) Allow(
 	ctx context.Context,
+	ip string,
+	deviceID string,
 ) (bool, error) {
 	log := l.log.Named("limiter allow")
-
-	requestCtx, err := requestContext.GetRequestContext(ctx)
-	if err != nil {
-		log.Error("Failed to get user ip from context", zap.Error(err))
-		return false, coreErorrs.ErrInvalidContext
-	}
-	ip := requestCtx.Metadata.ClientIP
-	deviceID := requestCtx.Metadata.DeviceID
 
 	key := "rate-limiter ip:" + ip + "deviceID:" + deviceID
 

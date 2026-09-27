@@ -7,9 +7,6 @@ import (
 	"ITK_Code/m/v2/internal/infrastructure"
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"go.uber.org/zap"
 )
@@ -64,13 +61,6 @@ func (app *App) Start() {
 			log.Error("grpc goroutine failed", zap.Error(err))
 		}
 	}()
-}
-
-func (app *App) WaitSignal() {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	<-stop
 }
 
 func (app *App) Stop() {

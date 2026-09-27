@@ -45,7 +45,7 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 		spot.QuantityPrecision,
 		spot.MinOrderSize,
 		spot.MaxOrderSize,
-		spot.AllowedRoles,
+		roleValues(spot.AllowedRoles),
 		spot.Name,
 		spot.Description,
 		string(dto.ActiveStatus),
@@ -76,6 +76,7 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 
 	var spot dto.Spot
+	var roles []string
 
 	err := s.pool.QueryRow(ctx,
 		`
@@ -106,7 +107,7 @@ func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 		&spot.QuantityPrecision,
 		&spot.MinOrderSize,
 		&spot.MaxOrderSize,
-		&spot.AllowedRoles,
+		&roles,
 		&spot.Name,
 		&spot.Description,
 		&spot.Status,
@@ -115,9 +116,24 @@ func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 		&spot.DisabledAt,
 	)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return dto.Spot{}, errorsCore.ErrSpotNotFound
+		}
 		return dto.Spot{}, err
 	}
+	spot.AllowedRoles = make([]dto.Role, 0, len(roles))
+	for _, role := range roles {
+		spot.AllowedRoles = append(spot.AllowedRoles, dto.Role(role))
+	}
 	return spot, nil
+}
+
+func roleValues(roles []dto.Role) []string {
+	values := make([]string, len(roles))
+	for i, role := range roles {
+		values[i] = string(role)
+	}
+	return values
 }
 
 func (s *Storage) Enable(ctx context.Context, spotID string) error {
@@ -256,10 +272,14 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 
 	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
 
-	limit := int(searchReq.PageSize) + 1
-	if limit <= 1 {
-		limit = 2
+	pageSize := int(searchReq.PageSize)
+	if pageSize < 1 {
+		pageSize = 20
 	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	limit := pageSize + 1
 
 	args = append(args, limit)
 
@@ -299,10 +319,10 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 		return spots, "", false, nil
 	}
 
-	hasMore := len(spots) > int(searchReq.PageSize)
+	hasMore := len(spots) > pageSize
 
 	if hasMore {
-		spots = spots[:searchReq.PageSize]
+		spots = spots[:pageSize]
 
 		newCursor, err := cursor.EncodeCursor(
 			cursor.SpotCursor{

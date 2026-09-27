@@ -16,8 +16,9 @@ import (
 func (s *Spot) CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (string, time.Time, error) {
 	log := s.log.Named("Create spot")
 
-	err := validate.CreateSpot(log, reqSpot)
+	err := validate.CreateSpot(reqSpot)
 	if err != nil {
+		log.Warn("spot validation failed", zap.Error(err))
 		return "", time.Time{}, err
 	}
 	log.Info("data validation passed")
@@ -37,6 +38,9 @@ func (s *Spot) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
 
 	gotSpot, err := s.spotRepository.Get(ctx, spotID)
 	if err != nil {
+		if errors.Is(err, coreErrors.ErrSpotNotFound) {
+			return dto.Spot{}, coreErrors.ErrSpotNotFound
+		}
 		log.Error("spot get failed", zap.Error(err))
 		return dto.Spot{}, spot.ErrGetSpot
 	}

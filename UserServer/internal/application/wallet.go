@@ -9,7 +9,6 @@ import (
 
 func (w *Wallet) Deposit(ctx context.Context,
 	id string,
-	asset string,
 	amount wallet.Money,
 	idempotentKey string,
 ) (
@@ -18,7 +17,7 @@ func (w *Wallet) Deposit(ctx context.Context,
 ) {
 	log := w.log.Named("Deposit")
 
-	newBalance, err := w.balanceRepository.Deposit(ctx, id, asset, amount, idempotentKey)
+	newBalance, err := w.balanceRepository.Deposit(ctx, id, amount, idempotentKey)
 	if err != nil {
 		log.Error("failed to save balance", zap.Error(err))
 		return wallet.Balance{}, err

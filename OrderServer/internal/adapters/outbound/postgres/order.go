@@ -23,11 +23,19 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 			order_side,
 			order_status,
 			price,
-			quantity
+			price_currency,
+			quantity,
+			quantity_currency
 		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
 		ON CONFLICT (user_id, idempotency_key)
-        DO UPDATE SET id = orders.id
+		DO UPDATE SET idempotency_key = orders.idempotency_key
+		WHERE orders.spot_id = EXCLUDED.spot_id
+		  AND orders.order_side = EXCLUDED.order_side
+		  AND orders.price = EXCLUDED.price
+		  AND orders.price_currency = EXCLUDED.price_currency
+		  AND orders.quantity = EXCLUDED.quantity
+		  AND orders.quantity_currency = EXCLUDED.quantity_currency
 		RETURNING id
 	`
 
@@ -39,7 +47,9 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 		order.OrderSide,
 		dto.StatusNew,
 		order.Price,
+		order.PriceCurrency,
 		order.Quantity,
+		order.QuantityCurrency,
 	).Scan(
 		&orderID,
 	)
@@ -50,7 +60,7 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 	return orderID, err
 }
 
-func (s *Storage) Get(ctx context.Context, orderID string) (dto.Order, error) {
+func (s *Storage) Get(ctx context.Context, orderID, userID string) (dto.Order, error) {
 	query := `
 		SELECT
 			id,
@@ -59,9 +69,14 @@ func (s *Storage) Get(ctx context.Context, orderID string) (dto.Order, error) {
 			order_side,
 			order_status,
 			price,
-			quantity
+			price_currency,
+			quantity,
+			quantity_currency,
+			filled_quantity,
+			created_at,
+			updated_at
 		FROM orders
-		WHERE id = $1
+		WHERE id = $1 AND user_id = $2
 `
 
 	var order dto.Order
@@ -69,6 +84,7 @@ func (s *Storage) Get(ctx context.Context, orderID string) (dto.Order, error) {
 	err := s.pool.QueryRow(ctx,
 		query,
 		orderID,
+		userID,
 	).Scan(
 		&order.OrderID,
 		&order.UserID,
@@ -76,7 +92,12 @@ func (s *Storage) Get(ctx context.Context, orderID string) (dto.Order, error) {
 		&order.OrderSide,
 		&order.OrderStatus,
 		&order.Price,
+		&order.PriceCurrency,
 		&order.Quantity,
+		&order.QuantityCurrency,
+		&order.FilledQuantity,
+		&order.CreatedAt,
+		&order.UpdatedAt,
 	)
 	if err != nil {
 		return dto.Order{}, err
@@ -94,14 +115,17 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 			order_side,
 			order_status,
 			price,
+			price_currency,
 			quantity,
+			quantity_currency,
+			filled_quantity,
 			created_at,
 			updated_at
 		FROM orders
 `
-	args := make([]any, 0, 5)
-	argsPos := 1
-	conditions := make([]string, 0, 4)
+	args := []any{searchReq.UserID}
+	argsPos := 2
+	conditions := []string{"user_id = $1"}
 
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
@@ -141,7 +165,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 	if searchReq.Status != "" {
 		conditions = append(
 			conditions,
-			fmt.Sprintf("status = $%d", argsPos),
+			fmt.Sprintf("order_status = $%d", argsPos),
 		)
 
 		args = append(args, searchReq.Status)
@@ -168,10 +192,14 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 
 	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
 
-	limit := int(searchReq.PageSize) + 1
-	if limit <= 1 {
-		limit = 2
+	pageSize := int(searchReq.PageSize)
+	if pageSize < 1 {
+		pageSize = 20
 	}
+	if pageSize > 100 {
+		pageSize = 100
+	}
+	limit := pageSize + 1
 
 	args = append(args, limit)
 
@@ -194,7 +222,10 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 			&order.OrderSide,
 			&order.OrderStatus,
 			&order.Price,
+			&order.PriceCurrency,
 			&order.Quantity,
+			&order.QuantityCurrency,
+			&order.FilledQuantity,
 			&order.CreatedAt,
 			&order.UpdatedAt,
 		)
@@ -213,10 +244,10 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 		return orders, "", false, nil
 	}
 
-	hasMore := len(orders) > int(searchReq.PageSize)
+	hasMore := len(orders) > pageSize
 
 	if hasMore {
-		orders = orders[:searchReq.PageSize]
+		orders = orders[:pageSize]
 
 		newCursor, err := cursor.EncodeCursor(
 			cursor.SpotCursor{

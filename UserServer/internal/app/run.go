@@ -2,8 +2,11 @@ package app
 
 import (
 	"ITK_Code/m/v2/internal/config"
+	"context"
 	"fmt"
 	"os"
+
+	"go.uber.org/fx"
 )
 
 func Run(configPath string) error {
@@ -28,23 +31,26 @@ func Run(configPath string) error {
 		)
 	}
 
-	application, err := New(
-		cfg,
-		string(secret),
+	fxApp := fx.New(
+		fx.Supply(cfg, string(secret)),
+		fx.Provide(New),
+		fx.Invoke(func(lifecycle fx.Lifecycle, application *App) {
+			lifecycle.Append(fx.Hook{
+				OnStart: func(context.Context) error {
+					application.Start()
+					return nil
+				},
+				OnStop: func(context.Context) error {
+					application.Stop()
+					return nil
+				},
+			})
+		}),
 	)
-	if err != nil {
-
-		return fmt.Errorf(
-			"create application failed: %s\n",
-			err,
-		)
+	if err := fxApp.Err(); err != nil {
+		return fmt.Errorf("create application failed: %w", err)
 	}
-
-	application.Start()
-
-	application.WaitSignal()
-
-	application.Stop()
+	fxApp.Run()
 
 	return nil
 }

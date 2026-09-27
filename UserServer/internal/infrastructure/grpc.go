@@ -2,6 +2,7 @@ package infrastructure
 
 import (
 	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
@@ -10,16 +11,18 @@ import (
 	"net"
 	"time"
 
+	sharedinterceptors "github.com/Samurosa/exchange-common/shared/auth/interceptors"
+	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
+	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-type Services interface {
-	TokenManager() auth.TokenManager
-	UserService() user.Service
-	AuthService() auth.Service
-	WalletService() wallet.Service
-	SessionStorage() auth.SessionRepository
+var publicMethods = map[string]struct{}{
+	"/user.UserService/Login":        {},
+	"/user.UserService/Registration": {},
+	"/user.UserService/RefreshToken": {},
 }
 
 type GRPCApp struct {
@@ -30,26 +33,34 @@ type GRPCApp struct {
 
 func NewGRPC(
 	log *zap.Logger,
-	services Services,
+	user user.Service,
+	auth auth.Service,
+	wallet wallet.Service,
 	port int,
+	tokenParser *sharedjwt.Parser,
+	sessionValidator sharedsession.Validator,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptors.RequestContextInterceptor(log),
 			interceptors.ClientIPInterceptor(log),
 			interceptors.DeviceIDInterceptor(log),
-			interceptors.AuthInterceptor(log,
-				services.TokenManager(),
-				services.SessionStorage(),
+			sharedinterceptors.AuthInterceptor(
+				log,
+				tokenParser,
+				publicMethods,
+				sessionValidator,
+			),
+		),
+		grpc.ChainStreamInterceptor(
+			sharedinterceptors.AuthStreamInterceptor(
+				log,
+				tokenParser,
+				sessionValidator,
 			),
 		),
 	)
 
-	usergrps.RegisterUserService(grpcServer,
-		services.UserService(),
-		services.AuthService(),
-		services.WalletService(),
-		log)
+	usergrps.RegisterUserService(grpcServer, user, auth, wallet, log)
 
 	return &GRPCApp{
 		log:        log,
@@ -59,38 +70,35 @@ func NewGRPC(
 }
 
 func (a *GRPCApp) Run() error {
-
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
+	listener, err := net.Listen(
+		"tcp",
+		fmt.Sprintf(":%d", a.port),
+	)
 	if err != nil {
 		return err
 	}
 
 	a.log.Info(
-		"grpcs UserServer started",
-		zap.Any("port", a.port),
+		"grpc UserServer started",
+		zap.Int("port", a.port),
 	)
 
-	if err := a.grpcServer.Serve(l); err != nil {
-		return err
-	}
-	return nil
+	return a.grpcServer.Serve(listener)
 }
 
 func (a *GRPCApp) Stop() {
-
 	done := make(chan struct{})
 
 	go func() {
 		a.grpcServer.GracefulStop()
 		close(done)
 	}()
+
 	select {
-
 	case <-done:
-		a.log.Info("GRPC UserServer gracefully stopped")
-
+		a.log.Info("grpc UserServer gracefully stopped")
 	case <-time.After(10 * time.Second):
-		a.log.Info("GRPC UserServer timeout")
+		a.log.Info("grpc UserServer stop timeout")
 		a.grpcServer.Stop()
 	}
 }

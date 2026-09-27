@@ -2,12 +2,11 @@ package server
 
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
-	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	"context"
 
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
-	"go.uber.org/zap"
+	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,11 +22,14 @@ func (o *OrderServer) CreateOrder(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	requestOrder := mapper.FromProtoCreateOrder(req)
-
-	tokenContext, err := sharedContext.GetRequestContext(ctx)
+	requestOrder, err := mapper.FromProtoCreateOrder(req)
 	if err != nil {
-		return nil, mapper.ToGRPC(err)
+		return nil, status.Error(codes.InvalidArgument, "invalid order amount")
+	}
+
+	tokenContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "request context not provided")
 	}
 
 	requestOrder.UserId = tokenContext.Principal.UserID
@@ -53,7 +55,12 @@ func (o *OrderServer) GetOrder(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	order, err := o.order.Get(ctx, req.OrderId)
+	tokenContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "request context not provided")
+	}
+
+	order, err := o.order.Get(ctx, req.OrderId, tokenContext.Principal.UserID)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -72,6 +79,13 @@ func (o *OrderServer) StreamOrderUpdate(
 	}
 
 	ctx := stream.Context()
+	tokenContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return status.Error(codes.Unauthenticated, "request context not provided")
+	}
+	if _, err := o.order.Get(ctx, req.OrderId, tokenContext.Principal.UserID); err != nil {
+		return mapper.ToGRPC(err)
+	}
 
 	updates, err := o.order.SubscribeOrderUpdates(ctx, req.OrderId)
 	if err != nil {
@@ -89,10 +103,10 @@ func (o *OrderServer) StreamOrderUpdate(
 			}
 
 			response := &pb.StreamOrderUpdateResponse{
-				OrderId:     update.OrderID,
-				OrderStatus: mapper.ToProtoStatus(update.OrderStatus),
-				Quantity:    update.Quantity,
-				UpdatedAt:   timestamppb.New(update.UpdatedAt),
+				OrderId:        update.OrderID,
+				OrderStatus:    mapper.ToProtoStatus(update.OrderStatus),
+				FilledQuantity: &shared.Money{Currency: update.QuantityCurrency, Amount: update.Quantity},
+				UpdatedAt:      timestamppb.New(update.UpdatedAt),
 			}
 
 			if err := stream.Send(response); err != nil {
@@ -108,22 +122,17 @@ func (o *OrderServer) ListOrders(ctx context.Context,
 	*pb.ListOrdersResponse,
 	error,
 ) {
-	log := o.log.Named("ListOrders")
 	if err := req.Validate(); err != nil {
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	tokenContext, err := sharedContext.GetRequestContext(ctx)
-	if err != nil {
-		return nil, mapper.ToGRPC(err)
-	}
-
-	if validate.AccessCheck(tokenContext.Principal.Role) {
-		log.Info("attempt to gain access with a ", zap.String("role: ", tokenContext.Principal.Role))
-		return nil, status.Error(codes.PermissionDenied, "insufficient privileges")
+	tokenContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "request context not provided")
 	}
 
 	request := mapper.FromProtoListOrdersRequest(req)
+	request.UserID = tokenContext.Principal.UserID
 
 	listOrders, cursor, hasMore, err := o.order.ListOrders(ctx, request)
 	if err != nil {

@@ -4,13 +4,6 @@ import (
 	"time"
 )
 
-type JWTConfig struct {
-	Secret string
-
-	AccessTokenTTL  time.Duration
-	RefreshTokenTTL time.Duration
-}
-
 type TokensModel struct {
 	AccessToken  string
 	RefreshToken string

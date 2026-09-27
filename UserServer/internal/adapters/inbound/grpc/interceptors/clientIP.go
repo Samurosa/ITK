@@ -1,12 +1,11 @@
 package interceptors
 
 import (
-	reqCtx "ITK_Code/m/v2/internal/core/context"
-	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 	"net"
 	"strings"
 
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -35,7 +34,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		clientIP := md.Get("x-forwarded-for")
 
 		if len(clientIP) > 0 {
-			ip = strings.Split(clientIP[0], " ")[0]
+			ip = strings.Split(clientIP[0], ",")[0]
 		}
 
 		if ip == "" {
@@ -55,13 +54,9 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 			ip = host
 		}
 
-		ctx, err := reqCtx.UpdateRequestContext(ctx, func(rc *dto.RequestContext) {
+		ctx = sharedContext.UpdateRequestContext(ctx, func(rc *sharedContext.RequestContext) {
 			rc.Metadata.ClientIP = ip
 		})
-		if err != nil {
-			log.Error("update request context", zap.Error(err))
-			return nil, status.Error(codes.Internal, "failed to update request context")
-		}
 
 		return handler(ctx, req)
 	}

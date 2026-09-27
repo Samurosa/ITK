@@ -3,8 +3,8 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-common v0.0.10
-	github.com/Samurosa/exchange-contract v0.2.23
+	github.com/Samurosa/exchange-common v0.0.11
+	github.com/Samurosa/exchange-contract v0.2.24
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/shopspring/decimal v1.4.0
@@ -24,6 +24,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/rogpeppe/go-internal v1.6.1 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/dig v1.19.0 // indirect
+	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect

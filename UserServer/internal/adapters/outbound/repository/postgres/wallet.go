@@ -19,7 +19,7 @@ func NewBalanceStorage(pool *pgxpool.Pool) *BalanceRepository {
 	}
 }
 
-func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset string, amount wallet.Money, idempotentKey string) (wallet.Balance, error) {
+func (b *BalanceRepository) Deposit(ctx context.Context, userID string, amount wallet.Money, idempotentKey string) (wallet.Balance, error) {
 	tx, err := b.pool.Begin(ctx)
 	if err != nil {
 		return wallet.Balance{}, err
@@ -38,7 +38,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 	`,
 		idempotentKey,
 		userID,
-		asset,
+		amount.Currency,
 		amount.Amount,
 	).Scan(
 		&idWalletOperation,
@@ -51,7 +51,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 			WHERE user_id = $1 AND asset = $2
 			`,
 			userID,
-			asset,
+			amount.Currency,
 		).Scan(
 			&balance.ID,
 			&balance.UserID,
@@ -79,7 +79,7 @@ func (b *BalanceRepository) Deposit(ctx context.Context, userID string, asset st
 		RETURNING id, user_id, asset, available, locked
 	`,
 		userID,
-		asset,
+		amount.Currency,
 		amount.Amount,
 	).Scan(
 		&balance.ID,
