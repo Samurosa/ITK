@@ -8,23 +8,20 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"go.uber.org/zap"
 )
 
 type Token struct {
-	log       *zap.Logger
 	secret    string
 	tokensTTL config.TokensTTL
 }
 
-func NewJWT(log *zap.Logger, secret string, tokensTTl config.TokensTTL) (*Token, error) {
+func NewJWT(secret string, tokensTTl config.TokensTTL) (*Token, error) {
 
 	if err := configValidate(secret, tokensTTl); err != nil {
 		return nil, err
 	}
 
 	return &Token{
-		log:       log,
 		secret:    secret,
 		tokensTTL: tokensTTl,
 	}, nil
@@ -73,7 +70,6 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 }
 
 func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error) {
-	log := j.log.Named("Parse Refresh Token")
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
 		&RefreshTokenParse{},
@@ -85,11 +81,10 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, e
 		},
 	)
 	if err != nil {
-		log.Error("Parse Refresh Token Error", zap.Error(err))
 		return dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 
-	claims, err := GetClaimsWithRefreshToken(log, token)
+	claims, err := GetClaimsWithRefreshToken(token)
 
 	if err != nil {
 		return dto.RefreshTokenParse{}, err

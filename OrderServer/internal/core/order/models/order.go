@@ -15,12 +15,15 @@ type CreateOrder struct {
 
 	IdempotencyKey string
 
-	Price decimal.Decimal
+	Price         decimal.Decimal
+	PriceCurrency string
 
-	Quantity string
+	Quantity         string
+	QuantityCurrency string
 }
 
 type ListOrdersRequest struct {
+	UserID   string
 	PageSize int32
 	Cursor   string
 	SpotId   string

@@ -31,6 +31,8 @@ func NewGRPC(
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		interceptors.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
+	), grpc.ChainStreamInterceptor(
+		interceptors.AuthStreamInterceptor(log, jwtParser, validator),
 	))
 
 	server.NewOrderServer(grpcServer,

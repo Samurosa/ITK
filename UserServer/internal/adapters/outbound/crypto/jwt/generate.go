@@ -8,7 +8,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 func generateRefreshToken(
@@ -64,37 +63,14 @@ func generateAccessToken(
 	return accessTokenString, claimsAccessToken, nil
 }
 
-func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*dto.AccessTokenParse, error) {
+func GetClaimsWithRefreshToken(token *jwt.Token) (*dto.RefreshTokenParse, error) {
 
 	if !token.Valid {
-		log.Error("token is not valid")
-		return &dto.AccessTokenParse{}, corerrors.ErrInvalidToken
-	}
-
-	claims, ok := token.Claims.(*AccessTokenParse)
-	if !ok {
-		log.Error("token claims is not found")
-		return &dto.AccessTokenParse{}, corerrors.ErrInvalidToken
-	}
-
-	return &dto.AccessTokenParse{
-		UserID: claims.UserID,
-		Role:   claims.Role,
-		Device: claims.Device,
-		Jti:    claims.Jti,
-	}, nil
-}
-
-func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*dto.RefreshTokenParse, error) {
-
-	if !token.Valid {
-		log.Error("token is not valid")
 		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*RefreshTokenParse)
 	if !ok {
-		log.Error("token claims is not found")
 		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 

@@ -5,6 +5,10 @@ import (
 	"context"
 )
 
+func (s *Storage) Close() error {
+	return s.client.Close()
+}
+
 func (s *Storage) Validate(ctx context.Context, jti string) error {
 	key := "session:" + jti
 

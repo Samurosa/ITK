@@ -8,7 +8,7 @@ import (
 
 type OrderRepository interface {
 	Save(ctx context.Context, order models.CreateOrder) (string, error)
-	Get(ctx context.Context, orderID string) (dto.Order, error)
+	Get(ctx context.Context, orderID, userID string) (dto.Order, error)
 
 	List(ctx context.Context, searchReq models.ListOrdersRequest) ([]dto.Order, string, bool, error)
 }

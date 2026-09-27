@@ -89,9 +89,10 @@ func (a *Auth) Login(ctx context.Context,
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
 	if errors.Is(err, user.ErrUserNotFound) {
-		log.Debug("user not found", zap.String("email", email), zap.Error(err))
-		_ = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
-
+		// Keep the missing-user path close to the existing-user path by
+		// spending the same bcrypt work before returning a generic error.
+		_ = hash.VerifyPasswordHash(password, []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"))
+		return dto.TokensModel{}, auth.ErrIncorrectCredentials
 	}
 	if err != nil {
 		log.Error("error getting user", zap.String("email", email), zap.Error(err))

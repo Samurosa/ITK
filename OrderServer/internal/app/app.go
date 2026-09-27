@@ -9,9 +9,6 @@ import (
 	"ITK_Code/m/v2/internal/infrastructure"
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	"go.uber.org/zap"
@@ -26,6 +23,8 @@ type App struct {
 	cancel context.CancelFunc
 
 	postgres *postgres.Storage
+	sessions *sessionValidator.Storage
+	spotConn *grpc.ClientConn
 
 	grpcApp *infrastructure.GRPCApp
 }
@@ -47,6 +46,7 @@ func New(cfg *config.Config, secret string) (*App, error) {
 	}
 	redisClient, err := sessionValidator.NewRedisClient(ctx, log, cfg.Redis)
 	if err != nil {
+		storagePostgres.ClosePool()
 		cancel()
 		log.Error("Failed to connect to redis", zap.Error(err))
 		return nil, err
@@ -59,6 +59,8 @@ func New(cfg *config.Config, secret string) (*App, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {
+		storagePostgres.ClosePool()
+		_ = redisClient.Close()
 		cancel()
 		return nil, err
 	}
@@ -71,6 +73,9 @@ func New(cfg *config.Config, secret string) (*App, error) {
 
 	parser, err := jwt.NewParser(secret)
 	if err != nil {
+		conn.Close()
+		storagePostgres.ClosePool()
+		_ = redisClient.Close()
 		cancel()
 		return nil, err
 	}
@@ -83,6 +88,8 @@ func New(cfg *config.Config, secret string) (*App, error) {
 		cancel: cancel,
 
 		postgres: storagePostgres,
+		sessions: storageSessions,
+		spotConn: conn,
 
 		grpcApp: grpcServer,
 	}, nil
@@ -98,19 +105,18 @@ func (app *App) Start() {
 	}()
 }
 
-func (app *App) WaitSignal() {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	<-stop
-}
-
 func (app *App) Stop() {
 	app.logger.Debug("application stop")
 
 	app.grpcApp.Stop()
 	app.cancel()
+	if err := app.sessions.Close(); err != nil {
+		app.logger.Error("close redis session client", zap.Error(err))
+	}
 	app.postgres.ClosePool()
+	if err := app.spotConn.Close(); err != nil {
+		app.logger.Error("close spot client connection", zap.Error(err))
+	}
 
 	err := app.logger.Sync()
 	if err != nil {

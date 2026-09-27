@@ -4,9 +4,6 @@ import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
 	"ITK_Code/m/v2/internal/application"
 	"context"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
@@ -67,7 +64,7 @@ func New(
 
 	walletStorage := postgres.NewBalanceStorage(postgresStorage.GetPool())
 
-	tokenManager, err := jwt.NewJWT(log, secret, cfg.TokensTTl)
+	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
 	if err != nil {
 		postgresStorage.ClosePool()
 		cancel()
@@ -121,18 +118,6 @@ func (app *App) Start() {
 			)
 		}
 	}()
-}
-
-func (app *App) WaitSignal() {
-	stop := make(chan os.Signal, 1)
-	signal.Notify(
-		stop,
-		syscall.SIGINT,
-		syscall.SIGTERM,
-	)
-	defer signal.Stop(stop)
-
-	<-stop
 }
 
 func (app *App) Stop() {

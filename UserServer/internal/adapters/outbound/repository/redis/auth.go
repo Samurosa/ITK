@@ -56,22 +56,12 @@ func (s *Storage) toRedisSave(ctx context.Context, jti string, model *auth.Sessi
 
 	setter := func(p redis.Pipeliner) error {
 
-		fields := map[string]interface{}{
-			"user_id":            model.UserID,
-			"device_id":          model.DeviceID,
-			"refresh_token_hash": model.RefreshTokenHash,
-			"created_at":         model.CreatedAt.UTC().Format(time.RFC3339Nano),
-			"expires_at":         model.ExpiresAt.UTC().Format(time.RFC3339Nano),
-		}
-
-		if err := p.HSet(ctx, key, fields).Err(); err != nil {
-			return err
-		}
-
-		if err := p.Expire(ctx, key, model.TTL).Err(); err != nil {
-			return err
-		}
-		if err := p.SAdd(ctx, "user:"+model.UserID, "session:"+jti).Err(); err != nil {
+		if err := fieldsSave(p,
+			ctx,
+			model,
+			key,
+			jti,
+		); err != nil {
 			return err
 		}
 
@@ -133,22 +123,12 @@ func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti strin
 
 	setter := func(p redis.Pipeliner) error {
 
-		fields := map[string]interface{}{
-			"user_id":            model.UserID,
-			"device_id":          model.DeviceID,
-			"refresh_token_hash": model.RefreshTokenHash,
-			"created_at":         model.CreatedAt.UTC().Format(time.RFC3339Nano),
-			"expires_at":         model.ExpiresAt.UTC().Format(time.RFC3339Nano),
-		}
-
-		if err := p.HSet(ctx, key, fields).Err(); err != nil {
-			return err
-		}
-
-		if err := p.Expire(ctx, key, model.TTL).Err(); err != nil {
-			return err
-		}
-		if err := p.SAdd(ctx, "user:"+model.UserID, "session:"+jti).Err(); err != nil {
+		if err := fieldsSave(p,
+			ctx,
+			model,
+			key,
+			jti,
+		); err != nil {
 			return err
 		}
 
@@ -242,5 +222,27 @@ func (s *Storage) deleteFromRedisByUser(
 		return err
 	}
 
+	return nil
+}
+
+func fieldsSave(p redis.Pipeliner, ctx context.Context, model *auth.SessionModel, key string, jti string) error {
+	fields := map[string]interface{}{
+		"user_id":            model.UserID,
+		"device_id":          model.DeviceID,
+		"refresh_token_hash": model.RefreshTokenHash,
+		"created_at":         model.CreatedAt.UTC().Format(time.RFC3339Nano),
+		"expires_at":         model.ExpiresAt.UTC().Format(time.RFC3339Nano),
+	}
+
+	if err := p.HSet(ctx, key, fields).Err(); err != nil {
+		return err
+	}
+
+	if err := p.Expire(ctx, key, model.TTL).Err(); err != nil {
+		return err
+	}
+	if err := p.SAdd(ctx, "user:"+model.UserID, "session:"+jti).Err(); err != nil {
+		return err
+	}
 	return nil
 }
