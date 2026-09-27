@@ -1,4 +1,4 @@
-package sessionValidator
+package redis
 
 import (
 	"ITK_Code/m/v2/internal/core/corerrors"

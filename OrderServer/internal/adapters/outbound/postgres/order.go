@@ -27,7 +27,7 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 		 )
 		VALUES ($1,$2,$3,$4,$5,$6,$7)
 		ON CONFLICT (user_id, idempotency_key)
-        DO UPDATE SET id = orders.id
+        DO NOTHING
 		RETURNING id
 	`
 

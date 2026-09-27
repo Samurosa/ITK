@@ -3,8 +3,9 @@ package grpc
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
-	requestContext "ITK_Code/m/v2/internal/core/context"
 	"context"
+
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"go.uber.org/zap"
@@ -32,7 +33,18 @@ func (s *UserServer) Registration(ctx context.Context,
 		return nil, mapper.ToGRPC(err)
 	}
 
-	id, createdAt, err := s.auth.Registration(ctx, req.Email, req.Password, req.Name)
+	requestContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
+	}
+
+	id, createdAt, err := s.auth.Registration(ctx,
+		req.Email,
+		req.Password,
+		req.Name,
+		requestContext.Metadata.ClientIP,
+		requestContext.Metadata.DeviceID,
+	)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -56,12 +68,17 @@ func (s *UserServer) Login(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	deviceID, err := requestContext.DeviceID(ctx)
-	if err != nil {
-		return nil, mapper.ToGRPC(err)
+	requestContext, ok := sharedContext.GetRequestContext(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
-	tokens, err := s.auth.Login(ctx, req.Email, req.Password, deviceID)
+	tokens, err := s.auth.Login(ctx,
+		req.Email,
+		req.Password,
+		requestContext.Metadata.ClientIP,
+		requestContext.Metadata.DeviceID,
+	)
 	if err != nil {
 		s.log.Error("failed to login", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
@@ -83,14 +100,12 @@ func (s *UserServer) Logout(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	jti, err := requestContext.JTI(ctx)
-	if err != nil {
-		log.Error("error getting jti from context", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	jti, ok := sharedContext.JTI(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("got token jti from context")
 
-	err = s.auth.Logout(ctx, jti, req.RefreshToken)
+	err := s.auth.Logout(ctx, jti, req.RefreshToken)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -104,16 +119,12 @@ func (s *UserServer) LogoutAllDevices(ctx context.Context,
 	*emptypb.Empty,
 	error,
 ) {
-	log := s.log.Named("LogoutAllDevices")
-
-	jti, err := requestContext.JTI(ctx)
-	if err != nil {
-		log.Error("error getting jti from context", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	jti, ok := sharedContext.JTI(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("got token jti from context")
 
-	err = s.auth.LogoutAllDevices(ctx, jti)
+	err := s.auth.LogoutAllDevices(ctx, jti)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}

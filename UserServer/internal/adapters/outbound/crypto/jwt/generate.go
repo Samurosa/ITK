@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/coreErrors"
+	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
@@ -29,7 +29,7 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", RefreshTokenParse{}, coreErrors.ErrGenerateToken
+		return "", RefreshTokenParse{}, corerrors.ErrGenerateToken
 	}
 
 	return refreshTokenString, claimsRefreshToken, nil
@@ -58,7 +58,7 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", AccessTokenParse{}, coreErrors.ErrGenerateToken
+		return "", AccessTokenParse{}, corerrors.ErrGenerateToken
 	}
 
 	return accessTokenString, claimsAccessToken, nil
@@ -68,13 +68,13 @@ func GetClaimsWithAccessToken(log *zap.Logger, token *jwt.Token) (*dto.AccessTok
 
 	if !token.Valid {
 		log.Error("token is not valid")
-		return &dto.AccessTokenParse{}, coreErrors.ErrInvalidToken
+		return &dto.AccessTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*AccessTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
-		return &dto.AccessTokenParse{}, coreErrors.ErrInvalidToken
+		return &dto.AccessTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	return &dto.AccessTokenParse{
@@ -89,13 +89,13 @@ func GetClaimsWithRefreshToken(log *zap.Logger, token *jwt.Token) (*dto.RefreshT
 
 	if !token.Valid {
 		log.Error("token is not valid")
-		return &dto.RefreshTokenParse{}, coreErrors.ErrInvalidToken
+		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*RefreshTokenParse)
 	if !ok {
 		log.Error("token claims is not found")
-		return &dto.RefreshTokenParse{}, coreErrors.ErrInvalidToken
+		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	return &dto.RefreshTokenParse{

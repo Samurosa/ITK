@@ -30,7 +30,6 @@ func NewGRPC(
 	port int,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		interceptors.RequestContextInterceptor(log),
 		interceptors.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
 	))
 

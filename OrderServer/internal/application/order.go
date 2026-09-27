@@ -1,7 +1,7 @@
 package application
 
 import (
-	coreErorrs "ITK_Code/m/v2/internal/core/coreErrors"
+	coreErorrs "ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"

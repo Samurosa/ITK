@@ -1,7 +1,8 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/coreErrors"
+	"ITK_Code/m/v2/internal/config"
+	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
@@ -12,20 +13,27 @@ import (
 
 type Token struct {
 	log       *zap.Logger
-	jwtConfig dto.JWTConfig
+	secret    string
+	tokensTTL config.TokensTTL
 }
 
-func NewJWT(log *zap.Logger, jwtConfig dto.JWTConfig) *Token {
+func NewJWT(log *zap.Logger, secret string, tokensTTl config.TokensTTL) (*Token, error) {
+
+	if err := configValidate(secret, tokensTTl); err != nil {
+		return nil, err
+	}
+
 	return &Token{
 		log:       log,
-		jwtConfig: jwtConfig,
-	}
+		secret:    secret,
+		tokensTTL: tokensTTl,
+	}, nil
 }
 
 func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error) {
 	accessTokenString, accessToken, err := generateAccessToken(
-		j.jwtConfig.Secret,
-		j.jwtConfig.AccessTokenTTL,
+		j.secret,
+		j.tokensTTL.AccessTokenTTL,
 		user,
 		deviceID,
 	)
@@ -34,8 +42,8 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 	}
 
 	refreshTokenString, refreshToken, err := generateRefreshToken(
-		j.jwtConfig.Secret,
-		j.jwtConfig.RefreshTokenTTL,
+		j.secret,
+		j.tokensTTL.RefreshTokenTTL,
 		accessToken.Jti,
 	)
 	if err != nil {
@@ -46,11 +54,11 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 			AccessToken:  accessTokenString,
 			RefreshToken: refreshTokenString,
 
-			AccessExpiresAt:  time.Now().Add(j.jwtConfig.AccessTokenTTL),
+			AccessExpiresAt:  time.Now().Add(j.tokensTTL.AccessTokenTTL),
 			AccessIssuedAt:   time.Now(),
-			RefreshExpiresAt: time.Now().Add(j.jwtConfig.RefreshTokenTTL),
+			RefreshExpiresAt: time.Now().Add(j.tokensTTL.RefreshTokenTTL),
 			RefreshIssuedAt:  time.Now(),
-			RefreshTTL:       j.jwtConfig.RefreshTokenTTL,
+			RefreshTTL:       j.tokensTTL.RefreshTokenTTL,
 		},
 		dto.AccessTokenParse{
 			UserID: accessToken.UserID,
@@ -64,31 +72,6 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 		}, nil
 }
 
-func (j *Token) ParseAccessToken(accessToken string) (dto.AccessTokenParse, error) {
-	log := j.log.Named("Parse Access Token")
-	token, err := jwt.ParseWithClaims(
-		accessToken,
-		&AccessTokenParse{},
-		func(token *jwt.Token) (interface{}, error) {
-			if token.Method != jwt.SigningMethodHS256 {
-				return nil, coreErrors.ErrInvalidToken
-			}
-			return []byte(j.jwtConfig.Secret), nil
-		},
-	)
-	if err != nil {
-		log.Error("Parse Access Token Error", zap.Error(err))
-		return dto.AccessTokenParse{}, coreErrors.ErrInvalidToken
-	}
-
-	claims, err := GetClaimsWithAccessToken(log, token)
-	if err != nil {
-		return dto.AccessTokenParse{}, err
-	}
-
-	return *claims, nil
-}
-
 func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error) {
 	log := j.log.Named("Parse Refresh Token")
 	token, err := jwt.ParseWithClaims(
@@ -96,14 +79,14 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, e
 		&RefreshTokenParse{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, coreErrors.ErrInvalidToken
+				return nil, corerrors.ErrInvalidToken
 			}
-			return []byte(j.jwtConfig.Secret), nil
+			return []byte(j.secret), nil
 		},
 	)
 	if err != nil {
 		log.Error("Parse Refresh Token Error", zap.Error(err))
-		return dto.RefreshTokenParse{}, coreErrors.ErrInvalidToken
+		return dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithRefreshToken(log, token)
@@ -113,4 +96,17 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, e
 	}
 
 	return *claims, nil
+}
+
+func configValidate(secret string, tokensTTl config.TokensTTL) error {
+	if secret == "" {
+		return corerrors.ErrJWTSecret
+	}
+	if tokensTTl.AccessTokenTTL < 1 {
+		return corerrors.ErrAccessTokenTTL
+	}
+	if tokensTTl.RefreshTokenTTL < 1 {
+		return corerrors.ErrRefreshTokenTTL
+	}
+	return nil
 }

@@ -3,12 +3,12 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-common v0.0.10
-	github.com/Samurosa/exchange-contract v0.2.23
+	github.com/Samurosa/exchange-common v0.0.11
+	github.com/Samurosa/exchange-contract v0.2.24
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/shopspring/decimal v1.4.0
 	go.uber.org/zap v1.28.0
-	google.golang.org/grpc v1.83.2
+	google.golang.org/grpc v1.84.0
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -25,5 +25,5 @@ require (
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679 // indirect
 )

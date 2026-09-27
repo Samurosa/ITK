@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	TokenTTl      TokensTTL  `yaml:"token_ttl"`
+	TokensTTl     TokensTTL  `yaml:"token_ttl"`
 	GRPC          GRPCConfig `yaml:"grpc"`
 	JWTSecretPath string     `yaml:"jwt_secret_path"`
 	Postgres      Postgres   `yaml:"postgres"`

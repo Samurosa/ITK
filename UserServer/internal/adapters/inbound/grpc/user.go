@@ -3,9 +3,9 @@ package grpc
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
-	requestContext "ITK_Code/m/v2/internal/core/context"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -20,14 +20,10 @@ func (s *UserServer) GetUser(ctx context.Context,
 	*pb.UserInfoResponse,
 	error,
 ) {
-	log := s.log.Named("GetUser")
-
-	userID, err := requestContext.UserID(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("user id from context", zap.String("id", userID))
 
 	user, err := s.user.GetUser(ctx, userID)
 	if err != nil {
@@ -61,19 +57,16 @@ func (s *UserServer) UpdateUserInfo(ctx context.Context,
 		name = req.GetName()
 	}
 
-	userID, err := requestContext.UserID(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("user id from context", zap.String("id", userID))
 
-	err = s.user.UpdateUserInfo(
+	if err := s.user.UpdateUserInfo(
 		ctx,
 		userID,
 		name,
-	)
-	if err != nil {
+	); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
@@ -86,17 +79,11 @@ func (s *UserServer) DeleteUser(ctx context.Context,
 	*emptypb.Empty,
 	error,
 ) {
-	log := s.log.Named("DeleteUser")
-
-	userID, err := requestContext.UserID(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("user id from context", zap.String("id", userID))
-
-	err = s.user.DeleteUser(ctx, userID)
-	if err != nil {
+	if err := s.user.DeleteUser(ctx, userID); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 
@@ -104,7 +91,7 @@ func (s *UserServer) DeleteUser(ctx context.Context,
 }
 
 func (s *UserServer) ChangePassword(ctx context.Context,
-	req *pb.ChangeUserRequest,
+	req *pb.ChangePasswordRequest,
 ) (
 	*emptypb.Empty,
 	error,
@@ -116,13 +103,10 @@ func (s *UserServer) ChangePassword(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	userID, err := requestContext.UserID(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("user id from context", zap.String("id", userID))
-
 	if err := validate.ComparePasswords(req.GetOldPassword(), req.GetNewPassword()); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -131,8 +115,11 @@ func (s *UserServer) ChangePassword(ctx context.Context,
 		return nil, mapper.ToGRPC(err)
 	}
 
-	err = s.user.ChangePassword(ctx, userID, req.GetOldPassword(), req.GetNewPassword())
-	if err != nil {
+	if err := s.user.ChangePassword(ctx,
+		userID,
+		req.GetOldPassword(),
+		req.GetNewPassword(),
+	); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
 

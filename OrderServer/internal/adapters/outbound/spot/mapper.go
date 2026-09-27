@@ -3,27 +3,27 @@ package spot
 import (
 	"ITK_Code/m/v2/internal/core/dto"
 
-	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
+	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
 )
 
-func FromProtoToRole(protoRole pb.Role) dto.Role {
+func FromProtoToRole(protoRole shared.Role) dto.Role {
 	switch protoRole {
-	case pb.Role_ROLE_UNSPECIFIED:
+	case shared.Role_ROLE_UNSPECIFIED:
 		return dto.UnspecifiedRole
-	case pb.Role_ROLE_USER:
+	case shared.Role_ROLE_USER:
 		return dto.UserRole
-	case pb.Role_ROLE_GUEST:
+	case shared.Role_ROLE_GUEST:
 		return dto.GuestRole
-	case pb.Role_ROLE_PREMIUM:
+	case shared.Role_ROLE_PREMIUM:
 		return dto.PremiumRole
-	case pb.Role_ROLE_ADMIN:
+	case shared.Role_ROLE_ADMIN:
 		return dto.AdminRole
 	default:
 		return dto.UnspecifiedRole
 	}
 }
 
-func FromProtoToRoles(protoRole []pb.Role) []dto.Role {
+func FromProtoToRoles(protoRole []shared.Role) []dto.Role {
 	result := make([]dto.Role, 0, len(protoRole))
 
 	for _, role := range protoRole {

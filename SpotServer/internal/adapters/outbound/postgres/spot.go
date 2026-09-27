@@ -29,9 +29,11 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 			 allowed_roles,
 			 name,
 			 description,
-			 status
+			 status,
+		 created_at,
+		 updated_at
 		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		ON CONFLICT (base_asset, quote_asset) 
 		DO NOTHING
 		RETURNING id

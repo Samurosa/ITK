@@ -1,15 +1,12 @@
 package interceptors
 
 import (
-	reqCtx "ITK_Code/m/v2/internal/core/context"
-	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
@@ -41,13 +38,9 @@ func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 			return handler(ctx, req)
 		}
 
-		ctx, err := reqCtx.UpdateRequestContext(ctx, func(rc *dto.RequestContext) {
+		ctx = sharedContext.UpdateRequestContext(ctx, func(rc *sharedContext.RequestContext) {
 			rc.Metadata.DeviceID = device
 		})
-		if err != nil {
-			log.Error("update request context", zap.Error(err))
-			return nil, status.Error(codes.Internal, "failed to update request context")
-		}
 
 		return handler(ctx, req)
 	}

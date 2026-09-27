@@ -3,7 +3,7 @@ package application
 import (
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/coreErrors"
+	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
@@ -17,6 +17,8 @@ func (a *Auth) Registration(ctx context.Context,
 	email string,
 	password string,
 	name string,
+	id string,
+	deviceID string,
 ) (
 	string,
 	time.Time,
@@ -26,21 +28,21 @@ func (a *Auth) Registration(ctx context.Context,
 
 	log := a.log.Named("RegisterNewUser")
 
-	allowed, err := a.rateLimiting.Allow(ctx)
+	allowed, err := a.rateLimiting.Allow(ctx, id, deviceID)
 	if err != nil {
 		log.Error("Failed to check rate limiting", zap.Error(err))
-		return "", time.Time{}, coreErrors.ErrTooManyRequests
+		return "", time.Time{}, corerrors.ErrTooManyRequests
 	}
 	if !allowed {
 		log.Error("Rate limiting is not allowed")
-		return "", time.Time{}, coreErrors.ErrTooManyRequests
+		return "", time.Time{}, corerrors.ErrTooManyRequests
 	}
 	log.Debug("validate rate limiting")
 
 	passHash, err := hash.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return "", time.Time{}, coreErrors.ErrPassGenHash
+		return "", time.Time{}, corerrors.ErrPassGenHash
 	}
 	log.Debug("generate password hash")
 
@@ -66,6 +68,7 @@ func (a *Auth) Registration(ctx context.Context,
 func (a *Auth) Login(ctx context.Context,
 	email string,
 	password string,
+	ip string,
 	deviceID string,
 ) (
 	dto.TokensModel,
@@ -73,22 +76,22 @@ func (a *Auth) Login(ctx context.Context,
 ) {
 	log := a.log.Named("login")
 
-	allowed, err := a.rateLimiting.Allow(ctx)
+	allowed, err := a.rateLimiting.Allow(ctx, ip, deviceID)
 	if err != nil {
 		log.Error("Failed to check rate limiting", zap.Error(err))
-		return dto.TokensModel{}, coreErrors.ErrTooManyRequests
+		return dto.TokensModel{}, corerrors.ErrTooManyRequests
 	}
 	if !allowed {
 		log.Error("Rate limiting is not allowed")
-		return dto.TokensModel{}, coreErrors.ErrTooManyRequests
+		return dto.TokensModel{}, corerrors.ErrTooManyRequests
 	}
 	log.Debug("validate rate limiting")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
 	if errors.Is(err, user.ErrUserNotFound) {
-		log.Error("user not found", zap.String("email", email), zap.Error(err))
-		gotUser.PasswordHash = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
-		return dto.TokensModel{}, auth.ErrIncorrectCredentials
+		log.Debug("user not found", zap.String("email", email), zap.Error(err))
+		_ = []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa")
+
 	}
 	if err != nil {
 		log.Error("error getting user", zap.String("email", email), zap.Error(err))
@@ -199,7 +202,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
 	if err != nil {
 		log.Error("error parsing refresh token", zap.Error(err))
-		return dto.TokensModel{}, coreErrors.ErrInvalidToken
+		return dto.TokensModel{}, corerrors.ErrInvalidToken
 	}
 	log.Debug("parsed refresh token is successful")
 
@@ -208,11 +211,11 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	ok, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
 	if err != nil {
 		log.Error("error acquiring refresh lock", zap.Error(err))
-		return dto.TokensModel{}, coreErrors.ErrSyncRedis
+		return dto.TokensModel{}, corerrors.ErrSyncRedis
 	}
 	if !ok {
 		log.Warn("generate tokens processing")
-		return dto.TokensModel{}, coreErrors.ErrGenerateTokenProcessing
+		return dto.TokensModel{}, corerrors.ErrGenerateTokenProcessing
 	}
 	log.Debug("acquiring refresh lock success")
 
@@ -258,7 +261,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return dto.TokensModel{}, coreErrors.ErrGenerateToken
+		return dto.TokensModel{}, corerrors.ErrGenerateToken
 	}
 	log.Debug("generated new tokens", zap.String("id", sessionInfo.UserID))
 
@@ -275,7 +278,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
-		return dto.TokensModel{}, coreErrors.ErrGenerateToken
+		return dto.TokensModel{}, corerrors.ErrGenerateToken
 	}
 	log.Info("session tokens refreshed", zap.String("id", sessionInfo.UserID))
 

@@ -131,9 +131,9 @@ func FromProtoStatus(orderProto pb.OrderStatus) dto.OrderStatus {
 	}
 }
 
-func ConvertToDecimal(amount string) decimal.Decimal {
+func ConvertToDecimal(amount string) (decimal.Decimal, error) {
 	if amount == "" {
-		return decimal.Zero
+		return decimal.Zero, nil
 	}
-	return decimal.RequireFromString(amount)
+	return decimal.RequireFromString(amount), nil
 }

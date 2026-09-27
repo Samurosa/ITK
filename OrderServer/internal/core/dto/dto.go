@@ -13,8 +13,9 @@ const (
 	StatusNew         OrderStatus = "ORDER_STATUS_NEW"
 	StatusOpen        OrderStatus = "ORDER_STATUS_OPEN"
 	StatusFilled      OrderStatus = "ORDER_STATUS_FILLED"
-	StatusCanceled    OrderStatus = "ORDER_STATUS_CANCELED"
-	StatusRejected    OrderStatus = "ORDER_STATUS_REJECTED"
+	ORDER_STATUS_PARTIALLY_FILLED
+	StatusCanceled OrderStatus = "ORDER_STATUS_CANCELED"
+	StatusRejected OrderStatus = "ORDER_STATUS_REJECTED"
 )
 
 type OrderSide string

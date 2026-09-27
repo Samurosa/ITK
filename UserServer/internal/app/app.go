@@ -1,21 +1,25 @@
 package app
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
-	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
-	"ITK_Code/m/v2/internal/config"
-	"ITK_Code/m/v2/internal/infrastructure"
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
+	"ITK_Code/m/v2/internal/application"
 	"context"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
+	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
+	"ITK_Code/m/v2/internal/config"
+	"ITK_Code/m/v2/internal/infrastructure"
+
+	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
+	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
 	"go.uber.org/zap"
 )
 
 type App struct {
-	logger *zap.Logger
-
+	logger   *zap.Logger
 	ctx      context.Context
 	cancel   context.CancelFunc
 	postgres *postgres.Storage
@@ -27,72 +31,106 @@ func New(
 	cfg *config.Config,
 	secret string,
 ) (*App, error) {
-
 	logger, err := zap.NewProduction()
 	if err != nil {
 		return nil, err
 	}
 
-	log := logger.Named("app start")
+	log := logger.Named("app")
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	postgresStorage, err := postgres.NewStorage(ctx,
+	postgresStorage, err := postgres.NewStorage(
+		ctx,
 		log,
 		cfg.Postgres,
 	)
 	if err != nil {
-		log.Error("Error starting postgres storage", zap.Error(err))
 		cancel()
 		return nil, err
 	}
-	log.Debug("Successfully started postgres storage")
 
-	log.Named("Redis infrastructure")
-
-	redisClient, err := redis.NewRedisClient(ctx, log, cfg.Redis)
+	redisClient, err := redis.NewRedisClient(
+		ctx,
+		log,
+		cfg.Redis,
+	)
 	if err != nil {
-		log.Error("Error creating redis client", zap.Error(err))
+		postgresStorage.ClosePool()
 		cancel()
 		return nil, err
 	}
 
 	redisStorage := redis.NewStorage(redisClient)
-	log.Debug("infrastructure initialized")
 
-	services := NewServices(logger, cfg, postgresStorage, redisStorage, secret)
+	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
 
-	grpcApp := infrastructure.NewGRPC(logger,
-		services,
+	walletStorage := postgres.NewBalanceStorage(postgresStorage.GetPool())
+
+	tokenManager, err := jwt.NewJWT(log, secret, cfg.TokensTTl)
+	if err != nil {
+		postgresStorage.ClosePool()
+		cancel()
+		return nil, err
+	}
+
+	limiterManager := redis.NewLimiter(log, cfg.Limiter, redisClient)
+
+	user := application.NewUserService(log, userStorage, redisStorage)
+	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage)
+	wallet := application.NewWalletService(log, walletStorage, userStorage)
+
+	tokenParser, err := sharedjwt.NewParser(secret)
+	if err != nil {
+		redisStorage.Stop()
+		postgresStorage.ClosePool()
+		cancel()
+		return nil, err
+	}
+
+	var sessionValidator sharedsession.Validator = redisStorage
+
+	grpcApp := infrastructure.NewGRPC(
+		logger,
+		user,
+		auth,
+		wallet,
 		cfg.GRPC.Port,
+		tokenParser,
+		sessionValidator,
 	)
 
 	return &App{
-		logger: logger,
-
-		ctx:    ctx,
-		cancel: cancel,
-
+		logger:   logger,
+		ctx:      ctx,
+		cancel:   cancel,
 		postgres: postgresStorage,
 		redis:    redisStorage,
-
-		grpcApp: grpcApp,
+		grpcApp:  grpcApp,
 	}, nil
 }
 
 func (app *App) Start() {
-	log := app.logger.Named("starting grpc goroutine")
+	log := app.logger.Named("grpc")
+
 	go func() {
-		err := app.grpcApp.Run()
-		if err != nil {
-			log.Error("grpc goroutine failed", zap.Error(err))
+		if err := app.grpcApp.Run(); err != nil {
+			log.Error(
+				"grpc server stopped",
+				zap.Error(err),
+			)
 		}
 	}()
 }
 
 func (app *App) WaitSignal() {
 	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(
+		stop,
+		syscall.SIGINT,
+		syscall.SIGTERM,
+	)
+	defer signal.Stop(stop)
 
 	<-stop
 }
@@ -102,15 +140,20 @@ func (app *App) Stop() {
 
 	app.grpcApp.Stop()
 	app.cancel()
+
 	app.postgres.ClosePool()
-	err := app.redis.Stop()
-	if err != nil {
-		app.logger.Error("redis stop", zap.Error(err))
+
+	if err := app.redis.Stop(); err != nil {
+		app.logger.Error(
+			"redis stop",
+			zap.Error(err),
+		)
 	}
 
-	err = app.logger.Sync()
-	if err != nil {
-		app.logger.Error("error sync logger: ", zap.Error(err))
+	if err := app.logger.Sync(); err != nil {
+		app.logger.Error(
+			"logger sync",
+			zap.Error(err),
+		)
 	}
-
 }

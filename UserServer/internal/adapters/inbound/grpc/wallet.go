@@ -3,11 +3,10 @@ package grpc
 import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/mapper"
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
-	requestContext "ITK_Code/m/v2/internal/core/context"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -27,6 +26,11 @@ func (s *UserServer) Deposit(
 		return nil, mapper.ToGRPC(err)
 	}
 
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
+	}
+
 	amount, err := mapper.WithProtoMoney(req.Amount)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
@@ -36,7 +40,7 @@ func (s *UserServer) Deposit(
 		return nil, mapper.ToGRPC(err)
 	}
 
-	balances, err := s.wallet.Deposit(ctx, req.UserId, req.Asset, amount, req.IdempotencyKey)
+	balances, err := s.wallet.Deposit(ctx, userID, amount, req.IdempotencyKey)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -53,16 +57,12 @@ func (s *UserServer) GetBalances(
 	*pb.UserBalancesInfoResponse,
 	error,
 ) {
-	log := s.log.Named("GetBalances")
-
-	id, err := requestContext.UserID(ctx)
-	if err != nil {
-		log.Error("context is not valid", zap.Error(err))
-		return nil, mapper.ToGRPC(err)
+	userID, ok := sharedContext.UserID(ctx)
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
-	log.Debug("user id from context", zap.String("id", id))
 
-	balancesResponse, err := s.wallet.GetBalances(ctx, id)
+	balancesResponse, err := s.wallet.GetBalances(ctx, userID)
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}

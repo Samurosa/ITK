@@ -69,7 +69,11 @@ func New(cfg *config.Config, secret string) (*App, error) {
 
 	orderService := application.NewOrderService(log, storagePostgres, spotClient)
 
-	parser := jwt.NewParser(secret)
+	parser, err := jwt.NewParser(secret)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
 
 	grpcServer := infrastructure.NewGRPC(log, orderService, parser, storageSessions, cfg.GRPC.Port)
 

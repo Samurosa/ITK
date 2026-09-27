@@ -11,19 +11,22 @@ type Service interface {
 		email string,
 		password string,
 		name string,
-	) (
 		id string,
-		createdAt time.Time,
-		err error,
+		deviceID string,
+	) (
+		string,
+		time.Time,
+		error,
 	)
 
 	Login(ctx context.Context,
 		email string,
 		password string,
+		ip string,
 		deviceID string,
 	) (
-		tokensPairs dto.TokensModel,
-		err error,
+		dto.TokensModel,
+		error,
 	)
 
 	Logout(ctx context.Context,

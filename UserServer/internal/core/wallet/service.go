@@ -7,7 +7,6 @@ import (
 type Service interface {
 	Deposit(ctx context.Context,
 		id string,
-		asset string,
 		amount Money,
 		idempotentKey string,
 	) (
