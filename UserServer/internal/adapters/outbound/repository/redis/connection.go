@@ -23,7 +23,7 @@ func NewStorage(client *redis.Client) *Storage {
 }
 
 func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*redis.Client, error) {
-	log.Named("Redis outbound adapter")
+	log = log.Named("Redis outbound adapter")
 	client := redis.NewClient(&redis.Options{
 		Addr:         cfg.Addr,
 		Password:     cfg.Password,

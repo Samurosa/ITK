@@ -4,7 +4,6 @@ import (
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/user"
-	"ITK_Code/m/v2/internal/core/wallet"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -40,13 +39,6 @@ func ToGRPC(err error) error {
 	case errors.Is(err, corerrors.ErrPasswordWrongDigitSymbol):
 		return status.Error(codes.InvalidArgument, "the new password wrong, digit symbol not found")
 
-	case errors.Is(err, wallet.ErrBalanceNotFound):
-		return status.Error(codes.NotFound, "balance not found")
-	case errors.Is(err, wallet.ErrCreateNewBalance):
-		return status.Error(codes.Internal, "failed to create balance")
-	case errors.Is(err, wallet.ErrSaveBalance):
-		return status.Error(codes.Internal, "failed to save balance")
-
 	case errors.Is(err, user.ErrUserNotFound):
 		return status.Error(codes.NotFound, "user not found")
 	case errors.Is(err, corerrors.ErrComparePassword):
@@ -60,6 +52,8 @@ func ToGRPC(err error) error {
 		return status.Error(codes.Unauthenticated, "refresh token expired")
 	case errors.Is(err, corerrors.ErrGenerateToken):
 		return status.Error(codes.Internal, "failed to generate token")
+	case errors.Is(err, corerrors.ErrDeviceIDEmpty):
+		return status.Error(codes.InvalidArgument, "device ID is empty")
 	case errors.Is(err, corerrors.ErrInvalidToken):
 		return status.Error(codes.InvalidArgument, "invalid token")
 	case errors.Is(err, auth.ErrSessionNotFound):

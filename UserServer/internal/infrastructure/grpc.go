@@ -6,7 +6,6 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/user"
-	"ITK_Code/m/v2/internal/core/wallet"
 	"fmt"
 	"net"
 	"time"
@@ -35,7 +34,6 @@ func NewGRPC(
 	log *zap.Logger,
 	user user.Service,
 	auth auth.Service,
-	wallet wallet.Service,
 	port int,
 	tokenParser *sharedjwt.Parser,
 	sessionValidator sharedsession.Validator,
@@ -60,7 +58,7 @@ func NewGRPC(
 		),
 	)
 
-	usergrps.RegisterUserService(grpcServer, user, auth, wallet, log)
+	usergrps.RegisterUserService(grpcServer, user, auth, log)
 
 	return &GRPCApp{
 		log:        log,

@@ -25,7 +25,7 @@ type App struct {
 func New(cfg *config.Config) (*App, error) {
 	log, err := zap.NewProduction()
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("failed to initialize logger")
 		return nil, err
 	}
 

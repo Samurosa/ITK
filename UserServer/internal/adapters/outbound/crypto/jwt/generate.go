@@ -2,7 +2,6 @@ package jwt
 
 import (
 	"ITK_Code/m/v2/internal/core/corerrors"
-	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
@@ -14,9 +13,9 @@ func generateRefreshToken(
 	secret string,
 	refreshTokenTTL time.Duration,
 	jti string,
-) (string, RefreshTokenParse, error) {
+) (string, RefreshToken, error) {
 
-	claimsRefreshToken := RefreshTokenParse{
+	claimsRefreshToken := RefreshToken{
 		AccessTokenJTI:  jti,
 		RefreshTokenJTI: uuid.NewString(),
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -28,7 +27,7 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", RefreshTokenParse{}, corerrors.ErrGenerateToken
+		return "", RefreshToken{}, corerrors.ErrGenerateToken
 	}
 
 	return refreshTokenString, claimsRefreshToken, nil
@@ -39,16 +38,18 @@ func generateAccessToken(
 	accessTokenTTL time.Duration,
 	user user.User,
 	deviceId string,
-) (string, AccessTokenParse, error) {
+) (string, AccessToken, error) {
 
 	tokenID := uuid.NewString()
+	issuedAt := time.Now()
 
-	claimsAccessToken := AccessTokenParse{
-		UserID: user.ID,
-		Role:   string(user.Role),
-		Device: deviceId,
-		Jti:    tokenID,
+	claimsAccessToken := AccessToken{
+		UserID:   user.ID,
+		Role:     string(user.Role),
+		DeviceID: deviceId,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        tokenID,
+			IssuedAt:  jwt.NewNumericDate(issuedAt),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenTTL)),
 		},
 	}
@@ -57,24 +58,24 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", AccessTokenParse{}, corerrors.ErrGenerateToken
+		return "", AccessToken{}, corerrors.ErrGenerateToken
 	}
 
 	return accessTokenString, claimsAccessToken, nil
 }
 
-func GetClaimsWithRefreshToken(token *jwt.Token) (*dto.RefreshTokenParse, error) {
+func GetClaimsWithRefreshToken(token *jwt.Token) (*RefreshToken, error) {
 
 	if !token.Valid {
-		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
+		return &RefreshToken{}, corerrors.ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*RefreshTokenParse)
+	claims, ok := token.Claims.(*RefreshToken)
 	if !ok {
-		return &dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
+		return &RefreshToken{}, corerrors.ErrInvalidToken
 	}
 
-	return &dto.RefreshTokenParse{
+	return &RefreshToken{
 		AccessTokenJTI:  claims.AccessTokenJTI,
 		RefreshTokenJTI: claims.RefreshTokenJTI,
 	}, nil

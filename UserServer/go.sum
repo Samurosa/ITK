@@ -1,5 +1,7 @@
 github.com/Samurosa/exchange-common v0.0.11 h1:eG5AgHBDRrkESX/TsOJ/Yi6d8zgC6qOP2sHq3RAmVfc=
 github.com/Samurosa/exchange-common v0.0.11/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
+github.com/Samurosa/exchange-common v0.0.13 h1:Ip+n+hlrA4v5KG36K+Y68N3XWbAtz58jWQocMAuOTtc=
+github.com/Samurosa/exchange-common v0.0.13/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
 github.com/Samurosa/exchange-contract v0.1.6 h1:0akj4OQYTOVbZds6DtLs8F9ksWhCNnbr/t/GDM+SBro=
 github.com/Samurosa/exchange-contract v0.1.6/go.mod h1:cFVMb78CxIpfZiQES0ZkkRWhH2ExlZeVZnqOb6Ycg80=
 github.com/Samurosa/exchange-contract v0.2.5 h1:CMT98IpnaTv/Gn01e261DzD1B5rmDCpFwNIxRffQJN4=
@@ -154,6 +156,8 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd h1:
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260911204522-f61a6ca850bd/go.mod h1:DjtHYE8FKJLivXcBEjGwndXfIC23G0VpXiXKqG179uA=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679 h1:KmqdJU4vrNcxy/6qdg3JduZtalEXrJLspVltnR1cE+8=
 google.golang.org/genproto/googleapis/rpc v0.0.0-20260918162117-cecb64721679/go.mod h1:OaIUM3+LpYcK2GXM4FTmhWoIq371Owdr+Cc7/BsYHHc=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc h1:4bNTbnb44EqGVy9HaQxSY2jnafSUdgV3qHtedvNpDKg=
+google.golang.org/genproto/googleapis/rpc v0.0.0-20260928230214-8a89bd6388cc/go.mod h1:OaIUM3+LpYcK2GXM4FTmhWoIq371Owdr+Cc7/BsYHHc=
 google.golang.org/grpc v1.82.1 h1:NnAxzGRA0677vCa4BUkOAnO5+FfQqVl9iUXeD0IqcGE=
 google.golang.org/grpc v1.82.1/go.mod h1:yzTZ1TB1Z3SG+LIYaI+WiE8D5+PZ3ArnrSp8zF3+/ZA=
 google.golang.org/grpc v1.83.0 h1:JeNZEKJFbQxArAMl+hiytHauacDNqJUllNfmIMmpqnQ=

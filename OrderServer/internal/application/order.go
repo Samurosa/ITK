@@ -1,6 +1,7 @@
 package application
 
 import (
+	"ITK_Code/m/v2/internal/application/ports"
 	coreErorrs "ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
@@ -13,6 +14,18 @@ import (
 	"go.uber.org/zap"
 )
 
+type OrderService struct {
+	log *zap.Logger
+
+	repository ports.OrderRepository
+
+	spotClient ports.SpotClient
+}
+
+func NewOrderService(log *zap.Logger, repository ports.OrderRepository, spotClient ports.SpotClient) *OrderService {
+	return &OrderService{log: log, repository: repository, spotClient: spotClient}
+}
+
 func (o *OrderService) Create(ctx context.Context,
 	createOrder models.CreateOrder,
 	userRole string,
@@ -23,7 +36,7 @@ func (o *OrderService) Create(ctx context.Context,
 	error,
 ) {
 	log := o.log.Named("Create order")
-	spot, err := o.spotProvider.GetSpot(ctx, createOrder.SpotId)
+	spot, err := o.spotClient.GetSpot(ctx, createOrder.SpotId)
 	if err != nil {
 		return "", "", time.Time{}, err
 	}

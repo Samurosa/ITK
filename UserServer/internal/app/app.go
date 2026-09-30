@@ -1,6 +1,7 @@
 package app
 
 import (
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
 	"ITK_Code/m/v2/internal/application"
 	"context"
@@ -28,7 +29,7 @@ func New(
 	cfg *config.Config,
 	secret string,
 ) (*App, error) {
-	logger, err := zap.NewProduction()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +63,6 @@ func New(
 
 	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
 
-	walletStorage := postgres.NewBalanceStorage(postgresStorage.GetPool())
-
 	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
 	if err != nil {
 		postgresStorage.ClosePool()
@@ -73,13 +72,17 @@ func New(
 
 	limiterManager := redis.NewLimiter(log, cfg.Limiter, redisClient)
 
-	user := application.NewUserService(log, userStorage, redisStorage)
-	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage)
-	wallet := application.NewWalletService(log, walletStorage, userStorage)
+	passwordHasher := hash.Bcrypt{}
+	tokenHasher := hash.SHA256{}
+	user := application.NewUserService(log, userStorage, redisStorage, passwordHasher)
+	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
 
 	tokenParser, err := sharedjwt.NewParser(secret)
 	if err != nil {
-		redisStorage.Stop()
+		err = redisStorage.Stop()
+		if err != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(err))
+		}
 		postgresStorage.ClosePool()
 		cancel()
 		return nil, err
@@ -91,7 +94,6 @@ func New(
 		logger,
 		user,
 		auth,
-		wallet,
 		cfg.GRPC.Port,
 		tokenParser,
 		sessionValidator,

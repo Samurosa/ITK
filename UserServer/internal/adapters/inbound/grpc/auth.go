@@ -107,6 +107,7 @@ func (s *UserServer) Logout(ctx context.Context,
 
 	err := s.auth.Logout(ctx, jti, req.RefreshToken)
 	if err != nil {
+		log.Error("logout error", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
 	}
 

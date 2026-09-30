@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
+	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/user"
@@ -9,6 +9,30 @@ import (
 
 	"go.uber.org/zap"
 )
+
+type User struct {
+	log *zap.Logger
+
+	userRepository ports.UserRepository
+
+	sessionStorage ports.SessionRepository
+
+	passwordHasher ports.PasswordHasher
+}
+
+func NewUserService(
+	log *zap.Logger,
+	userRepository ports.UserRepository,
+	sessionStorage ports.SessionRepository,
+	passwordHasher ports.PasswordHasher,
+) *User {
+	return &User{
+		log:            log,
+		userRepository: userRepository,
+		sessionStorage: sessionStorage,
+		passwordHasher: passwordHasher,
+	}
+}
 
 func (u *User) GetUser(ctx context.Context,
 	id string,
@@ -121,14 +145,14 @@ func (u *User) ChangePassword(ctx context.Context,
 	}
 	log.Debug("health check user successful, got user:", zap.String("id", current.ID))
 
-	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
+	err = u.passwordHasher.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
 		return auth.ErrIncorrectPassword
 	}
 	log.Debug("verify password successful")
 
-	newPassHash, err := hash.GeneratePasswordHash(newPassword)
+	newPassHash, err := u.passwordHasher.GeneratePasswordHash(newPassword)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return corerrors.ErrPassGenHash

@@ -76,10 +76,10 @@ func (a *GRPCApp) Stop() {
 	select {
 
 	case <-done:
-		a.log.Info("GRPC UserServer gracefully stopped")
+		a.log.Info("GRPC Order server gracefully stopped")
 
 	case <-time.After(10 * time.Second):
-		a.log.Info("GRPC UserServer timeout")
+		a.log.Info("GRPC Order server timeout")
 		a.grpcServer.Stop()
 	}
 }

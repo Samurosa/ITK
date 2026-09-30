@@ -20,7 +20,7 @@ CREATE TABLE orders (
         UNIQUE (user_id, idempotency_key),
 
     CONSTRAINT chk_orders_price_positive
-        CHECK (price > 0),
+        CHECK (price >= 0),
 
     CONSTRAINT chk_orders_quantity_positive
         CHECK (quantity > 0),

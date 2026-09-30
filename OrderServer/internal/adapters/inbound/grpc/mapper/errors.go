@@ -9,6 +9,6 @@ func ToGRPC(err error) error {
 	switch {
 
 	default:
-		return status.Error(codes.Internal, "internal Order Server error"+err.Error())
+		return status.Error(codes.Internal, "internal Order Server error")
 	}
 }

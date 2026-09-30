@@ -1,6 +1,7 @@
 package application
 
 import (
+	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/application/validate"
 	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
@@ -12,6 +13,19 @@ import (
 
 	"go.uber.org/zap"
 )
+
+type Spot struct {
+	log *zap.Logger
+
+	spotRepository ports.SpotRepository
+}
+
+func NewSpot(log *zap.Logger, spotRepository ports.SpotRepository) *Spot {
+	return &Spot{
+		log:            log,
+		spotRepository: spotRepository,
+	}
+}
 
 func (s *Spot) CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (string, time.Time, error) {
 	log := s.log.Named("Create spot")
@@ -89,11 +103,11 @@ func (s *Spot) ListSpots(ctx context.Context, request models.ListSpotsRequest) (
 	spotsList, cursor, hasMore, err := s.spotRepository.List(ctx, request)
 	if err != nil {
 		log.Error("spot list failed", zap.Error(err))
-		return []dto.SpotListItem{}, "", false, err
+		return spotsList, "", false, err
 	}
 	if len(spotsList) == 0 {
 		log.Debug("spot list is empty")
-		return []dto.SpotListItem{}, "", false, nil
+		return spotsList, "", false, nil
 	}
 	log.Info("Slot search completed successfully")
 

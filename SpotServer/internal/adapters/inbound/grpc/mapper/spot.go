@@ -122,10 +122,6 @@ func ToProtoSpotListItem(spotListItem dto.SpotListItem) *pb.SpotListItem {
 func ToProtoSpotList(spotListItem []dto.SpotListItem) []*pb.SpotListItem {
 	result := make([]*pb.SpotListItem, 0, len(spotListItem))
 
-	if len(spotListItem) == 0 {
-		return result
-	}
-
 	for _, spot := range spotListItem {
 		result = append(result, ToProtoSpotListItem(spot))
 	}

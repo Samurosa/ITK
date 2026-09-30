@@ -1,7 +1,7 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
+	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
@@ -12,6 +12,41 @@ import (
 
 	"go.uber.org/zap"
 )
+
+type Auth struct {
+	log *zap.Logger
+
+	tokenManager          ports.TokenManager
+	sessionStorage        ports.SessionRepository
+	syncPrimitiveForRedis ports.RefreshLock
+	rateLimiting          ports.RateLimiter
+	passwordHasher        ports.PasswordHasher
+	tokenHasher           ports.TokenHasher
+
+	userRepository ports.UserRepository
+}
+
+func NewAuthService(
+	log *zap.Logger,
+	tokenManager ports.TokenManager,
+	sessionStorage ports.SessionRepository,
+	syncPrimitiveForRedis ports.RefreshLock,
+	rateLimiting ports.RateLimiter,
+	userRepository ports.UserRepository,
+	passwordHasher ports.PasswordHasher,
+	tokenHasher ports.TokenHasher,
+) *Auth {
+	return &Auth{
+		log:                   log,
+		tokenManager:          tokenManager,
+		sessionStorage:        sessionStorage,
+		syncPrimitiveForRedis: syncPrimitiveForRedis,
+		rateLimiting:          rateLimiting,
+		userRepository:        userRepository,
+		passwordHasher:        passwordHasher,
+		tokenHasher:           tokenHasher,
+	}
+}
 
 func (a *Auth) Registration(ctx context.Context,
 	email string,
@@ -39,7 +74,7 @@ func (a *Auth) Registration(ctx context.Context,
 	}
 	log.Debug("validate rate limiting")
 
-	passHash, err := hash.GeneratePasswordHash(password)
+	passHash, err := a.passwordHasher.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return "", time.Time{}, corerrors.ErrPassGenHash
@@ -91,7 +126,7 @@ func (a *Auth) Login(ctx context.Context,
 	if errors.Is(err, user.ErrUserNotFound) {
 		// Keep the missing-user path close to the existing-user path by
 		// spending the same bcrypt work before returning a generic error.
-		_ = hash.VerifyPasswordHash(password, []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"))
+		_ = a.passwordHasher.VerifyPasswordHash(password, []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"))
 		return dto.TokensModel{}, auth.ErrIncorrectCredentials
 	}
 	if err != nil {
@@ -100,7 +135,7 @@ func (a *Auth) Login(ctx context.Context,
 	}
 	log.Debug("got user by email", zap.String("email", email), zap.String("id", gotUser.ID))
 
-	err = hash.VerifyPasswordHash(password, gotUser.PasswordHash)
+	err = a.passwordHasher.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		log.Error("error verifying user by password", zap.Error(err))
 		return dto.TokensModel{}, auth.ErrIncorrectCredentials
@@ -114,7 +149,7 @@ func (a *Auth) Login(ctx context.Context,
 	}
 	log.Debug("generate tokens for user", zap.String("id", gotUser.ID))
 
-	tokenHash := hash.GenerateHashSHA256(tokens.RefreshToken)
+	tokenHash := a.tokenHasher.GenerateHashSHA256(tokens.RefreshToken)
 	session := auth.SessionModel{
 		UserID:           gotUser.ID,
 		DeviceID:         deviceID,
@@ -124,7 +159,7 @@ func (a *Auth) Login(ctx context.Context,
 		CreatedAt:        tokens.RefreshIssuedAt,
 	}
 
-	err = a.sessionStorage.Create(ctx, accessToken.Jti, session)
+	err = a.sessionStorage.Create(ctx, accessToken.JTI, session)
 	if err != nil {
 		log.Error("error creating session", zap.Error(err))
 		return dto.TokensModel{}, err
@@ -149,10 +184,10 @@ func (a *Auth) Logout(ctx context.Context,
 	}
 	log.Debug("got session", zap.String("id", sessionInfo.UserID))
 
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token",
 			zap.Error(err),
-			zap.String("refreshToken", hash.GenerateHashSHA256(refreshToken)),
+			zap.String("refreshToken", a.tokenHasher.GenerateHashSHA256(refreshToken)),
 			zap.String("storedHash", sessionInfo.RefreshTokenHash),
 		)
 		return auth.ErrNoAccess
@@ -253,7 +288,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 	log.Debug("got user from session info", zap.String("id", userID))
 
-	if err = hash.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	if err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Error("error comparing refresh token", zap.Error(err))
 		return dto.TokensModel{}, auth.ErrNoAccess
 	}
@@ -266,7 +301,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	}
 	log.Debug("generated new tokens", zap.String("id", sessionInfo.UserID))
 
-	tokenHash := hash.GenerateHashSHA256(newTokens.RefreshToken)
+	tokenHash := a.tokenHasher.GenerateHashSHA256(newTokens.RefreshToken)
 	newSessionInfo := auth.SessionModel{
 		UserID:           gotUser.ID,
 		DeviceID:         sessionInfo.DeviceID,
@@ -276,7 +311,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		CreatedAt:        newTokens.RefreshIssuedAt,
 	}
 
-	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.Jti, newSessionInfo)
+	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.JTI, newSessionInfo)
 	if err != nil {
 		log.Error("error updating session", zap.Error(err))
 		return dto.TokensModel{}, corerrors.ErrGenerateToken
