@@ -8,41 +8,36 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"go.uber.org/zap"
 )
 
-func (s *Storage) Save(ctx context.Context, spot models.CreateSpot, now time.Time) (string, error) {
-
+func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
 	var spotID string
 
 	query := `
-		INSERT INTO spot
-		(
-			 base_asset,
-			 quote_asset,
-			 price_precision,
-			 quantity_precision,
-			 min_order_size,
-			 max_order_size,
-			 allowed_roles,
-			 name,
-			 description,
-			 status,
-		 created_at,
-		 updated_at
-		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,&11,&12)
-		ON CONFLICT (base_asset, quote_asset) 
-		DO NOTHING
+		INSERT INTO spot (
+			base_asset,
+			quote_asset,
+			price_precision,
+			quantity_precision,
+			min_order_size,
+			max_order_size,
+			allowed_roles,
+			name,
+			description,
+			status
+		)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 		RETURNING id
 	`
 
-	err := s.pool.QueryRow(ctx,
+	err := s.pool.QueryRow(
+		ctx,
 		query,
 		spot.BaseAsset,
 		spot.QuoteAsset,
@@ -53,29 +48,17 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot, now time.Tim
 		roleValues(spot.AllowedRoles),
 		spot.Name,
 		spot.Description,
-		now,
-		now,
 		string(dto.ActiveStatus),
-	).Scan(
-		&spotID,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		err = s.pool.QueryRow(ctx,
-			`
-			SELECT id FROM spot WHERE base_asset = $1 AND quote_asset = $2
-		`,
-			spot.BaseAsset,
-			spot.QuoteAsset,
-		).Scan(
-			&spotID,
-		)
-		if err != nil {
-			return "", err
-		}
-		logging.FromContext(ctx).Debug("existing spot returned", zap.String("spot_id", spotID))
-		return spotID, nil
-	}
+	).Scan(&spotID)
+
 	if err != nil {
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			logging.FromContext(ctx).Debug("spot already exist", zap.Error(err))
+			return "", errorsCore.ErrSpotAlreadyExists
+		}
+		logging.FromContext(ctx).Error("unknow error: ", zap.Error(err))
 		return "", err
 	}
 	logging.FromContext(ctx).Info("spot created", zap.String("spot_id", spotID))

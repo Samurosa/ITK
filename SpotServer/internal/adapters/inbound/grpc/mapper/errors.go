@@ -21,6 +21,8 @@ func ToGRPC(err error) error {
 		return status.Error(codes.InvalidArgument, "invalid spot list cursor")
 	case errors.Is(err, coreErrors.ErrSpotNotFound):
 		return status.Error(codes.NotFound, "spot not found")
+	case errors.Is(err, coreErrors.ErrSpotAlreadyExists):
+		return status.Error(codes.AlreadyExists, "spot already exists")
 	case errors.Is(err, coreErrors.ErrInvalidMinOrderGreaterMaxOrder):
 		return status.Error(codes.OutOfRange, "invalid min order greater than max order")
 	case errors.Is(err, coreErrors.ErrInvalidMaxOrderSize):
