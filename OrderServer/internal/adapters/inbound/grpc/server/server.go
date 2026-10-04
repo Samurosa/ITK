@@ -1,7 +1,7 @@
 package server
 
 import (
-	"ITK_Code/m/v2/internal/core/order/service"
+	"ITK_Code/m/v2/internal/application"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
 	"go.uber.org/zap"
@@ -10,10 +10,10 @@ import (
 
 type OrderServer struct {
 	pb.UnimplementedOrderServiceServer
-	order service.Order
+	order application.OrderService
 	log   *zap.Logger
 }
 
-func NewOrderServer(grpc *grpc.Server, order service.Order, log *zap.Logger) {
+func NewOrderServer(grpc *grpc.Server, order application.OrderService, log *zap.Logger) {
 	pb.RegisterOrderServiceServer(grpc, &OrderServer{order: order, log: log})
 }
