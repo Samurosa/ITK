@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
@@ -16,7 +17,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
+func (s *Storage) Save(ctx context.Context, spot models.CreateSpot, now time.Time) (string, error) {
 	var spotID string
 
 	query := `
@@ -30,9 +31,11 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 			allowed_roles,
 			name,
 			description,
-			status
+			status,
+			created_at,
+		    updated_at
 		)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
 		RETURNING id
 	`
 
@@ -49,6 +52,8 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 		spot.Name,
 		spot.Description,
 		string(dto.ActiveStatus),
+		now,
+		now,
 	).Scan(&spotID)
 
 	if err != nil {
