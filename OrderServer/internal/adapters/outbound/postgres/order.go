@@ -8,12 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
 )
 
-func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, error) {
+func (s *Storage) Save(ctx context.Context, order models.CreateOrder, now time.Time) (string, error) {
 
 	var orderID string
 
@@ -28,9 +29,11 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 			price,
 			price_currency,
 			quantity,
-			quantity_currency
+			quantity_currency,
+		 created_at,
+		 updated_at
 		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		ON CONFLICT (user_id, idempotency_key)
 		DO UPDATE SET idempotency_key = orders.idempotency_key
 		WHERE orders.spot_id = EXCLUDED.spot_id
@@ -53,6 +56,8 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 		order.PriceCurrency,
 		order.Quantity,
 		order.QuantityCurrency,
+		now,
+		now,
 	).Scan(
 		&orderID,
 	)

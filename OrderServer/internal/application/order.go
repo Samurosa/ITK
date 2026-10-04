@@ -40,6 +40,9 @@ func (o *OrderService) Create(ctx context.Context,
 		zap.String("user_id", createOrder.UserId),
 		zap.String("spot_id", createOrder.SpotId),
 	)
+
+	now := time.Now()
+
 	spot, err := o.spotClient.GetSpot(ctx, createOrder.SpotId)
 	if err != nil {
 		logFailure(log, "spot lookup failed", err)
@@ -94,6 +97,7 @@ func (o *OrderService) Create(ctx context.Context,
 	orderID, err := o.repository.Save(
 		ctx,
 		createOrder,
+		now,
 	)
 	if err != nil {
 		logFailure(log, "order save failed", err)
@@ -101,9 +105,8 @@ func (o *OrderService) Create(ctx context.Context,
 		return "", "", time.Time{}, err
 	}
 
-	// Save may return an existing order for an idempotent retry.
 	log.Info("order save completed", zap.String("order_id", orderID))
-	return orderID, dto.StatusNew, time.Now(), nil
+	return orderID, dto.StatusNew, now, nil
 }
 
 func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Order, error) {
@@ -122,22 +125,15 @@ func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Ord
 	return order, nil
 }
 
-// OrderUpdateResult carries a polling failure to the stream handler so that a
-// failed subscription cannot be reported to the client as a successful stream.
-type OrderUpdateResult struct {
-	Update dto.UpdateOrder
-	Err    error
-}
-
-func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan OrderUpdateResult, error) {
+func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan models.OrderUpdateResult, error) {
 	log := logging.FromContext(ctx).Named("order.subscribe").With(zap.String("order_id", orderID), zap.String("user_id", userID))
 	initial, err := o.repository.Get(ctx, orderID, userID)
 	if err != nil {
 		logFailure(log, "initial order lookup failed", err)
 		return nil, err
 	}
-	updates := make(chan OrderUpdateResult, 1)
-	updates <- OrderUpdateResult{Update: orderUpdate(initial)}
+	updates := make(chan models.OrderUpdateResult, 1)
+	updates <- models.OrderUpdateResult{Update: orderUpdate(initial)}
 	log.Debug("order subscription started")
 	go func(last dto.Order) {
 		defer close(updates)
@@ -153,7 +149,7 @@ func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userI
 				if err != nil {
 					logFailure(log, "order update polling failed", err)
 					select {
-					case updates <- OrderUpdateResult{Err: err}:
+					case updates <- models.OrderUpdateResult{Err: err}:
 					case <-ctx.Done():
 					}
 					return
@@ -162,7 +158,7 @@ func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userI
 					continue
 				}
 				select {
-				case updates <- OrderUpdateResult{Update: orderUpdate(current)}:
+				case updates <- models.OrderUpdateResult{Update: orderUpdate(current)}:
 					last = current
 				case <-ctx.Done():
 					return

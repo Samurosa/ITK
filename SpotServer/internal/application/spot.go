@@ -32,6 +32,8 @@ func (s *Spot) CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (strin
 		zap.String("quote_asset", reqSpot.QuoteAsset),
 	)
 
+	now := time.Now()
+
 	err := validate.CreateSpot(reqSpot)
 	if err != nil {
 		log.Warn("spot validation failed", zap.Error(err))
@@ -39,15 +41,15 @@ func (s *Spot) CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (strin
 	}
 	log.Debug("spot validation passed")
 
-	spotID, err := s.spotRepository.Save(ctx, reqSpot)
+	spotID, err := s.spotRepository.Save(ctx, reqSpot, now)
 	if err != nil {
 		logOperationError(log, "spot save failed", err)
 		return "", time.Time{}, fmt.Errorf("%w: %w", spot.ErrSaveSpot, err)
 	}
-	// Save may return an existing spot without inserting or updating it.
+
 	log.Debug("spot create request completed", zap.String("spot_id", spotID))
 
-	return spotID, time.Now(), nil
+	return spotID, now, nil
 }
 
 func (s *Spot) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {

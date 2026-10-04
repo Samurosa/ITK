@@ -30,3 +30,8 @@ type ListOrdersRequest struct {
 	Status   dto.OrderStatus
 	Side     dto.OrderSide
 }
+
+type OrderUpdateResult struct {
+	Update dto.UpdateOrder
+	Err    error
+}

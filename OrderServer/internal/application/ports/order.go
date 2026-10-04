@@ -4,10 +4,11 @@ import (
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
+	"time"
 )
 
 type OrderRepository interface {
-	Save(context.Context, models.CreateOrder) (string, error)
+	Save(context.Context, models.CreateOrder, time.Time) (string, error)
 	Get(context.Context, string, string) (dto.Order, error)
 	List(context.Context, models.ListOrdersRequest) ([]dto.Order, string, bool, error)
 }
