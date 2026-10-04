@@ -23,6 +23,8 @@ func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*
 
 	connectionSettings, err := pgxpool.ParseConfig(cfg.Link)
 	if err != nil {
+		// Parse errors may include the DSN with database credentials.
+		log.Error("invalid postgres connection configuration")
 		return nil, err
 	}
 	connectionSettings.MaxConns = cfg.MaxConns
@@ -32,7 +34,7 @@ func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*
 
 		pool, err := pgxpool.NewWithConfig(ctx, connectionSettings)
 		if err != nil {
-			log.Error("create postgres pool failed", zap.Error(err))
+			log.Warn("postgres pool creation attempt failed", zap.Int("attempt", i), zap.Int("max_attempts", cfg.MaxRetries), zap.Error(err))
 
 			time.Sleep(time.Duration(i) * time.Second)
 			continue
@@ -51,7 +53,7 @@ func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*
 			}, nil
 		}
 
-		log.Error("postgres ping failed", zap.Error(err))
+		log.Warn("postgres connection attempt failed", zap.Int("attempt", i), zap.Int("max_attempts", cfg.MaxRetries), zap.Error(err))
 
 		pool.Close()
 
@@ -59,6 +61,7 @@ func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*
 			time.Duration(i) * time.Second,
 		)
 	}
+	log.Error("postgres connection attempts exhausted", zap.Int("max_attempts", cfg.MaxRetries))
 	return nil, ErrPingDB
 }
 

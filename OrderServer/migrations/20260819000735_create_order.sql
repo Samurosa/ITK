@@ -11,7 +11,11 @@ CREATE TABLE orders (
     order_status VARCHAR(50) NOT NULL,
 
     price NUMERIC(30, 18) NOT NULL,
+    price_currency VARCHAR(10) NOT NULL DEFAULT '',
+
     quantity NUMERIC(30, 18) NOT NULL,
+    quantity_currency VARCHAR(10) NOT NULL DEFAULT '',
+    filled_quantity NUMERIC(30, 18) NOT NULL DEFAULT 0,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -21,6 +25,9 @@ CREATE TABLE orders (
 
     CONSTRAINT chk_orders_price_positive
         CHECK (price > 0),
+
+    CONSTRAINT chk_orders_filled_quantity
+        CHECK (filled_quantity >= 0 AND filled_quantity <= quantity),
 
     CONSTRAINT chk_orders_quantity_positive
         CHECK (quantity > 0),

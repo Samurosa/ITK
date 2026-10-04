@@ -1,19 +1,29 @@
 package server
 
 import (
-	"ITK_Code/m/v2/internal/core/spot"
+	"ITK_Code/m/v2/internal/application"
+	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/spot/models"
+	"context"
+	"time"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
-type Server struct {
-	pb.UnimplementedSpotInstrumentServiceServer
-	log  *zap.Logger
-	spot spot.Service
+type Spot interface {
+	CreateSpot(context.Context, models.CreateSpot) (string, time.Time, error)
+	GetSpot(context.Context, string) (dto.Spot, error)
+	EnableSpot(context.Context, string) error
+	DisableSpot(context.Context, string) error
+	ListSpots(context.Context, models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error)
 }
 
-func RegisterSpotService(grpc *grpc.Server, spot spot.Service, log *zap.Logger) {
-	pb.RegisterSpotInstrumentServiceServer(grpc, &Server{log: log, spot: spot})
+type Server struct {
+	pb.UnimplementedSpotInstrumentServiceServer
+	spot *application.Spot
+}
+
+func RegisterSpotService(grpc *grpc.Server, spot *application.Spot) {
+	pb.RegisterSpotInstrumentServiceServer(grpc, &Server{spot: spot})
 }

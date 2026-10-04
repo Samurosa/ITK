@@ -5,6 +5,7 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
@@ -21,20 +22,21 @@ func (s *UserServer) Registration(ctx context.Context,
 	*pb.RegisterUserResponse,
 	error,
 ) {
-	log := s.log.Named("Registration")
+	log := logging.FromContext(ctx).Named("Registration")
 
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid registration request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	if err := validate.Password(req.GetPassword()); err != nil {
-		log.Error("invalid password", zap.Error(err))
+		log.Debug("registration password rejected by policy", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
 	}
 
 	requestContext, ok := sharedContext.GetRequestContext(ctx)
 	if !ok {
+		log.Error("registration request context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -61,15 +63,16 @@ func (s *UserServer) Login(ctx context.Context,
 	*pb.TokenPairResponse,
 	error,
 ) {
-	log := s.log.Named("Login")
+	log := logging.FromContext(ctx).Named("Login")
 
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid login request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	requestContext, ok := sharedContext.GetRequestContext(ctx)
 	if !ok {
+		log.Error("login request context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -80,7 +83,6 @@ func (s *UserServer) Login(ctx context.Context,
 		requestContext.Metadata.DeviceID,
 	)
 	if err != nil {
-		s.log.Error("failed to login", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
 	}
 
@@ -93,15 +95,16 @@ func (s *UserServer) Logout(ctx context.Context,
 	*emptypb.Empty,
 	error,
 ) {
-	log := s.log.Named("Logout")
+	log := logging.FromContext(ctx).Named("Logout")
 
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid logout request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	jti, ok := sharedContext.JTI(ctx)
 	if !ok {
+		log.Error("authenticated session context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -121,6 +124,7 @@ func (s *UserServer) LogoutAllDevices(ctx context.Context,
 ) {
 	jti, ok := sharedContext.JTI(ctx)
 	if !ok {
+		logging.FromContext(ctx).Named("LogoutAllDevices").Error("authenticated session context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -138,10 +142,10 @@ func (s *UserServer) RefreshToken(ctx context.Context,
 	*pb.TokenPairResponse,
 	error,
 ) {
-	log := s.log.Named("RefreshToken")
+	log := logging.FromContext(ctx).Named("RefreshToken")
 
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid refresh token request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 

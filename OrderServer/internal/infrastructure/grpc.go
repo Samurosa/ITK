@@ -1,10 +1,12 @@
 package infrastructure
 
 import (
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
-	"ITK_Code/m/v2/internal/core/order/service"
+	"ITK_Code/m/v2/internal/application"
 
-	"github.com/Samurosa/exchange-common/shared/auth/interceptors"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	"github.com/Samurosa/exchange-common/shared/auth/session"
 
@@ -24,21 +26,24 @@ type GRPCApp struct {
 
 func NewGRPC(
 	log *zap.Logger,
-	orderService service.Order,
+	orderService *application.OrderService,
 	jwtParser *jwt.Parser,
 	validator session.Validator,
 	port int,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		interceptors.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
+		logging.LoggerInterceptor(log),
+		interceptors.RequestLog(),
+		recovery.RecoveryInterceptor(),
+		interceptors.Authentication(jwtParser, validator),
 	), grpc.ChainStreamInterceptor(
-		interceptors.AuthStreamInterceptor(log, jwtParser, validator),
+		logging.LoggerStreamInterceptor(log),
+		interceptors.StreamLog(),
+		recovery.RecoveryStreamInterceptor(),
+		interceptors.StreamAuthentication(jwtParser, validator),
 	))
 
-	server.NewOrderServer(grpcServer,
-		orderService,
-		log,
-	)
+	server.NewOrderServer(grpcServer, orderService)
 
 	return &GRPCApp{
 		log:        log,
@@ -51,21 +56,22 @@ func (a *GRPCApp) Run() error {
 
 	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
 	if err != nil {
-		return err
+		return fmt.Errorf("listen on grpc port %d: %w", a.port, err)
 	}
 
 	a.log.Info(
-		"grpcs Order Server started",
-		zap.Any("port", a.port),
+		"grpc order server listening",
+		zap.String("address", l.Addr().String()),
 	)
 
 	if err := a.grpcServer.Serve(l); err != nil {
-		return err
+		return fmt.Errorf("serve grpc: %w", err)
 	}
 	return nil
 }
 
 func (a *GRPCApp) Stop() {
+	a.log.Info("grpc order server stopping")
 
 	done := make(chan struct{})
 
@@ -76,10 +82,11 @@ func (a *GRPCApp) Stop() {
 	select {
 
 	case <-done:
-		a.log.Info("GRPC UserServer gracefully stopped")
+		a.log.Info("grpc order server gracefully stopped")
 
 	case <-time.After(10 * time.Second):
-		a.log.Info("GRPC UserServer timeout")
+		a.log.Warn("grpc graceful shutdown timed out; forcing stop", zap.Duration("timeout", 10*time.Second))
 		a.grpcServer.Stop()
+		a.log.Info("grpc order server stopped after forced shutdown")
 	}
 }

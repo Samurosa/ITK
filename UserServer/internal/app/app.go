@@ -1,6 +1,7 @@
 package app
 
 import (
+	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
 	"ITK_Code/m/v2/internal/application"
 	"context"
@@ -28,7 +29,7 @@ func New(
 	cfg *config.Config,
 	secret string,
 ) (*App, error) {
-	logger, err := zap.NewProduction()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return nil, err
 	}
@@ -62,24 +63,39 @@ func New(
 
 	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
 
-	walletStorage := postgres.NewBalanceStorage(postgresStorage.GetPool())
-
 	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
 	if err != nil {
+		log.Error("failed to initialize token manager", zap.Error(err))
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
+		}
 		postgresStorage.ClosePool()
 		cancel()
 		return nil, err
 	}
 
-	limiterManager := redis.NewLimiter(log, cfg.Limiter, redisClient)
+	limiterManager, err := redis.NewLimiter(cfg.Limiter, redisClient)
+	if err != nil {
+		log.Error("failed to initialize rate limiter", zap.Error(err))
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
+		}
+		postgresStorage.ClosePool()
+		cancel()
+		return nil, err
+	}
 
-	user := application.NewUserService(log, userStorage, redisStorage)
-	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage)
-	wallet := application.NewWalletService(log, walletStorage, userStorage)
+	passwordHasher := hash.Bcrypt{}
+	tokenHasher := hash.SHA256{}
+	user := application.NewUserService(userStorage, redisStorage, passwordHasher, limiterManager)
+	auth := application.NewAuthService(tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
 
 	tokenParser, err := sharedjwt.NewParser(secret)
 	if err != nil {
-		redisStorage.Stop()
+		log.Error("failed to initialize token parser", zap.Error(err))
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
+		}
 		postgresStorage.ClosePool()
 		cancel()
 		return nil, err
@@ -91,7 +107,6 @@ func New(
 		logger,
 		user,
 		auth,
-		wallet,
 		cfg.GRPC.Port,
 		tokenParser,
 		sessionValidator,
@@ -113,7 +128,7 @@ func (app *App) Start() {
 	go func() {
 		if err := app.grpcApp.Run(); err != nil {
 			log.Error(
-				"grpc server stopped",
+				"grpc server failed",
 				zap.Error(err),
 			)
 		}
@@ -121,7 +136,7 @@ func (app *App) Start() {
 }
 
 func (app *App) Stop() {
-	app.logger.Debug("application stop")
+	app.logger.Info("application stopping")
 
 	app.grpcApp.Stop()
 	app.cancel()
@@ -130,14 +145,16 @@ func (app *App) Stop() {
 
 	if err := app.redis.Stop(); err != nil {
 		app.logger.Error(
-			"redis stop",
+			"failed to close redis connection",
 			zap.Error(err),
 		)
 	}
 
+	app.logger.Info("application stopped")
+
 	if err := app.logger.Sync(); err != nil {
 		app.logger.Error(
-			"logger sync",
+			"failed to sync logger",
 			zap.Error(err),
 		)
 	}

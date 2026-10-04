@@ -9,35 +9,35 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"go.uber.org/zap"
 )
 
 func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
-
 	var spotID string
 
 	query := `
-		INSERT INTO spot
-		(
-			 base_asset,
-			 quote_asset,
-			 price_precision,
-			 quantity_precision,
-			 min_order_size,
-			 max_order_size,
-			 allowed_roles,
-			 name,
-			 description,
-			 status
-		 )
+		INSERT INTO spot (
+			base_asset,
+			quote_asset,
+			price_precision,
+			quantity_precision,
+			min_order_size,
+			max_order_size,
+			allowed_roles,
+			name,
+			description,
+			status
+		)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-		ON CONFLICT (base_asset, quote_asset) 
-		DO NOTHING
 		RETURNING id
 	`
 
-	err := s.pool.QueryRow(ctx,
+	err := s.pool.QueryRow(
+		ctx,
 		query,
 		spot.BaseAsset,
 		spot.QuoteAsset,
@@ -49,27 +49,19 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 		spot.Name,
 		spot.Description,
 		string(dto.ActiveStatus),
-	).Scan(
-		&spotID,
-	)
-	if errors.Is(err, pgx.ErrNoRows) {
-		err = s.pool.QueryRow(ctx,
-			`
-			SELECT id FROM spot WHERE base_asset = $1 AND quote_asset = $2
-		`,
-			spot.BaseAsset,
-			spot.QuoteAsset,
-		).Scan(
-			&spotID,
-		)
-		if err != nil {
-			return "", err
-		}
-		return spotID, nil
-	}
+	).Scan(&spotID)
+
 	if err != nil {
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			logging.FromContext(ctx).Debug("spot already exist", zap.Error(err))
+			return "", errorsCore.ErrSpotAlreadyExists
+		}
+		logging.FromContext(ctx).Error("unknow error: ", zap.Error(err))
 		return "", err
 	}
+	logging.FromContext(ctx).Info("spot created", zap.String("spot_id", spotID))
 	return spotID, nil
 }
 
@@ -211,7 +203,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, err
+			return nil, "", false, fmt.Errorf("%w: %w", errorsCore.ErrInvalidCursor, err)
 		}
 
 		conditions = append(
@@ -273,12 +265,6 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
 
 	pageSize := int(searchReq.PageSize)
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
 	limit := pageSize + 1
 
 	args = append(args, limit)
@@ -313,10 +299,6 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 
 	if err = rows.Err(); err != nil {
 		return nil, "", false, err
-	}
-
-	if len(spots) == 0 {
-		return spots, "", false, nil
 	}
 
 	hasMore := len(spots) > pageSize

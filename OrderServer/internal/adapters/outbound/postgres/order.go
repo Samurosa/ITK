@@ -1,16 +1,20 @@
 package postgres
 
 import (
+	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
+	"github.com/jackc/pgx/v5"
 )
 
-func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, error) {
+func (s *Storage) Save(ctx context.Context, order models.CreateOrder, now time.Time) (string, error) {
 
 	var orderID string
 
@@ -25,9 +29,11 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 			price,
 			price_currency,
 			quantity,
-			quantity_currency
+			quantity_currency,
+		 created_at,
+		 updated_at
 		 )
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
 		ON CONFLICT (user_id, idempotency_key)
 		DO UPDATE SET idempotency_key = orders.idempotency_key
 		WHERE orders.spot_id = EXCLUDED.spot_id
@@ -50,9 +56,14 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 		order.PriceCurrency,
 		order.Quantity,
 		order.QuantityCurrency,
+		now,
+		now,
 	).Scan(
 		&orderID,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", corerrors.ErrIdempotencyConflict
+	}
 	if err != nil {
 		return "", err
 	}
@@ -99,6 +110,9 @@ func (s *Storage) Get(ctx context.Context, orderID, userID string) (dto.Order, e
 		&order.CreatedAt,
 		&order.UpdatedAt,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return dto.Order{}, corerrors.ErrOrderNotFound
+	}
 	if err != nil {
 		return dto.Order{}, err
 	}
@@ -130,7 +144,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, err
+			return nil, "", false, fmt.Errorf("%w: %w", corerrors.ErrInvalidCursor, err)
 		}
 
 		conditions = append(
@@ -184,21 +198,11 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 		argsPos++
 	}
 
-	query := baseQuery
-
-	if len(conditions) > 0 {
-		query += " WHERE " + strings.Join(conditions, " AND ")
-	}
+	query := baseQuery + " WHERE " + strings.Join(conditions, " AND ")
 
 	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
 
 	pageSize := int(searchReq.PageSize)
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
 	limit := pageSize + 1
 
 	args = append(args, limit)
@@ -238,10 +242,6 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 
 	if err = rows.Err(); err != nil {
 		return nil, "", false, err
-	}
-
-	if len(orders) == 0 {
-		return orders, "", false, nil
 	}
 
 	hasMore := len(orders) > pageSize

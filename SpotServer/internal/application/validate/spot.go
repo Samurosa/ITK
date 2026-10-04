@@ -3,13 +3,14 @@ package validate
 import (
 	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/spot/models"
-	"strings"
 
 	"github.com/shopspring/decimal"
 )
 
+var maxStoredAmount = decimal.New(1, 12)
+
 func CreateSpot(reqSpot models.CreateSpot) error {
-	if strings.Compare(reqSpot.BaseAsset, reqSpot.QuoteAsset) == 0 {
+	if reqSpot.BaseAsset == reqSpot.QuoteAsset {
 		return coreErrors.ErrCompareBaseQuoteAsset
 	}
 
@@ -22,10 +23,10 @@ func CreateSpot(reqSpot models.CreateSpot) error {
 	if err != nil {
 		return coreErrors.ErrInvalidMaxOrderSize
 	}
-	if !minOrderSize.IsPositive() {
+	if !minOrderSize.IsPositive() || minOrderSize.GreaterThanOrEqual(maxStoredAmount) {
 		return coreErrors.ErrInvalidMinOrderSize
 	}
-	if !maxOrderSize.IsPositive() {
+	if !maxOrderSize.IsPositive() || maxOrderSize.GreaterThanOrEqual(maxStoredAmount) {
 		return coreErrors.ErrInvalidMaxOrderSize
 	}
 

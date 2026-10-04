@@ -1,6 +1,7 @@
 package application
 
 import (
+	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/application/validate"
 	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
@@ -8,94 +9,120 @@ import (
 	"ITK_Code/m/v2/internal/core/spot/models"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"go.uber.org/zap"
 )
 
+type Spot struct {
+	spotRepository ports.SpotRepository
+}
+
+func NewSpot(spotRepository ports.SpotRepository) *Spot {
+	return &Spot{
+		spotRepository: spotRepository,
+	}
+}
+
 func (s *Spot) CreateSpot(ctx context.Context, reqSpot models.CreateSpot) (string, time.Time, error) {
-	log := s.log.Named("Create spot")
+	log := logging.FromContext(ctx).Named("spot.create").With(
+		zap.String("base_asset", reqSpot.BaseAsset),
+		zap.String("quote_asset", reqSpot.QuoteAsset),
+	)
+
+	now := time.Now()
 
 	err := validate.CreateSpot(reqSpot)
 	if err != nil {
 		log.Warn("spot validation failed", zap.Error(err))
 		return "", time.Time{}, err
 	}
-	log.Info("data validation passed")
+	log.Debug("spot validation passed")
 
-	spotID, err := s.spotRepository.Save(ctx, reqSpot)
+	spotID, err := s.spotRepository.Save(ctx, reqSpot, now)
 	if err != nil {
-		log.Error("spot save failed", zap.Error(err))
-		return "", time.Time{}, spot.ErrSaveSpot
+		logOperationError(log, "spot save failed", err)
+		return "", time.Time{}, fmt.Errorf("%w: %w", spot.ErrSaveSpot, err)
 	}
-	log.Info("spot saved", zap.String("id", spotID))
 
-	return spotID, time.Now(), nil
+	log.Debug("spot create request completed", zap.String("spot_id", spotID))
+
+	return spotID, now, nil
 }
 
 func (s *Spot) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
-	log := s.log.Named("Get spot")
+	log := logging.FromContext(ctx).Named("spot.get").With(zap.String("spot_id", spotID))
 
 	gotSpot, err := s.spotRepository.Get(ctx, spotID)
 	if err != nil {
 		if errors.Is(err, coreErrors.ErrSpotNotFound) {
+			log.Debug("spot not found")
 			return dto.Spot{}, coreErrors.ErrSpotNotFound
 		}
-		log.Error("spot get failed", zap.Error(err))
-		return dto.Spot{}, spot.ErrGetSpot
+		logOperationError(log, "spot get failed", err)
+		return dto.Spot{}, fmt.Errorf("%w: %w", spot.ErrGetSpot, err)
 	}
-	log.Info("got spot", zap.String("id", spotID))
+	log.Debug("spot retrieved")
 
 	return gotSpot, nil
 }
 
 func (s *Spot) EnableSpot(ctx context.Context, spotID string) error {
-	log := s.log.Named("Enable spot")
+	log := logging.FromContext(ctx).Named("spot.enable").With(zap.String("spot_id", spotID))
 
 	err := s.spotRepository.Enable(ctx, spotID)
 	if errors.Is(err, coreErrors.ErrSpotNotFound) {
-		log.Error("spot not found", zap.String("id", spotID))
+		log.Debug("spot not found")
 		return coreErrors.ErrSpotNotFound
 	}
 	if err != nil {
-		log.Error("spot enable failed", zap.Error(err))
-		return spot.ErrEnableSpot
+		logOperationError(log, "spot enable failed", err)
+		return fmt.Errorf("%w: %w", spot.ErrEnableSpot, err)
 	}
-	log.Info("spot enable", zap.String("id", spotID))
+	log.Info("spot enabled")
 
 	return nil
 }
 
 func (s *Spot) DisableSpot(ctx context.Context, spotID string) error {
-	log := s.log.Named("Disable spot")
+	log := logging.FromContext(ctx).Named("spot.disable").With(zap.String("spot_id", spotID))
 
 	err := s.spotRepository.Disable(ctx, spotID)
 	if errors.Is(err, coreErrors.ErrSpotNotFound) {
-		log.Error("spot not found", zap.String("id", spotID))
+		log.Debug("spot not found")
 		return coreErrors.ErrSpotNotFound
 	}
 	if err != nil {
-		log.Error("spot disable failed", zap.Error(err))
-		return spot.ErrDisableSpot
+		logOperationError(log, "spot disable failed", err)
+		return fmt.Errorf("%w: %w", spot.ErrDisableSpot, err)
 	}
-	log.Info("spot disabled", zap.String("id", spotID))
+	log.Info("spot disabled")
 
 	return nil
 }
 
 func (s *Spot) ListSpots(ctx context.Context, request models.ListSpotsRequest) ([]dto.SpotListItem, string, bool, error) {
-	log := s.log.Named("List spot")
+	log := logging.FromContext(ctx).Named("spot.list").With(zap.Int32("page_size", request.PageSize))
 
 	spotsList, cursor, hasMore, err := s.spotRepository.List(ctx, request)
 	if err != nil {
-		log.Error("spot list failed", zap.Error(err))
-		return []dto.SpotListItem{}, "", false, err
+		logOperationError(log, "spot list failed", err)
+		return spotsList, "", false, err
 	}
-	if len(spotsList) == 0 {
-		log.Debug("spot list is empty")
-		return []dto.SpotListItem{}, "", false, nil
-	}
-	log.Info("Slot search completed successfully")
+	log.Debug("spots listed", zap.Int("count", len(spotsList)), zap.Bool("has_more", hasMore))
 
 	return spotsList, cursor, hasMore, nil
+}
+
+func logOperationError(log *zap.Logger, message string, err error) {
+	switch {
+	case errors.Is(err, context.Canceled):
+		log.Debug(message, zap.Error(err))
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, coreErrors.ErrInvalidCursor):
+		log.Warn(message, zap.Error(err))
+	default:
+		log.Error(message, zap.Error(err))
+	}
 }

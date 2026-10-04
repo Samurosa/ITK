@@ -27,7 +27,15 @@ func NewJWT(secret string, tokensTTl config.TokensTTL) (*Token, error) {
 	}, nil
 }
 
-func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.AccessTokenParse, dto.RefreshTokenParse, error) {
+func (j *Token) Generate(user user.User, deviceID string) (
+	dto.TokensModel,
+	dto.AccessToken,
+	dto.RefreshToken,
+	error,
+) {
+	if deviceID == "" {
+		return dto.TokensModel{}, dto.AccessToken{}, dto.RefreshToken{}, corerrors.ErrDeviceIDEmpty
+	}
 	accessTokenString, accessToken, err := generateAccessToken(
 		j.secret,
 		j.tokensTTL.AccessTokenTTL,
@@ -35,16 +43,16 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 		deviceID,
 	)
 	if err != nil {
-		return dto.TokensModel{}, dto.AccessTokenParse{}, dto.RefreshTokenParse{}, err
+		return dto.TokensModel{}, dto.AccessToken{}, dto.RefreshToken{}, err
 	}
 
 	refreshTokenString, refreshToken, err := generateRefreshToken(
 		j.secret,
 		j.tokensTTL.RefreshTokenTTL,
-		accessToken.Jti,
+		accessToken.ID,
 	)
 	if err != nil {
-		return dto.TokensModel{}, dto.AccessTokenParse{}, dto.RefreshTokenParse{}, err
+		return dto.TokensModel{}, dto.AccessToken{}, dto.RefreshToken{}, err
 	}
 
 	return dto.TokensModel{
@@ -57,50 +65,58 @@ func (j *Token) Generate(user user.User, deviceID string) (dto.TokensModel, dto.
 			RefreshIssuedAt:  time.Now(),
 			RefreshTTL:       j.tokensTTL.RefreshTokenTTL,
 		},
-		dto.AccessTokenParse{
-			UserID: accessToken.UserID,
-			Role:   accessToken.Role,
-			Device: deviceID,
-			Jti:    accessToken.Jti,
+		dto.AccessToken{
+			UserID:   accessToken.UserID,
+			Role:     accessToken.Role,
+			DeviceID: deviceID,
+			JTI:      accessToken.ID,
 		},
-		dto.RefreshTokenParse{
-			AccessTokenJTI:  refreshToken.AccessTokenJTI,
+		dto.RefreshToken{
+			AccessTokenJTI:  accessToken.ID,
 			RefreshTokenJTI: refreshToken.RefreshTokenJTI,
-		}, nil
+		},
+		nil
 }
 
-func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshTokenParse, error) {
+func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshToken, error) {
+	if len(refreshToken) > 4096 {
+		return dto.RefreshToken{}, corerrors.ErrInvalidToken
+	}
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
-		&RefreshTokenParse{},
+		&RefreshToken{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
 				return nil, corerrors.ErrInvalidToken
 			}
 			return []byte(j.secret), nil
 		},
+		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return dto.RefreshTokenParse{}, corerrors.ErrInvalidToken
+		return dto.RefreshToken{}, corerrors.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithRefreshToken(token)
 
 	if err != nil {
-		return dto.RefreshTokenParse{}, err
+		return dto.RefreshToken{}, err
 	}
 
-	return *claims, nil
+	return dto.RefreshToken{
+		AccessTokenJTI:  claims.AccessTokenJTI,
+		RefreshTokenJTI: claims.RefreshTokenJTI,
+	}, nil
 }
 
 func configValidate(secret string, tokensTTl config.TokensTTL) error {
 	if secret == "" {
 		return corerrors.ErrJWTSecret
 	}
-	if tokensTTl.AccessTokenTTL < 1 {
+	if tokensTTl.AccessTokenTTL < time.Second {
 		return corerrors.ErrAccessTokenTTL
 	}
-	if tokensTTl.RefreshTokenTTL < 1 {
+	if tokensTTl.RefreshTokenTTL < time.Second {
 		return corerrors.ErrRefreshTokenTTL
 	}
 	return nil

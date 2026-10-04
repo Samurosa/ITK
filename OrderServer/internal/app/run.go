@@ -4,8 +4,9 @@ import (
 	"ITK_Code/m/v2/internal/config"
 	"context"
 	"fmt"
-	"go.uber.org/fx"
 	"os"
+
+	"go.uber.org/fx"
 )
 
 func Run(cfgPath string) error {
@@ -13,7 +14,7 @@ func Run(cfgPath string) error {
 	if err != nil {
 
 		return fmt.Errorf(
-			"error loading config file path: %s, error: %s\n",
+			"error loading config file path: %s, error: %s",
 			cfgPath,
 			err,
 		)
@@ -23,7 +24,7 @@ func Run(cfgPath string) error {
 	if err != nil {
 
 		return fmt.Errorf(
-			"error reading JWT secret from %s: %s\n",
+			"error reading JWT secret from %s: %s",
 			cfg.JWTSecretPath,
 			err,
 		)

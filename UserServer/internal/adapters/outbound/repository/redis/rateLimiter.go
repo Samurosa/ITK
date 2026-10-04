@@ -3,26 +3,27 @@ package redis
 import (
 	"ITK_Code/m/v2/internal/config"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 )
 
 type Limiter struct {
-	log      *zap.Logger
 	client   *redis.Client
 	capacity int64
 	timer    time.Duration
 }
 
-func NewLimiter(log *zap.Logger, cfg config.Limiter, client *redis.Client) *Limiter {
+func NewLimiter(cfg config.Limiter, client *redis.Client) (*Limiter, error) {
+	if cfg.Capacity <= 0 || cfg.Timer < time.Millisecond {
+		return nil, fmt.Errorf("limiter capacity must be positive and timer at least 1ms")
+	}
 	return &Limiter{
-		log:      log,
 		capacity: cfg.Capacity,
 		timer:    cfg.Timer,
 		client:   client,
-	}
+	}, nil
 }
 
 func (l *Limiter) Allow(
@@ -30,35 +31,32 @@ func (l *Limiter) Allow(
 	ip string,
 	deviceID string,
 ) (bool, error) {
-	log := l.log.Named("limiter allow")
+	keys := []string{"rate-limiter:ip:" + ip}
 
-	key := "rate-limiter ip:" + ip + "deviceID:" + deviceID
+	if deviceID != "" {
+		keys = append(keys, "rate-limiter:device:"+deviceID)
+	}
+	return l.allow(ctx, keys)
+}
 
-	addLimiterByKeyScript := redis.NewScript(`
-	local rate = redis.call("INCR", KEYS[1])
-	
-	if rate == 1 then
-		redis.call("EXPIRE", KEYS[1], ARGV[1])
+func (l *Limiter) AllowPasswordChange(ctx context.Context, userID string) (bool, error) {
+	return l.allow(ctx, []string{"rate-limiter:password:" + userID})
+}
+
+var limiterScript = redis.NewScript(`
+	local allowed = 1
+	for _, key in ipairs(KEYS) do
+		local count = redis.call("INCR", key)
+		if count == 1 then redis.call("PEXPIRE", key, ARGV[1]) end
+		if count > tonumber(ARGV[2]) then allowed = 0 end
 	end
-
-	return rate
+	return allowed
 `)
 
-	result, err := addLimiterByKeyScript.Run(ctx,
-		l.client,
-		[]string{key},
-		int(l.timer.Seconds()),
-	).Result()
-
+func (l *Limiter) allow(ctx context.Context, keys []string) (bool, error) {
+	result, err := limiterScript.Run(ctx, l.client, keys, l.timer.Milliseconds(), l.capacity).Int64()
 	if err != nil {
-		log.Error("Failed to add rate limiter", zap.Error(err))
 		return false, err
 	}
-	count, ok := result.(int64)
-	if !ok {
-		log.Error("Failed to get rate limiter count", zap.Error(err))
-		return false, err
-	}
-
-	return count <= l.capacity, nil
+	return result == 1, nil
 }

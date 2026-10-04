@@ -2,12 +2,11 @@ package validate
 
 import (
 	"ITK_Code/m/v2/internal/core/corerrors"
-	"strings"
 	"unicode"
 )
 
 func ComparePasswords(oldPassword, newPassword string) error {
-	if strings.Compare(oldPassword, newPassword) == 0 {
+	if oldPassword == newPassword {
 		return corerrors.ErrPasswordsMatch
 	}
 
@@ -15,10 +14,6 @@ func ComparePasswords(oldPassword, newPassword string) error {
 }
 
 func Password(password string) error {
-	if password == "" {
-		return corerrors.ErrPasswordEmpty
-	}
-
 	var hasUpper, hasLower, hasDigit bool
 
 	for _, char := range password {

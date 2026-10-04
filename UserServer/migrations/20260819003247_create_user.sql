@@ -12,5 +12,8 @@ CREATE TABLE users (
     deleted_at TIMESTAMPTZ NULL
 );
 
+CREATE UNIQUE INDEX uq_users_active_email
+    ON users (email) WHERE deleted_at IS NULL;
+
 -- +goose Down
 DROP TABLE users;

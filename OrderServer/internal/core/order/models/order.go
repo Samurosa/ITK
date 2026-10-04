@@ -18,7 +18,7 @@ type CreateOrder struct {
 	Price         decimal.Decimal
 	PriceCurrency string
 
-	Quantity         string
+	Quantity         decimal.Decimal
 	QuantityCurrency string
 }
 
@@ -29,4 +29,9 @@ type ListOrdersRequest struct {
 	SpotId   string
 	Status   dto.OrderStatus
 	Side     dto.OrderSide
+}
+
+type OrderUpdateResult struct {
+	Update dto.UpdateOrder
+	Err    error
 }

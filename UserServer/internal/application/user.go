@@ -1,14 +1,38 @@
 package application
 
 import (
-	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
+	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/core/auth"
 	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"go.uber.org/zap"
 )
+
+type User struct {
+	userRepository ports.UserRepository
+
+	sessionStorage ports.SessionRepository
+
+	passwordHasher  ports.PasswordHasher
+	passwordLimiter ports.PasswordChangeLimiter
+}
+
+func NewUserService(
+	userRepository ports.UserRepository,
+	sessionStorage ports.SessionRepository,
+	passwordHasher ports.PasswordHasher,
+	passwordLimiter ports.PasswordChangeLimiter,
+) *User {
+	return &User{
+		userRepository:  userRepository,
+		sessionStorage:  sessionStorage,
+		passwordHasher:  passwordHasher,
+		passwordLimiter: passwordLimiter,
+	}
+}
 
 func (u *User) GetUser(ctx context.Context,
 	id string,
@@ -16,14 +40,14 @@ func (u *User) GetUser(ctx context.Context,
 	user.User,
 	error,
 ) {
-	log := u.log.Named("GetUser")
+	log := logging.FromContext(ctx).Named("GetUser").With(zap.String("user_id", id))
 
 	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
-		log.Error("failed get user", zap.String("id", id), zap.Error(err))
+		logOperationError(log, "failed to get user", err)
 		return user.User{}, err
 	}
-	log.Info("got user id:", zap.String("id", id))
+	log.Debug("user retrieved")
 
 	return current, nil
 }
@@ -31,21 +55,21 @@ func (u *User) GetUser(ctx context.Context,
 func (u *User) DeleteUser(ctx context.Context,
 	id string,
 ) error {
-	log := u.log.Named("DeleteUser")
+	log := logging.FromContext(ctx).Named("DeleteUser").With(zap.String("user_id", id))
 
 	err := u.userRepository.Delete(ctx, id)
 	if err != nil {
-		log.Error("failed delete user", zap.String("id", id), zap.Error(err))
+		logOperationError(log, "failed to delete user", err)
 		return err
 	}
-	log.Debug("user deleted", zap.String("id", id))
+	log.Debug("user marked as deleted")
 
 	err = u.sessionStorage.DeleteByUser(ctx, id)
 	if err != nil {
-		log.Error("session not found", zap.String("id", id), zap.Error(err))
+		log.Error("user deleted but session revocation failed", zap.Error(err))
 		return err
 	}
-	log.Info("user deleted", zap.String("id", id))
+	log.Info("user deleted and sessions revoked")
 
 	return nil
 }
@@ -56,14 +80,14 @@ func (u *User) IsAdmin(ctx context.Context,
 	bool,
 	error,
 ) {
-	log := u.log.Named("IsAdmin")
+	log := logging.FromContext(ctx).Named("IsAdmin").With(zap.String("user_id", id))
 
 	isAdmin, err := u.userRepository.IsAdmin(ctx, id)
 	if err != nil {
-		log.Error("failed check user", zap.String("id", id), zap.Error(err))
+		logOperationError(log, "failed to check user role", err)
 		return false, err
 	}
-	log.Info("checked role user", zap.Bool("admin role", isAdmin))
+	log.Debug("user role checked", zap.Bool("is_admin", isAdmin))
 
 	return isAdmin, nil
 }
@@ -74,14 +98,14 @@ func (u *User) GetUserByEmail(ctx context.Context,
 	user.User,
 	error,
 ) {
-	log := u.log.Named("GetUserByEmail")
+	log := logging.FromContext(ctx).Named("GetUserByEmail")
 
 	current, err := u.userRepository.GetByEmail(ctx, email)
 	if err != nil {
-		log.Error("user not found", zap.String("email", email), zap.Error(err))
+		logOperationError(log, "failed to get user by email", err)
 		return current, err
 	}
-	log.Info("got user by email", zap.String("id", current.ID))
+	log.Debug("user retrieved by email", zap.String("user_id", current.ID))
 
 	return current, nil
 }
@@ -90,7 +114,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 	id string,
 	name string,
 ) error {
-	log := u.log.Named("update user")
+	log := logging.FromContext(ctx).Named("UpdateUserInfo").With(zap.String("user_id", id))
 
 	updated := user.UpdateUser{}
 	if name != "" {
@@ -99,10 +123,10 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 
 	err := u.userRepository.Update(ctx, id, updated)
 	if err != nil {
-		log.Error("error updating user", zap.Error(err))
+		logOperationError(log, "failed to update user", err)
 		return err
 	}
-	log.Info("user updated", zap.String("id", id))
+	log.Info("user updated")
 
 	return nil
 }
@@ -112,35 +136,50 @@ func (u *User) ChangePassword(ctx context.Context,
 	oldPassword string,
 	newPassword string,
 ) error {
-	log := u.log.Named("change Password")
+	log := logging.FromContext(ctx).Named("ChangePassword").With(zap.String("user_id", id))
+	allowed, err := u.passwordLimiter.AllowPasswordChange(ctx, id)
+	if err != nil {
+		logOperationError(log, "failed to check password change rate limit", err)
+		return corerrors.ErrTooManyRequests
+	}
+	if !allowed {
+		log.Warn("password change rate limit exceeded")
+		return corerrors.ErrTooManyRequests
+	}
 
 	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
-		log.Error("error getting user", zap.String("id", id), zap.Error(err))
+		logOperationError(log, "failed to get user", err)
 		return err
 	}
-	log.Debug("health check user successful, got user:", zap.String("id", current.ID))
+	log.Debug("user retrieved for password change")
 
-	err = hash.VerifyPasswordHash(oldPassword, current.PasswordHash)
+	err = u.passwordHasher.VerifyPasswordHash(oldPassword, current.PasswordHash)
 	if err != nil {
-		log.Error("error verifying user by password", zap.Error(err))
+		logPasswordVerificationError(log, err)
 		return auth.ErrIncorrectPassword
 	}
-	log.Debug("verify password successful")
+	log.Debug("current password verified")
 
-	newPassHash, err := hash.GeneratePasswordHash(newPassword)
+	newPassHash, err := u.passwordHasher.GeneratePasswordHash(newPassword)
 	if err != nil {
-		log.Error("error generating password hash", zap.Error(err))
+		log.Error("failed to generate password hash", zap.Error(err))
 		return corerrors.ErrPassGenHash
 	}
 	log.Debug("password hash generated")
 
 	err = u.userRepository.UpdatePassword(ctx, current, string(newPassHash))
 	if err != nil {
-		log.Error("error updating user", zap.Error(err))
+		logOperationError(log, "failed to update password", err)
 		return err
 	}
-	log.Info("success updated password", zap.String("id", current.ID))
+	log.Debug("password updated; revoking sessions")
+
+	if err := u.sessionStorage.DeleteByUser(ctx, id); err != nil {
+		log.Error("password updated but session revocation failed", zap.Error(err))
+		return err
+	}
+	log.Info("password changed and sessions revoked")
 
 	return nil
 }

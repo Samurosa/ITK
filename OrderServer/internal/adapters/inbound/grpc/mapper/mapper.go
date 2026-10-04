@@ -80,13 +80,17 @@ func FromProtoCreateOrder(req *pb.CreateOrderRequest) (models.CreateOrder, error
 	if err != nil {
 		return models.CreateOrder{}, err
 	}
+	quantity, err := ConvertToDecimal(req.GetQuantity().GetAmount())
+	if err != nil {
+		return models.CreateOrder{}, err
+	}
 	return models.CreateOrder{
 		SpotId:           req.SpotId,
 		OrderSide:        FromProtoOrderSide(req.OrderSide),
 		IdempotencyKey:   req.IdempotencyKey,
 		Price:            price,
 		PriceCurrency:    req.GetPrice().GetCurrency(),
-		Quantity:         req.GetQuantity().GetAmount(),
+		Quantity:         quantity,
 		QuantityCurrency: req.GetQuantity().GetCurrency(),
 	}, nil
 }
@@ -144,8 +148,5 @@ func FromProtoStatus(orderProto pb.OrderStatus) dto.OrderStatus {
 }
 
 func ConvertToDecimal(amount string) (decimal.Decimal, error) {
-	if amount == "" {
-		return decimal.Zero, nil
-	}
 	return decimal.NewFromString(amount)
 }

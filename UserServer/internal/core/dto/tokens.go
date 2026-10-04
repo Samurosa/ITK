@@ -15,14 +15,14 @@ type TokensModel struct {
 	RefreshTTL       time.Duration
 }
 
-type AccessTokenParse struct {
-	UserID string
-	Role   string
-	Device string
-	Jti    string
+type AccessToken struct {
+	UserID   string `json:"user_id"`
+	Role     string `json:"role"`
+	DeviceID string `json:"device_id"`
+	JTI      string `json:"jti"`
 }
 
-type RefreshTokenParse struct {
+type RefreshToken struct {
 	AccessTokenJTI  string
 	RefreshTokenJTI string
 }
