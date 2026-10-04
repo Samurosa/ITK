@@ -83,11 +83,7 @@ func (o *OrderServer) StreamOrderUpdate(
 	if !ok {
 		return status.Error(codes.Unauthenticated, "request context not provided")
 	}
-	if _, err := o.order.Get(ctx, req.OrderId, tokenContext.Principal.UserID); err != nil {
-		return mapper.ToGRPC(err)
-	}
-
-	updates, err := o.order.SubscribeOrderUpdates(ctx, req.OrderId)
+	updates, err := o.order.SubscribeOrderUpdates(ctx, req.OrderId, tokenContext.Principal.UserID)
 	if err != nil {
 		return mapper.ToGRPC(err)
 	}

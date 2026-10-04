@@ -21,12 +21,16 @@ type TokenManager interface {
 }
 
 type RefreshLock interface {
-	AcquireRefreshLock(context.Context, string) (bool, error)
-	ReleaseRefreshLock(context.Context, string) error
+	AcquireRefreshLock(context.Context, string) (string, error)
+	ReleaseRefreshLock(context.Context, string, string) error
 }
 
 type RateLimiter interface {
 	Allow(context.Context, string, string) (bool, error)
+}
+
+type PasswordChangeLimiter interface {
+	AllowPasswordChange(context.Context, string) (bool, error)
 }
 
 type TokenHasher interface {

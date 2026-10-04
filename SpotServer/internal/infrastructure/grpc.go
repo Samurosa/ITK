@@ -1,12 +1,18 @@
 package infrastructure
 
 import (
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/core/spot"
 
 	"fmt"
 	"net"
 	"time"
+
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
+	"github.com/Samurosa/exchange-common/shared/auth/jwt"
+	"github.com/Samurosa/exchange-common/shared/auth/session"
+	spotpb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,8 +28,17 @@ func NewGRPC(
 	log *zap.Logger,
 	spotService spot.Service,
 	port int,
+	parser *jwt.Parser,
+	validator session.Validator,
 ) *GRPCApp {
-	grpcServer := grpc.NewServer()
+	publicMethods := map[string]struct{}{
+		spotpb.SpotInstrumentService_GetSpot_FullMethodName:   {},
+		spotpb.SpotInstrumentService_ListSpots_FullMethodName: {},
+	}
+	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
+		authentication.AuthInterceptor(log, parser, publicMethods, validator),
+		interceptors.RequireAdmin(publicMethods),
+	))
 
 	spGRPC.RegisterSpotService(grpcServer,
 		spotService,

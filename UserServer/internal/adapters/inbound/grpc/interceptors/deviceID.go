@@ -6,7 +6,9 @@ import (
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
@@ -28,6 +30,9 @@ func DeviceIDInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 		}
 
 		deviceID := md.Get("device-id")
+		if len(deviceID) > 1 {
+			return nil, status.Error(codes.InvalidArgument, "device-id must have one value")
+		}
 
 		if len(deviceID) > 0 {
 			device = deviceID[0]

@@ -52,10 +52,7 @@ func (s *UserServer) UpdateUserInfo(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	name := ""
-	if req.Name != nil {
-		name = req.GetName()
-	}
+	name := req.GetName()
 
 	userID, ok := sharedContext.UserID(ctx)
 	if !ok {

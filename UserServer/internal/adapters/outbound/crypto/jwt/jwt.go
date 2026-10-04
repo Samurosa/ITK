@@ -73,12 +73,15 @@ func (j *Token) Generate(user user.User, deviceID string) (
 		},
 		dto.RefreshToken{
 			AccessTokenJTI:  accessToken.ID,
-			RefreshTokenJTI: refreshToken.ID,
+			RefreshTokenJTI: refreshToken.RefreshTokenJTI,
 		},
 		nil
 }
 
 func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshToken, error) {
+	if len(refreshToken) > 4096 {
+		return dto.RefreshToken{}, corerrors.ErrInvalidToken
+	}
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
 		&RefreshToken{},
@@ -88,6 +91,7 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshToken, error)
 			}
 			return []byte(j.secret), nil
 		},
+		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
 		return dto.RefreshToken{}, corerrors.ErrInvalidToken
@@ -109,10 +113,10 @@ func configValidate(secret string, tokensTTl config.TokensTTL) error {
 	if secret == "" {
 		return corerrors.ErrJWTSecret
 	}
-	if tokensTTl.AccessTokenTTL < 1 {
+	if tokensTTl.AccessTokenTTL < time.Second {
 		return corerrors.ErrAccessTokenTTL
 	}
-	if tokensTTl.RefreshTokenTTL < 1 {
+	if tokensTTl.RefreshTokenTTL < time.Second {
 		return corerrors.ErrRefreshTokenTTL
 	}
 	return nil

@@ -65,23 +65,33 @@ func New(
 
 	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
 	if err != nil {
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
+		}
 		postgresStorage.ClosePool()
 		cancel()
 		return nil, err
 	}
 
-	limiterManager := redis.NewLimiter(log, cfg.Limiter, redisClient)
+	limiterManager, err := redis.NewLimiter(log, cfg.Limiter, redisClient)
+	if err != nil {
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
+		}
+		postgresStorage.ClosePool()
+		cancel()
+		return nil, err
+	}
 
 	passwordHasher := hash.Bcrypt{}
 	tokenHasher := hash.SHA256{}
-	user := application.NewUserService(log, userStorage, redisStorage, passwordHasher)
+	user := application.NewUserService(log, userStorage, redisStorage, passwordHasher, limiterManager)
 	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
 
 	tokenParser, err := sharedjwt.NewParser(secret)
 	if err != nil {
-		err = redisStorage.Stop()
-		if err != nil {
-			log.Warn("Failed to stop redis storage", zap.Error(err))
+		if closeErr := redisStorage.Stop(); closeErr != nil {
+			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
 		}
 		postgresStorage.ClosePool()
 		cancel()

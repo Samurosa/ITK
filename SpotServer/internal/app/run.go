@@ -4,6 +4,8 @@ import (
 	"ITK_Code/m/v2/internal/config"
 	"context"
 	"fmt"
+	"os"
+
 	"go.uber.org/fx"
 )
 
@@ -18,8 +20,12 @@ func Run(cfgPath string) error {
 		)
 	}
 
+	secret, err := os.ReadFile(cfg.JWTSecretPath)
+	if err != nil {
+		return fmt.Errorf("read JWT secret: %w", err)
+	}
 	fxApp := fx.New(
-		fx.Supply(cfg),
+		fx.Supply(cfg, string(secret)),
 		fx.Provide(New),
 		fx.Invoke(func(lifecycle fx.Lifecycle, application *App) {
 			lifecycle.Append(fx.Hook{

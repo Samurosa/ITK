@@ -8,8 +8,19 @@ import (
 )
 
 type Config struct {
-	GRPC     GRPCConfig `yaml:"grpc"`
-	Postgres Postgres   `yaml:"postgres"`
+	JWTSecretPath string     `yaml:"jwt_secret_path"`
+	GRPC          GRPCConfig `yaml:"grpc"`
+	Postgres      Postgres   `yaml:"postgres"`
+	Redis         Redis      `yaml:"redis"`
+}
+
+type Redis struct {
+	Addr        string        `yaml:"addr"`
+	Password    string        `yaml:"password"`
+	DB          int           `yaml:"db"`
+	MaxRetries  int           `yaml:"max_retries"`
+	DialTimeout time.Duration `yaml:"dial_timeout"`
+	Timeout     time.Duration `yaml:"timeout"`
 }
 
 type GRPCConfig struct {

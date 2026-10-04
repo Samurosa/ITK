@@ -273,12 +273,6 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 	query += " ORDER BY created_at DESC, id DESC " + fmt.Sprintf(" LIMIT $%d ", argsPos)
 
 	pageSize := int(searchReq.PageSize)
-	if pageSize < 1 {
-		pageSize = 20
-	}
-	if pageSize > 100 {
-		pageSize = 100
-	}
 	limit := pageSize + 1
 
 	args = append(args, limit)
@@ -313,10 +307,6 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 
 	if err = rows.Err(); err != nil {
 		return nil, "", false, err
-	}
-
-	if len(spots) == 0 {
-		return spots, "", false, nil
 	}
 
 	hasMore := len(spots) > pageSize

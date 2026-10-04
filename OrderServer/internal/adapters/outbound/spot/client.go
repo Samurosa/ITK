@@ -30,10 +30,14 @@ func (c *Client) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
 	}
 
 	return dto.Spot{
-		ID:           resp.Id,
-		BaseAsset:    resp.BaseAsset,
-		QuoteAsset:   resp.QuoteAsset,
-		Status:       dto.SpotStatus(resp.Status.String()),
-		AllowedRoles: FromProtoToRoles(resp.AllowedRoles),
+		ID:                resp.Id,
+		BaseAsset:         resp.BaseAsset,
+		QuoteAsset:        resp.QuoteAsset,
+		PricePrecision:    resp.PricePrecision,
+		QuantityPrecision: resp.QuantityPrecision,
+		MinOrderSize:      resp.MinOrderSize,
+		MaxOrderSize:      resp.MaxOrderSize,
+		Status:            dto.SpotStatus(resp.Status.String()),
+		AllowedRoles:      FromProtoToRoles(resp.AllowedRoles),
 	}, nil
 }

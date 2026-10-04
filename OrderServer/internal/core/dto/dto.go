@@ -82,11 +82,11 @@ const (
 type Spot struct {
 	ID string
 
-	BaseAsset  string //USD
-	QuoteAsset string //USDT
+	BaseAsset  string
+	QuoteAsset string
 
-	PricePrecision    int32 // количество знаков после запятой у актива
-	QuantityPrecision int32 // количество знаков после запятой у цены
+	PricePrecision    int32
+	QuantityPrecision int32
 	MinOrderSize      string
 	MaxOrderSize      string
 

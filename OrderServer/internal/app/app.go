@@ -73,7 +73,9 @@ func New(cfg *config.Config, secret string) (*App, error) {
 
 	parser, err := jwt.NewParser(secret)
 	if err != nil {
-		conn.Close()
+		if connErr := conn.Close(); connErr != nil {
+			log.Error("Failed to close connection", zap.Error(connErr))
+		}
 		storagePostgres.ClosePool()
 		_ = redisClient.Close()
 		cancel()

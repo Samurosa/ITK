@@ -13,22 +13,12 @@ func Run(configPath string) error {
 
 	cfg, err := config.Load(configPath)
 	if err != nil {
-
-		return fmt.Errorf(
-			"error loading config file path: %s, error: %s\n",
-			configPath,
-			err,
-		)
+		return fmt.Errorf("error loading config file path: %s, error: %s", configPath, err)
 	}
 
 	secret, err := os.ReadFile(cfg.JWTSecretPath)
 	if err != nil {
-
-		return fmt.Errorf(
-			"error reading JWT secret from %s: %s\n",
-			cfg.JWTSecretPath,
-			err,
-		)
+		return fmt.Errorf("error reading JWT secret from %s: %s", cfg.JWTSecretPath, err)
 	}
 
 	fxApp := fx.New(

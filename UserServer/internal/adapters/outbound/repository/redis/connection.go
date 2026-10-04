@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
@@ -25,13 +26,14 @@ func NewStorage(client *redis.Client) *Storage {
 func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*redis.Client, error) {
 	log = log.Named("Redis outbound adapter")
 	client := redis.NewClient(&redis.Options{
-		Addr:         cfg.Addr,
-		Password:     cfg.Password,
-		DB:           cfg.DB,
-		MaxRetries:   cfg.MaxRetries,
-		DialTimeout:  cfg.DialTimeout,
-		ReadTimeout:  cfg.Timeout,
-		WriteTimeout: cfg.Timeout,
+		Addr:                  cfg.Addr,
+		Password:              cfg.Password,
+		DB:                    cfg.DB,
+		MaxRetries:            cfg.MaxRetries,
+		DialTimeout:           cfg.DialTimeout,
+		ReadTimeout:           cfg.Timeout,
+		WriteTimeout:          cfg.Timeout,
+		ContextTimeoutEnabled: true,
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -55,27 +57,35 @@ func (s *Storage) Stop() error {
 func (s *Storage) AcquireRefreshLock(
 	ctx context.Context,
 	jti string,
-) (bool, error) {
+) (string, error) {
 
 	key := "lock:refresh:" + jti
+	owner := uuid.NewString()
 
 	ok, err := s.client.SetNX(
 		ctx,
 		key,
-		"locked",
-		5*time.Second,
+		owner,
+		30*time.Second,
 	).Result()
-
-	return ok, err
+	if err != nil {
+		return "", err
+	}
+	if !ok {
+		return "", nil
+	}
+	return owner, nil
 }
 
 func (s *Storage) ReleaseRefreshLock(
 	ctx context.Context,
 	jti string,
+	owner string,
 ) error {
-
-	return s.client.Del(
-		ctx,
-		"lock:refresh:"+jti,
-	).Err()
+	return redis.NewScript(`
+		if redis.call("GET", KEYS[1]) == ARGV[1] then
+			return redis.call("DEL", KEYS[1])
+		end
+		return 0
+	`).Run(ctx, s.client, []string{"lock:refresh:" + jti}, owner).Err()
 }

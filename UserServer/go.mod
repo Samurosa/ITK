@@ -3,8 +3,8 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-common v0.0.13
-	github.com/Samurosa/exchange-contract v0.2.24
+	github.com/Samurosa/exchange-common v0.0.14
+	github.com/Samurosa/exchange-contract v0.2.25
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.11.0

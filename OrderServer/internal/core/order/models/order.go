@@ -18,7 +18,7 @@ type CreateOrder struct {
 	Price         decimal.Decimal
 	PriceCurrency string
 
-	Quantity         string
+	Quantity         decimal.Decimal
 	QuantityCurrency string
 }
 

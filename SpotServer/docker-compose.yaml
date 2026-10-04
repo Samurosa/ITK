@@ -41,6 +41,8 @@ services:
       - exchange-network
     ports:
       - "50052:50052"
+    secrets:
+      - jwt_secret
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -51,3 +53,7 @@ networks:
 
 volumes:
   SpotPostgres_data:
+
+secrets:
+  jwt_secret:
+    file: ../UserServer/secrets/jwt_secret

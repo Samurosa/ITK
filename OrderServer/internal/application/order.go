@@ -2,6 +2,7 @@ package application
 
 import (
 	"ITK_Code/m/v2/internal/application/ports"
+	"ITK_Code/m/v2/internal/application/validate"
 	coreErorrs "ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
@@ -48,11 +49,34 @@ func (o *OrderService) Create(ctx context.Context,
 		return "", "", time.Time{}, coreErorrs.ErrRolePermissionDenied
 	}
 	if createOrder.PriceCurrency != spot.QuoteAsset || createOrder.QuantityCurrency != spot.BaseAsset {
-		return "", "", time.Time{}, fmt.Errorf("order currencies do not match spot %s", spot.ID)
+		log.Debug("assets new orders not contains",
+			zap.String("orderPriceAssets: ", createOrder.PriceCurrency),
+			zap.String("spotQuoteAssets: ", spot.QuoteAsset),
+			zap.Error(err),
+		)
+		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
 	}
-	quantity, err := decimal.NewFromString(createOrder.Quantity)
-	if err != nil || !createOrder.Price.IsPositive() || !quantity.IsPositive() {
-		return "", "", time.Time{}, fmt.Errorf("price and quantity must be positive decimal values")
+
+	minOrderSize, err := decimal.NewFromString(spot.MinOrderSize)
+	if err != nil {
+		log.Error("Failed to parse minOrderSize", zap.Error(err))
+		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
+	}
+
+	maxOrderSize, err := decimal.NewFromString(spot.MaxOrderSize)
+	if err != nil {
+		log.Error("Failed to parse maxOrderSize", zap.Error(err))
+		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
+	}
+
+	if validate.Price(createOrder.Price, spot.PricePrecision) {
+		log.Error("Failed to validate price", zap.String("price", createOrder.Price.String()))
+		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
+	}
+
+	if validate.Quantity(createOrder.Quantity, spot.QuantityPrecision, minOrderSize, maxOrderSize) {
+		log.Error("Failed to validate quantity", zap.String("quantity", createOrder.Quantity.String()))
+		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
 	}
 
 	orderID, err := o.repository.Save(
@@ -83,8 +107,52 @@ func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Ord
 	return order, nil
 }
 
-func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderId string) (<-chan dto.UpdateOrder, error) {
-	panic("implement me")
+func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan dto.UpdateOrder, error) {
+	log := o.log.Named("Subscribe order updates")
+	initial, err := o.repository.Get(ctx, orderID, userID)
+	if err != nil {
+		log.Error("failed to get order", zap.String("orderID", orderID), zap.Error(err))
+		return nil, err
+	}
+	updates := make(chan dto.UpdateOrder, 1)
+	updates <- orderUpdate(initial)
+	go func(last dto.Order) {
+		defer close(updates)
+		ticker := time.NewTicker(time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				current, err := o.repository.Get(ctx, orderID, userID)
+				if err != nil {
+					o.log.Error("failed polling order update", zap.String("orderID", orderID), zap.Error(err))
+					return
+				}
+				if current.UpdatedAt.Equal(last.UpdatedAt) && current.FilledQuantity == last.FilledQuantity && current.OrderStatus == last.OrderStatus {
+					continue
+				}
+				select {
+				case updates <- orderUpdate(current):
+					last = current
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}(initial)
+	return updates, nil
+}
+
+func orderUpdate(order dto.Order) dto.UpdateOrder {
+	return dto.UpdateOrder{
+		OrderID:          order.OrderID,
+		OrderStatus:      order.OrderStatus,
+		Quantity:         order.FilledQuantity,
+		QuantityCurrency: order.QuantityCurrency,
+		UpdatedAt:        order.UpdatedAt,
+	}
 }
 
 func (o *OrderService) ListOrders(ctx context.Context,
@@ -101,10 +169,6 @@ func (o *OrderService) ListOrders(ctx context.Context,
 	if err != nil {
 		log.Error("order list failed", zap.Error(err))
 		return []dto.Order{}, "", false, err
-	}
-	if len(orderList) == 0 {
-		log.Debug("order list is empty")
-		return []dto.Order{}, "", false, nil
 	}
 	log.Debug("order list query completed", zap.Int("count", len(orderList)), zap.Bool("hasMore", hasMore))
 

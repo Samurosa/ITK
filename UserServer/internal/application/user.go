@@ -17,7 +17,8 @@ type User struct {
 
 	sessionStorage ports.SessionRepository
 
-	passwordHasher ports.PasswordHasher
+	passwordHasher  ports.PasswordHasher
+	passwordLimiter ports.PasswordChangeLimiter
 }
 
 func NewUserService(
@@ -25,12 +26,14 @@ func NewUserService(
 	userRepository ports.UserRepository,
 	sessionStorage ports.SessionRepository,
 	passwordHasher ports.PasswordHasher,
+	passwordLimiter ports.PasswordChangeLimiter,
 ) *User {
 	return &User{
-		log:            log,
-		userRepository: userRepository,
-		sessionStorage: sessionStorage,
-		passwordHasher: passwordHasher,
+		log:             log,
+		userRepository:  userRepository,
+		sessionStorage:  sessionStorage,
+		passwordHasher:  passwordHasher,
+		passwordLimiter: passwordLimiter,
 	}
 }
 
@@ -137,6 +140,10 @@ func (u *User) ChangePassword(ctx context.Context,
 	newPassword string,
 ) error {
 	log := u.log.Named("change Password")
+	allowed, err := u.passwordLimiter.AllowPasswordChange(ctx, id)
+	if err != nil || !allowed {
+		return corerrors.ErrTooManyRequests
+	}
 
 	current, err := u.userRepository.Get(ctx, id)
 	if err != nil {
@@ -165,6 +172,10 @@ func (u *User) ChangePassword(ctx context.Context,
 		return err
 	}
 	log.Info("success updated password", zap.String("id", current.ID))
+
+	if err := u.sessionStorage.DeleteByUser(ctx, id); err != nil {
+		return err
+	}
 
 	return nil
 }

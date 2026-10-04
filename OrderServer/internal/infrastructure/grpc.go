@@ -4,7 +4,7 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/core/order/service"
 
-	"github.com/Samurosa/exchange-common/shared/auth/interceptors"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	"github.com/Samurosa/exchange-common/shared/auth/session"
 
@@ -30,9 +30,9 @@ func NewGRPC(
 	port int,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		interceptors.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
+		authentication.AuthInterceptor(log, jwtParser, map[string]struct{}{}, validator),
 	), grpc.ChainStreamInterceptor(
-		interceptors.AuthStreamInterceptor(log, jwtParser, validator),
+		authentication.AuthStreamInterceptor(log, jwtParser, validator),
 	))
 
 	server.NewOrderServer(grpcServer,

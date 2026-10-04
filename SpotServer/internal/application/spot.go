@@ -105,10 +105,6 @@ func (s *Spot) ListSpots(ctx context.Context, request models.ListSpotsRequest) (
 		log.Error("spot list failed", zap.Error(err))
 		return spotsList, "", false, err
 	}
-	if len(spotsList) == 0 {
-		log.Debug("spot list is empty")
-		return spotsList, "", false, nil
-	}
 	log.Info("Slot search completed successfully")
 
 	return spotsList, cursor, hasMore, nil

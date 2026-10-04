@@ -20,7 +20,7 @@ type Order interface {
 
 	Get(ctx context.Context, orderID, userID string) (dto.Order, error)
 
-	SubscribeOrderUpdates(ctx context.Context, orderId string) (<-chan dto.UpdateOrder, error)
+	SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan dto.UpdateOrder, error)
 
 	ListOrders(ctx context.Context,
 		request models.ListOrdersRequest,

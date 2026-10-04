@@ -10,7 +10,7 @@ import (
 	"net"
 	"time"
 
-	sharedinterceptors "github.com/Samurosa/exchange-common/shared/auth/interceptors"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
 	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
 
@@ -42,17 +42,10 @@ func NewGRPC(
 		grpc.ChainUnaryInterceptor(
 			interceptors.ClientIPInterceptor(log),
 			interceptors.DeviceIDInterceptor(log),
-			sharedinterceptors.AuthInterceptor(
+			authentication.AuthInterceptor(
 				log,
 				tokenParser,
 				publicMethods,
-				sessionValidator,
-			),
-		),
-		grpc.ChainStreamInterceptor(
-			sharedinterceptors.AuthStreamInterceptor(
-				log,
-				tokenParser,
 				sessionValidator,
 			),
 		),

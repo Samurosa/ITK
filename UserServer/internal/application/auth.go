@@ -85,7 +85,7 @@ func (a *Auth) Registration(ctx context.Context,
 		Email:        email,
 		Name:         name,
 		PasswordHash: passHash,
-		Role:         user.UserRole,
+		Role:         user.AdminRole,
 		CreateTime:   now,
 		UpdateTime:   now,
 	}
@@ -110,6 +110,9 @@ func (a *Auth) Login(ctx context.Context,
 	error,
 ) {
 	log := a.log.Named("login")
+	if deviceID == "" {
+		return dto.TokensModel{}, corerrors.ErrDeviceIDEmpty
+	}
 
 	allowed, err := a.rateLimiting.Allow(ctx, ip, deviceID)
 	if err != nil {
@@ -194,7 +197,7 @@ func (a *Auth) Logout(ctx context.Context,
 	}
 	log.Debug("verify password passed", zap.String("id", sessionInfo.UserID))
 
-	err = a.sessionStorage.DeleteByJTI(ctx, jti, sessionInfo.DeviceID)
+	err = a.sessionStorage.DeleteByJTI(ctx, jti, sessionInfo.UserID)
 	if err != nil {
 		log.Error("error deleting session", zap.Error(err))
 		return err
@@ -243,13 +246,13 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	log.Debug("parsed refresh token is successful")
 
 	storedJTI := claims.AccessTokenJTI
-	//синхронизация
-	ok, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
+
+	lockOwner, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
 	if err != nil {
 		log.Error("error acquiring refresh lock", zap.Error(err))
 		return dto.TokensModel{}, corerrors.ErrSyncRedis
 	}
-	if !ok {
+	if lockOwner == "" {
 		log.Warn("generate tokens processing")
 		return dto.TokensModel{}, corerrors.ErrGenerateTokenProcessing
 	}
@@ -265,6 +268,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		releaseErr := a.syncPrimitiveForRedis.ReleaseRefreshLock(
 			releaseCtx,
 			storedJTI,
+			lockOwner,
 		)
 		if releaseErr != nil {
 			log.Error("error releasing refresh lock", zap.Error(releaseErr))
