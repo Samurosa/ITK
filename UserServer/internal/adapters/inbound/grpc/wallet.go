@@ -20,7 +20,7 @@ func (s *UserServer) Deposit(
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	return &pb.DepositResponse{}, nil
+	return nil, status.Error(codes.Unimplemented, "deposit is not implemented")
 }
 
 func (s *UserServer) GetBalances(
@@ -31,5 +31,5 @@ func (s *UserServer) GetBalances(
 	error,
 ) {
 
-	return &pb.UserBalancesInfoResponse{}, nil
+	return nil, status.Error(codes.Unimplemented, "balance lookup is not implemented")
 }

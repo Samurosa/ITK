@@ -12,3 +12,5 @@
 /httpRequests/
 # Enviroment files
 UserServer/secrets/
+#linters
+.golangci.yml

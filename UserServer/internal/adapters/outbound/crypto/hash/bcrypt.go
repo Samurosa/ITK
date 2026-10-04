@@ -1,6 +1,11 @@
 package hash
 
-import "golang.org/x/crypto/bcrypt"
+import (
+	"ITK_Code/m/v2/internal/core/auth"
+	"errors"
+
+	"golang.org/x/crypto/bcrypt"
+)
 
 type Bcrypt struct{}
 
@@ -9,5 +14,9 @@ func (Bcrypt) GeneratePasswordHash(password string) ([]byte, error) {
 }
 
 func (Bcrypt) VerifyPasswordHash(password string, hash []byte) error {
-	return bcrypt.CompareHashAndPassword(hash, []byte(password))
+	err := bcrypt.CompareHashAndPassword(hash, []byte(password))
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return auth.ErrIncorrectPassword
+	}
+	return err
 }

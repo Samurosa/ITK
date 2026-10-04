@@ -5,6 +5,7 @@ import (
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/validate"
 	"context"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/user"
 	"go.uber.org/zap"
@@ -22,6 +23,7 @@ func (s *UserServer) GetUser(ctx context.Context,
 ) {
 	userID, ok := sharedContext.UserID(ctx)
 	if !ok {
+		logging.FromContext(ctx).Named("GetUser").Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -46,9 +48,9 @@ func (s *UserServer) UpdateUserInfo(ctx context.Context,
 	*emptypb.Empty,
 	error,
 ) {
-	log := s.log.Named("UpdateUserInfo")
+	log := logging.FromContext(ctx).Named("UpdateUserInfo")
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid user update request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
@@ -56,6 +58,7 @@ func (s *UserServer) UpdateUserInfo(ctx context.Context,
 
 	userID, ok := sharedContext.UserID(ctx)
 	if !ok {
+		log.Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
@@ -78,6 +81,7 @@ func (s *UserServer) DeleteUser(ctx context.Context,
 ) {
 	userID, ok := sharedContext.UserID(ctx)
 	if !ok {
+		logging.FromContext(ctx).Named("DeleteUser").Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 	if err := s.user.DeleteUser(ctx, userID); err != nil {
@@ -93,22 +97,25 @@ func (s *UserServer) ChangePassword(ctx context.Context,
 	*emptypb.Empty,
 	error,
 ) {
-	log := s.log.Named("ChangePassword")
+	log := logging.FromContext(ctx).Named("ChangePassword")
 
 	if err := req.Validate(); err != nil {
-		log.Error("invalid request", zap.Error(err))
+		log.Debug("invalid password change request", zap.Error(err))
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
 	userID, ok := sharedContext.UserID(ctx)
 	if !ok {
+		log.Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 	if err := validate.ComparePasswords(req.GetOldPassword(), req.GetNewPassword()); err != nil {
+		log.Debug("password change rejected: new password matches current password")
 		return nil, mapper.ToGRPC(err)
 	}
 
 	if err := validate.Password(req.NewPassword); err != nil {
+		log.Debug("new password rejected by policy", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
 	}
 

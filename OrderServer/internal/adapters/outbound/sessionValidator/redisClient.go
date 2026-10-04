@@ -4,9 +4,9 @@ import (
 	"ITK_Code/m/v2/internal/config"
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 )
 
 var (
@@ -21,8 +21,7 @@ func NewStorage(client *redis.Client) *Storage {
 	return &Storage{client: client}
 }
 
-func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*redis.Client, error) {
-	log.Named("Redis outbound adapter")
+func NewRedisClient(ctx context.Context, cfg config.Redis) (*redis.Client, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:                  cfg.Addr,
 		Password:              cfg.Password,
@@ -35,11 +34,9 @@ func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*re
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
-		log.Error("Failed to connect to Redis", zap.Error(err))
 		_ = client.Close()
-		return nil, ErrPingToRedis
+		return nil, fmt.Errorf("%w: %w", ErrPingToRedis, err)
 	}
-	log.Info("Redis connected")
 
 	return client, nil
 }

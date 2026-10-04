@@ -6,7 +6,9 @@ import (
 
 	"ITK_Code/m/v2/internal/config"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
 var ErrSessionNotFound = errors.New("session not found")
@@ -32,9 +34,19 @@ func NewStorage(ctx context.Context, cfg config.Redis) (*Storage, error) {
 func (s *Storage) Validate(ctx context.Context, jti string) error {
 	exists, err := s.client.Exists(ctx, "session:"+jti).Result()
 	if err != nil {
+		log := logging.FromContext(ctx).Named("session.validate")
+		switch {
+		case errors.Is(err, context.Canceled):
+			log.Debug("redis session lookup canceled", zap.Error(err))
+		case errors.Is(err, context.DeadlineExceeded):
+			log.Warn("redis session lookup timed out", zap.Error(err))
+		default:
+			log.Error("redis session lookup failed", zap.Error(err))
+		}
 		return err
 	}
 	if exists == 0 {
+		logging.FromContext(ctx).Debug("session not found")
 		return ErrSessionNotFound
 	}
 	return nil

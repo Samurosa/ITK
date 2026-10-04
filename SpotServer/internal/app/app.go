@@ -29,31 +29,36 @@ type App struct {
 func New(cfg *config.Config, secret string) (*App, error) {
 	log, err := zap.NewProduction()
 	if err != nil {
-		fmt.Println("failed to initialize logger")
-		return nil, err
+		return nil, fmt.Errorf("initialize logger: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	parser, err := jwt.NewParser(secret)
 	if err != nil {
+		log.Error("jwt parser initialization failed", zap.Error(err))
 		cancel()
-		return nil, err
+		_ = log.Sync()
+		return nil, fmt.Errorf("initialize jwt parser: %w", err)
 	}
 
 	storagePostgres, err := postgres.NewStorage(ctx, log, cfg.Postgres)
 	if err != nil {
 		cancel()
-		log.Error("Failed to connect to postgres", zap.Error(err))
-		return nil, err
+		log.Error("postgres initialization failed", zap.Error(err))
+		_ = log.Sync()
+		return nil, fmt.Errorf("initialize postgres: %w", err)
 	}
 
-	spotService := application.NewSpot(log, storagePostgres)
+	spotService := application.NewSpot(storagePostgres)
 	redisStorage, err := sessionValidator.NewStorage(ctx, cfg.Redis)
 	if err != nil {
+		log.Error("redis initialization failed", zap.Error(err))
 		storagePostgres.ClosePool()
 		cancel()
-		return nil, err
+		_ = log.Sync()
+		return nil, fmt.Errorf("initialize redis: %w", err)
 	}
+	log.Info("redis connected")
 
 	grpcServer := infrastructure.NewGRPC(log, spotService, cfg.GRPC.Port, parser, redisStorage)
 
@@ -70,27 +75,33 @@ func New(cfg *config.Config, secret string) (*App, error) {
 }
 
 func (app *App) Start() {
-	log := app.logger.Named("starting grpc goroutine")
+	log := app.logger.Named("grpc")
 	go func() {
 		err := app.grpcApp.Run()
 		if err != nil {
-			log.Error("grpc goroutine failed", zap.Error(err))
+			log.Error("grpc server failed", zap.Error(err))
 		}
 	}()
 }
 
 func (app *App) Stop() {
-	app.logger.Debug("application stop")
+	app.logger.Info("application stopping")
 
 	app.grpcApp.Stop()
 	app.cancel()
 	app.postgres.ClosePool()
+	app.logger.Info("postgres pool closed")
+	var closeErr error
 	if err := app.redis.Close(); err != nil {
-		app.logger.Error("redis close", zap.Error(err))
+		closeErr = err
+		app.logger.Error("redis close failed", zap.Error(err))
+	} else {
+		app.logger.Info("redis connection closed")
 	}
+	app.logger.Info("application stopped", zap.Bool("cleanup_successful", closeErr == nil))
 
 	err := app.logger.Sync()
 	if err != nil {
-		app.logger.Error("error sync logger: ", zap.Error(err))
+		app.logger.Warn("logger sync failed", zap.Error(err))
 	}
 }

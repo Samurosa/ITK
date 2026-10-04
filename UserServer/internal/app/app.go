@@ -65,6 +65,7 @@ func New(
 
 	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
 	if err != nil {
+		log.Error("failed to initialize token manager", zap.Error(err))
 		if closeErr := redisStorage.Stop(); closeErr != nil {
 			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
 		}
@@ -73,8 +74,9 @@ func New(
 		return nil, err
 	}
 
-	limiterManager, err := redis.NewLimiter(log, cfg.Limiter, redisClient)
+	limiterManager, err := redis.NewLimiter(cfg.Limiter, redisClient)
 	if err != nil {
+		log.Error("failed to initialize rate limiter", zap.Error(err))
 		if closeErr := redisStorage.Stop(); closeErr != nil {
 			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
 		}
@@ -85,11 +87,12 @@ func New(
 
 	passwordHasher := hash.Bcrypt{}
 	tokenHasher := hash.SHA256{}
-	user := application.NewUserService(log, userStorage, redisStorage, passwordHasher, limiterManager)
-	auth := application.NewAuthService(log, tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
+	user := application.NewUserService(userStorage, redisStorage, passwordHasher, limiterManager)
+	auth := application.NewAuthService(tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
 
 	tokenParser, err := sharedjwt.NewParser(secret)
 	if err != nil {
+		log.Error("failed to initialize token parser", zap.Error(err))
 		if closeErr := redisStorage.Stop(); closeErr != nil {
 			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
 		}
@@ -125,7 +128,7 @@ func (app *App) Start() {
 	go func() {
 		if err := app.grpcApp.Run(); err != nil {
 			log.Error(
-				"grpc server stopped",
+				"grpc server failed",
 				zap.Error(err),
 			)
 		}
@@ -133,7 +136,7 @@ func (app *App) Start() {
 }
 
 func (app *App) Stop() {
-	app.logger.Debug("application stop")
+	app.logger.Info("application stopping")
 
 	app.grpcApp.Stop()
 	app.cancel()
@@ -142,14 +145,16 @@ func (app *App) Stop() {
 
 	if err := app.redis.Stop(); err != nil {
 		app.logger.Error(
-			"redis stop",
+			"failed to close redis connection",
 			zap.Error(err),
 		)
 	}
 
+	app.logger.Info("application stopped")
+
 	if err := app.logger.Sync(); err != nil {
 		app.logger.Error(
-			"logger sync",
+			"failed to sync logger",
 			zap.Error(err),
 		)
 	}

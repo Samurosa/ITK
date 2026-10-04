@@ -2,6 +2,7 @@ package mapper
 
 import (
 	"ITK_Code/m/v2/internal/core/coreErrors"
+	"context"
 	"errors"
 
 	"google.golang.org/grpc/codes"
@@ -10,7 +11,14 @@ import (
 
 func ToGRPC(err error) error {
 	switch {
-
+	case err == nil:
+		return nil
+	case errors.Is(err, context.Canceled):
+		return status.Error(codes.Canceled, "request canceled")
+	case errors.Is(err, context.DeadlineExceeded):
+		return status.Error(codes.DeadlineExceeded, "request deadline exceeded")
+	case errors.Is(err, coreErrors.ErrInvalidCursor):
+		return status.Error(codes.InvalidArgument, "invalid spot list cursor")
 	case errors.Is(err, coreErrors.ErrSpotNotFound):
 		return status.Error(codes.NotFound, "spot not found")
 	case errors.Is(err, coreErrors.ErrInvalidMinOrderGreaterMaxOrder):

@@ -38,7 +38,9 @@ func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*re
 
 	if err := client.Ping(ctx).Err(); err != nil {
 		log.Error("Failed to connect to Redis", zap.Error(err))
-		_ = client.Close()
+		if closeErr := client.Close(); closeErr != nil {
+			log.Warn("failed to close redis client after connection failure", zap.Error(closeErr))
+		}
 		return nil, ErrPingToRedis
 	}
 	log.Info("Redis connected")

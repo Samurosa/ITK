@@ -3,9 +3,8 @@ module ITK_Code/m/v2
 go 1.27.1
 
 require (
-	github.com/Samurosa/exchange-common v0.0.14
+	github.com/Samurosa/exchange-common v0.0.15
 	github.com/Samurosa/exchange-contract v0.2.25
-	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/redis/go-redis/v9 v9.22.0
 	github.com/shopspring/decimal v1.4.0
@@ -19,6 +18,7 @@ require (
 require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
+	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect

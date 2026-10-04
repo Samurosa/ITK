@@ -6,6 +6,8 @@ github.com/Samurosa/exchange-common v0.0.13 h1:Ip+n+hlrA4v5KG36K+Y68N3XWbAtz58jW
 github.com/Samurosa/exchange-common v0.0.13/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
 github.com/Samurosa/exchange-common v0.0.14 h1:jSAzOIlVSyRj5Puv0xb+UVthYJclQ+Hx5qEZh8aZuus=
 github.com/Samurosa/exchange-common v0.0.14/go.mod h1:ZabPv1PLeql2MDHk6QOYa307dhyMgXCeNJWJuXxJqa4=
+github.com/Samurosa/exchange-common v0.0.15 h1:XJl+I5dcPaXnLQjnppm+3tbCgxlqHoI3hLnpaWtzLOM=
+github.com/Samurosa/exchange-common v0.0.15/go.mod h1:mbq6Nqk0mFsnQLf5Cs2M3bPyIVjtBh1YR71P30DSQZk=
 github.com/Samurosa/exchange-contract v0.2.23 h1:yMi4GT24yAwqIYuMcnGdKYSTBtEHlOFURTjGFu7sGqg=
 github.com/Samurosa/exchange-contract v0.2.23/go.mod h1:a3zvCPjMxuUPZetLbs6dpmuCoVOdLqQGHC3UWKT/XBA=
 github.com/Samurosa/exchange-contract v0.2.24 h1:vRw0L17qxj4HbI292IuGRaZY8IA7Z3Tu8+L2I6Dnkrc=

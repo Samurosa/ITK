@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
+	"go.uber.org/zap"
 )
 
 func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, error) {
@@ -65,11 +67,13 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot) (string, err
 		if err != nil {
 			return "", err
 		}
+		logging.FromContext(ctx).Debug("existing spot returned", zap.String("spot_id", spotID))
 		return spotID, nil
 	}
 	if err != nil {
 		return "", err
 	}
+	logging.FromContext(ctx).Info("spot created", zap.String("spot_id", spotID))
 	return spotID, nil
 }
 
@@ -211,7 +215,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, err
+			return nil, "", false, fmt.Errorf("%w: %w", errorsCore.ErrInvalidCursor, err)
 		}
 
 		conditions = append(

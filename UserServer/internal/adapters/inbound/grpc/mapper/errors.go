@@ -29,6 +29,8 @@ func ToGRPC(err error) error {
 
 	case errors.Is(err, corerrors.ErrGenerateToken):
 		return status.Error(codes.Internal, "failed to generate token")
+	case errors.Is(err, corerrors.ErrGenerateTokenProcessing):
+		return status.Error(codes.Aborted, "token refresh already in progress")
 	case errors.Is(err, corerrors.ErrDeviceIDEmpty):
 		return status.Error(codes.InvalidArgument, "device ID is empty")
 	case errors.Is(err, corerrors.ErrInvalidToken):

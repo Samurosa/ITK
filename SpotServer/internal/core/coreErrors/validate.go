@@ -3,6 +3,8 @@ package coreErrors
 import "errors"
 
 var (
+	ErrInvalidCursor = errors.New("invalid spot list cursor")
+
 	ErrCompareBaseQuoteAsset = errors.New("base asset cannot be equal to quote asset")
 
 	ErrInvalidMinOrderGreaterMaxOrder = errors.New("minimal order size cannot be greater than max order size")

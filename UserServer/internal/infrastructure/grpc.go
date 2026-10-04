@@ -4,13 +4,12 @@ import (
 	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
 
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
-	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/user"
 	"fmt"
 	"net"
 	"time"
 
-	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
 
@@ -32,18 +31,20 @@ type GRPCApp struct {
 
 func NewGRPC(
 	log *zap.Logger,
-	user user.Service,
-	auth auth.Service,
+	user usergrps.UserService,
+	auth usergrps.AuthService,
 	port int,
 	tokenParser *sharedjwt.Parser,
 	sessionValidator sharedsession.Validator,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			interceptors.ClientIPInterceptor(log),
-			interceptors.DeviceIDInterceptor(log),
-			authentication.AuthInterceptor(
-				log,
+			logging.LoggerInterceptor(log),
+			interceptors.RequestLogInterceptor(),
+			recovery.RecoveryInterceptor(),
+			interceptors.ClientIPInterceptor(),
+			interceptors.DeviceIDInterceptor(),
+			interceptors.AuthInterceptor(
 				tokenParser,
 				publicMethods,
 				sessionValidator,
@@ -51,7 +52,7 @@ func NewGRPC(
 		),
 	)
 
-	usergrps.RegisterUserService(grpcServer, user, auth, log)
+	usergrps.RegisterUserService(grpcServer, user, auth)
 
 	return &GRPCApp{
 		log:        log,
@@ -89,7 +90,8 @@ func (a *GRPCApp) Stop() {
 	case <-done:
 		a.log.Info("grpc UserServer gracefully stopped")
 	case <-time.After(10 * time.Second):
-		a.log.Info("grpc UserServer stop timeout")
+		a.log.Warn("grpc graceful shutdown timed out; forcing stop")
 		a.grpcServer.Stop()
+		a.log.Info("grpc UserServer stopped")
 	}
 }

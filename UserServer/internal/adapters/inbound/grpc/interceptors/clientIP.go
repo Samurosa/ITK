@@ -5,6 +5,7 @@ import (
 	"net"
 	"strings"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -14,7 +15,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
+func ClientIPInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
@@ -24,7 +25,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		var ip string
 
-		log := log.Named("client-ip-interceptor")
+		log := logging.FromContext(ctx).Named("client-ip-interceptor")
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
@@ -39,7 +40,7 @@ func ClientIPInterceptor(log *zap.Logger) grpc.UnaryServerInterceptor {
 
 		if ip == "" {
 			p, ok := peer.FromContext(ctx)
-			if !ok {
+			if !ok || p == nil || p.Addr == nil {
 				log.Error("peer not found")
 				return nil, status.Error(codes.Internal, "client ip not found")
 			}

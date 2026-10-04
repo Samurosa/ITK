@@ -1,13 +1,16 @@
 package postgres
 
 import (
+	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
+	"github.com/jackc/pgx/v5"
 )
 
 func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, error) {
@@ -53,6 +56,9 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder) (string, e
 	).Scan(
 		&orderID,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", corerrors.ErrIdempotencyConflict
+	}
 	if err != nil {
 		return "", err
 	}
@@ -99,6 +105,9 @@ func (s *Storage) Get(ctx context.Context, orderID, userID string) (dto.Order, e
 		&order.CreatedAt,
 		&order.UpdatedAt,
 	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return dto.Order{}, corerrors.ErrOrderNotFound
+	}
 	if err != nil {
 		return dto.Order{}, err
 	}
@@ -130,7 +139,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, err
+			return nil, "", false, fmt.Errorf("%w: %w", corerrors.ErrInvalidCursor, err)
 		}
 
 		conditions = append(
