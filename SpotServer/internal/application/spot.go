@@ -3,8 +3,8 @@ package application
 import (
 	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/application/validate"
-	"ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/spot"
 	"ITK_Code/m/v2/internal/core/spot/models"
 	"context"
@@ -57,9 +57,9 @@ func (s *Spot) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
 
 	gotSpot, err := s.spotRepository.Get(ctx, spotID)
 	if err != nil {
-		if errors.Is(err, coreErrors.ErrSpotNotFound) {
+		if errors.Is(err, errorcore.ErrSpotNotFound) {
 			log.Debug("spot not found")
-			return dto.Spot{}, coreErrors.ErrSpotNotFound
+			return dto.Spot{}, errorcore.ErrSpotNotFound
 		}
 		logOperationError(log, "spot get failed", err)
 		return dto.Spot{}, fmt.Errorf("%w: %w", spot.ErrGetSpot, err)
@@ -73,9 +73,9 @@ func (s *Spot) EnableSpot(ctx context.Context, spotID string) error {
 	log := logging.FromContext(ctx).Named("spot.enable").With(zap.String("spot_id", spotID))
 
 	err := s.spotRepository.Enable(ctx, spotID)
-	if errors.Is(err, coreErrors.ErrSpotNotFound) {
+	if errors.Is(err, errorcore.ErrSpotNotFound) {
 		log.Debug("spot not found")
-		return coreErrors.ErrSpotNotFound
+		return errorcore.ErrSpotNotFound
 	}
 	if err != nil {
 		logOperationError(log, "spot enable failed", err)
@@ -90,9 +90,9 @@ func (s *Spot) DisableSpot(ctx context.Context, spotID string) error {
 	log := logging.FromContext(ctx).Named("spot.disable").With(zap.String("spot_id", spotID))
 
 	err := s.spotRepository.Disable(ctx, spotID)
-	if errors.Is(err, coreErrors.ErrSpotNotFound) {
+	if errors.Is(err, errorcore.ErrSpotNotFound) {
 		log.Debug("spot not found")
-		return coreErrors.ErrSpotNotFound
+		return errorcore.ErrSpotNotFound
 	}
 	if err != nil {
 		logOperationError(log, "spot disable failed", err)
@@ -120,7 +120,7 @@ func logOperationError(log *zap.Logger, message string, err error) {
 	switch {
 	case errors.Is(err, context.Canceled):
 		log.Debug(message, zap.Error(err))
-	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, coreErrors.ErrInvalidCursor):
+	case errors.Is(err, context.DeadlineExceeded), errors.Is(err, errorcore.ErrInvalidCursor):
 		log.Warn(message, zap.Error(err))
 	default:
 		log.Error(message, zap.Error(err))

@@ -3,11 +3,12 @@ package application
 import (
 	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/core/auth"
-	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/user"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
@@ -63,26 +64,29 @@ func (a *Auth) Registration(ctx context.Context,
 	allowed, err := a.rateLimiting.Allow(ctx, id, deviceID)
 	if err != nil {
 		logOperationError(log, "failed to check registration rate limit", err)
-		return "", time.Time{}, corerrors.ErrTooManyRequests
+		return "", time.Time{}, fmt.Errorf("check registration rate limit: %w", err)
 	}
+
 	if !allowed {
 		log.Warn("registration rate limit exceeded")
-		return "", time.Time{}, corerrors.ErrTooManyRequests
+		return "", time.Time{}, errorcore.ErrTooManyRequests
 	}
+
 	log.Debug("registration rate limit check passed")
 
 	passHash, err := a.passwordHasher.GeneratePasswordHash(password)
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
-		return "", time.Time{}, corerrors.ErrPassGenHash
+		return "", time.Time{}, fmt.Errorf("%w: %w", errorcore.ErrPassGenHash, err)
 	}
+
 	log.Debug("password hash generated")
 
 	newUser := user.User{
 		Email:        email,
 		Name:         name,
 		PasswordHash: passHash,
-		Role:         user.AdminRole,
+		Role:         user.UserRole,
 		CreateTime:   now,
 		UpdateTime:   now,
 	}
@@ -92,7 +96,7 @@ func (a *Auth) Registration(ctx context.Context,
 		logOperationError(log, "failed to register user", err)
 		return "", time.Time{}, err
 	}
-	// SaveUser can also restore a previously deleted account.
+
 	log.Info("user registered", zap.String("user_id", uid))
 
 	return uid, now, nil
@@ -110,18 +114,20 @@ func (a *Auth) Login(ctx context.Context,
 	log := logging.FromContext(ctx).Named("Login")
 	if deviceID == "" {
 		log.Warn("login rejected: device id is missing")
-		return dto.TokensModel{}, corerrors.ErrDeviceIDEmpty
+		return dto.TokensModel{}, errorcore.ErrDeviceIDEmpty
 	}
 
 	allowed, err := a.rateLimiting.Allow(ctx, ip, deviceID)
 	if err != nil {
 		logOperationError(log, "failed to check login rate limit", err)
-		return dto.TokensModel{}, corerrors.ErrTooManyRequests
+		return dto.TokensModel{}, fmt.Errorf("check login rate limit: %w", err)
 	}
+
 	if !allowed {
 		log.Warn("login rate limit exceeded")
-		return dto.TokensModel{}, corerrors.ErrTooManyRequests
+		return dto.TokensModel{}, errorcore.ErrTooManyRequests
 	}
+
 	log.Debug("login rate limit check passed")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
@@ -129,21 +135,29 @@ func (a *Auth) Login(ctx context.Context,
 		// Keep the missing-user path close to the existing-user path by
 		// spending the same bcrypt work before returning a generic error.
 		_ = a.passwordHasher.VerifyPasswordHash(password, []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"))
+
 		log.Warn("login rejected: incorrect credentials")
+
 		return dto.TokensModel{}, auth.ErrIncorrectCredentials
 	}
+
 	if err != nil {
 		logOperationError(log, "failed to get user for login", err)
 		return dto.TokensModel{}, err
 	}
+
 	log = log.With(zap.String("user_id", gotUser.ID))
 	log.Debug("user retrieved for login")
 
 	err = a.passwordHasher.VerifyPasswordHash(password, gotUser.PasswordHash)
 	if err != nil {
 		logPasswordVerificationError(log, err)
-		return dto.TokensModel{}, auth.ErrIncorrectCredentials
+		if errors.Is(err, auth.ErrIncorrectPassword) {
+			return dto.TokensModel{}, auth.ErrIncorrectCredentials
+		}
+		return dto.TokensModel{}, fmt.Errorf("%w: %w", errorcore.ErrPassVerifyHash, err)
 	}
+
 	log.Debug("password verified")
 
 	tokens, accessToken, _, err := a.tokenManager.Generate(gotUser, deviceID)
@@ -151,6 +165,7 @@ func (a *Auth) Login(ctx context.Context,
 		log.Error("error generating tokens", zap.Error(err))
 		return dto.TokensModel{}, err
 	}
+
 	log.Debug("tokens generated")
 
 	tokenHash := a.tokenHasher.GenerateHashSHA256(tokens.RefreshToken)
@@ -168,6 +183,7 @@ func (a *Auth) Login(ctx context.Context,
 		logOperationError(log, "failed to create session", err)
 		return dto.TokensModel{}, err
 	}
+
 	log.Info("login completed; session created")
 
 	return tokens, nil
@@ -186,6 +202,7 @@ func (a *Auth) Logout(ctx context.Context,
 		logOperationError(log, "failed to get session for logout", err)
 		return err
 	}
+
 	log = log.With(zap.String("user_id", sessionInfo.UserID))
 	log.Debug("session retrieved")
 
@@ -193,6 +210,7 @@ func (a *Auth) Logout(ctx context.Context,
 		log.Warn("refresh token does not match session")
 		return auth.ErrNoAccess
 	}
+
 	log.Debug("refresh token verified")
 
 	err = a.sessionStorage.DeleteByJTI(ctx, jti, sessionInfo.UserID)
@@ -200,6 +218,7 @@ func (a *Auth) Logout(ctx context.Context,
 		logOperationError(log, "failed to revoke session", err)
 		return err
 	}
+
 	log.Info("logout completed; session revoked")
 
 	return nil
@@ -215,6 +234,7 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		logOperationError(log, "failed to get session for logout", err)
 		return err
 	}
+
 	log = log.With(zap.String("user_id", sessionInfo.UserID))
 	log.Debug("session retrieved")
 
@@ -223,6 +243,7 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 		logOperationError(log, "failed to revoke user sessions", err)
 		return err
 	}
+
 	log.Info("logout completed; all user sessions revoked")
 
 	return nil
@@ -237,11 +258,13 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	log := logging.FromContext(ctx).Named("RefreshToken")
 
 	log.Debug("parsing refresh token")
+
 	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
 	if err != nil {
 		log.Warn("refresh token rejected")
-		return dto.TokensModel{}, corerrors.ErrInvalidToken
+		return dto.TokensModel{}, errorcore.ErrInvalidToken
 	}
+
 	log.Debug("refresh token parsed")
 
 	storedJTI := claims.AccessTokenJTI
@@ -249,12 +272,14 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	lockOwner, err := a.syncPrimitiveForRedis.AcquireRefreshLock(ctx, storedJTI)
 	if err != nil {
 		logOperationError(log, "failed to acquire refresh lock", err)
-		return dto.TokensModel{}, corerrors.ErrSyncRedis
+		return dto.TokensModel{}, fmt.Errorf("%w: %w", errorcore.ErrSyncRedis, err)
 	}
+
 	if lockOwner == "" {
 		log.Debug("token refresh already in progress")
-		return dto.TokensModel{}, corerrors.ErrGenerateTokenProcessing
+		return dto.TokensModel{}, errorcore.ErrGenerateTokenProcessing
 	}
+
 	log.Debug("refresh lock acquired")
 
 	defer func() {
@@ -273,6 +298,7 @@ func (a *Auth) RefreshToken(ctx context.Context,
 			log.Warn("failed to release refresh lock; waiting for lock expiry", zap.Error(releaseErr))
 			return
 		}
+
 		log.Debug("refresh lock release completed")
 	}()
 
@@ -281,28 +307,33 @@ func (a *Auth) RefreshToken(ctx context.Context,
 		logOperationError(log, "failed to get session for token refresh", err)
 		return dto.TokensModel{}, err
 	}
+
 	log = log.With(zap.String("user_id", sessionInfo.UserID))
 	log.Debug("session retrieved")
 
 	userID := sessionInfo.UserID
+
 	gotUser, err := a.userRepository.Get(ctx, userID)
 	if err != nil {
 		logOperationError(log, "failed to get user for token refresh", err)
 		return dto.TokensModel{}, err
 	}
+
 	log.Debug("session user retrieved")
 
 	if err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
 		log.Warn("refresh token does not match session")
 		return dto.TokensModel{}, auth.ErrNoAccess
 	}
+
 	log.Debug("refresh token verified")
 
 	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
-		return dto.TokensModel{}, corerrors.ErrGenerateToken
+		return dto.TokensModel{}, fmt.Errorf("%w: %w", errorcore.ErrGenerateToken, err)
 	}
+
 	log.Debug("new tokens generated")
 
 	tokenHash := a.tokenHasher.GenerateHashSHA256(newTokens.RefreshToken)
@@ -318,8 +349,9 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	err = a.sessionStorage.Update(ctx, storedJTI, accessToken.JTI, newSessionInfo)
 	if err != nil {
 		logOperationError(log, "failed to rotate session", err)
-		return dto.TokensModel{}, corerrors.ErrGenerateToken
+		return dto.TokensModel{}, fmt.Errorf("rotate session: %w", err)
 	}
+
 	log.Info("session rotated; tokens refreshed")
 
 	return newTokens, nil

@@ -2,8 +2,8 @@ package jwt
 
 import (
 	"ITK_Code/m/v2/internal/config"
-	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
@@ -16,7 +16,6 @@ type Token struct {
 }
 
 func NewJWT(secret string, tokensTTl config.TokensTTL) (*Token, error) {
-
 	if err := configValidate(secret, tokensTTl); err != nil {
 		return nil, err
 	}
@@ -34,8 +33,9 @@ func (j *Token) Generate(user user.User, deviceID string) (
 	error,
 ) {
 	if deviceID == "" {
-		return dto.TokensModel{}, dto.AccessToken{}, dto.RefreshToken{}, corerrors.ErrDeviceIDEmpty
+		return dto.TokensModel{}, dto.AccessToken{}, dto.RefreshToken{}, errorcore.ErrDeviceIDEmpty
 	}
+
 	accessTokenString, accessToken, err := generateAccessToken(
 		j.secret,
 		j.tokensTTL.AccessTokenTTL,
@@ -80,25 +80,26 @@ func (j *Token) Generate(user user.User, deviceID string) (
 
 func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshToken, error) {
 	if len(refreshToken) > 4096 {
-		return dto.RefreshToken{}, corerrors.ErrInvalidToken
+		return dto.RefreshToken{}, errorcore.ErrInvalidToken
 	}
+
 	token, err := jwt.ParseWithClaims(
 		refreshToken,
 		&RefreshToken{},
 		func(token *jwt.Token) (interface{}, error) {
 			if token.Method != jwt.SigningMethodHS256 {
-				return nil, corerrors.ErrInvalidToken
+				return nil, errorcore.ErrInvalidToken
 			}
+
 			return []byte(j.secret), nil
 		},
 		jwt.WithExpirationRequired(),
 	)
 	if err != nil {
-		return dto.RefreshToken{}, corerrors.ErrInvalidToken
+		return dto.RefreshToken{}, errorcore.ErrInvalidToken
 	}
 
 	claims, err := GetClaimsWithRefreshToken(token)
-
 	if err != nil {
 		return dto.RefreshToken{}, err
 	}
@@ -111,13 +112,16 @@ func (j *Token) ParseRefreshToken(refreshToken string) (dto.RefreshToken, error)
 
 func configValidate(secret string, tokensTTl config.TokensTTL) error {
 	if secret == "" {
-		return corerrors.ErrJWTSecret
+		return errorcore.ErrJWTSecret
 	}
+
 	if tokensTTl.AccessTokenTTL < time.Second {
-		return corerrors.ErrAccessTokenTTL
+		return errorcore.ErrAccessTokenTTL
 	}
+
 	if tokensTTl.RefreshTokenTTL < time.Second {
-		return corerrors.ErrRefreshTokenTTL
+		return errorcore.ErrRefreshTokenTTL
 	}
+
 	return nil
 }

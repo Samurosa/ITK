@@ -3,6 +3,7 @@ CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
     idempotency_key VARCHAR(50) NOT NULL,
+    version BIGINT NOT NULL DEFAULT 0,
 
     user_id UUID NOT NULL,
     spot_id UUID NOT NULL,
@@ -55,6 +56,9 @@ CREATE TABLE orders (
 
 CREATE INDEX idx_orders_created_at_id
     ON orders (created_at DESC, id DESC);
+
+CREATE INDEX idx_order_outbox_order_version
+    ON order_outbox (order_id, version);
 
 -- +goose Down
 DROP TABLE orders;

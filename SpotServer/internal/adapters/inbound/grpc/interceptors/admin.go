@@ -1,6 +1,7 @@
 package interceptors
 
 import (
+	"ITK_Code/m/v2/internal/core/dto"
 	"context"
 
 	"github.com/Samurosa/exchange-common/shared/auth/sharedContext"
@@ -21,7 +22,7 @@ func RequireAdmin(publicMethods map[string]struct{}) grpc.UnaryServerInterceptor
 			return nil, status.Error(codes.Unauthenticated, "authentication required")
 		}
 
-		if role != "ROLE_ADMIN" {
+		if role != string(dto.AdminRole) {
 			return nil, status.Error(codes.PermissionDenied, "administrator role required")
 		}
 

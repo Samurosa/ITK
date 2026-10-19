@@ -18,5 +18,6 @@ func (Bcrypt) VerifyPasswordHash(password string, hash []byte) error {
 	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 		return auth.ErrIncorrectPassword
 	}
+
 	return err
 }

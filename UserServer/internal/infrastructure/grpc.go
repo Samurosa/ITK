@@ -1,13 +1,15 @@
 package infrastructure
 
 import (
-	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
-
-	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
+	"context"
+	"errors"
 	"fmt"
 	"net"
-	"time"
 
+	usergrps "ITK_Code/m/v2/internal/adapters/inbound/grpc"
+	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
+
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
@@ -23,10 +25,15 @@ var publicMethods = map[string]struct{}{
 	"/user.UserService/RefreshToken": {},
 }
 
+var requiredMethods = map[string]struct{}{
+	"/user.UserService/Login": {},
+}
+
 type GRPCApp struct {
 	log        *zap.Logger
 	grpcServer *grpc.Server
 	port       int
+	serveDone  chan struct{}
 }
 
 func NewGRPC(
@@ -40,11 +47,10 @@ func NewGRPC(
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			logging.LoggerInterceptor(log),
-			interceptors.RequestLogInterceptor(),
 			recovery.RecoveryInterceptor(),
 			interceptors.ClientIPInterceptor(),
-			interceptors.DeviceIDInterceptor(),
-			interceptors.AuthInterceptor(
+			interceptors.DeviceIDInterceptor(requiredMethods),
+			authentication.AuthInterceptor(
 				tokenParser,
 				publicMethods,
 				sessionValidator,
@@ -61,37 +67,77 @@ func NewGRPC(
 	}
 }
 
-func (a *GRPCApp) Run() error {
-	listener, err := net.Listen(
+func (a *GRPCApp) Start(
+	ctx context.Context,
+	onFailure func(error),
+) error {
+	var listenConfig net.ListenConfig
+
+	listener, err := listenConfig.Listen(
+		ctx,
 		"tcp",
 		fmt.Sprintf(":%d", a.port),
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("start grpc listener: %w", err)
 	}
+
+	a.serveDone = make(chan struct{})
+
+	go func() {
+		defer close(a.serveDone)
+
+		serveErr := a.grpcServer.Serve(listener)
+		if serveErr != nil &&
+			!errors.Is(serveErr, grpc.ErrServerStopped) {
+			if onFailure != nil {
+				onFailure(fmt.Errorf("grpc serve: %w", serveErr))
+			}
+		}
+	}()
 
 	a.log.Info(
 		"grpc UserServer started",
 		zap.Int("port", a.port),
 	)
 
-	return a.grpcServer.Serve(listener)
+	return nil
 }
 
-func (a *GRPCApp) Stop() {
-	done := make(chan struct{})
+func (a *GRPCApp) Stop(ctx context.Context) error {
+	if a.serveDone == nil {
+		return nil
+	}
+
+	stopped := make(chan struct{})
 
 	go func() {
+		defer close(stopped)
 		a.grpcServer.GracefulStop()
-		close(done)
 	}()
 
 	select {
-	case <-done:
-		a.log.Info("grpc UserServer gracefully stopped")
-	case <-time.After(10 * time.Second):
-		a.log.Warn("grpc graceful shutdown timed out; forcing stop")
+	case <-stopped:
+		a.log.Info("grpc server gracefully stopped")
+
+	case <-ctx.Done():
+		a.log.Warn(
+			"grpc shutdown deadline reached; forcing stop",
+			zap.Error(ctx.Err()),
+		)
+
 		a.grpcServer.Stop()
-		a.log.Info("grpc UserServer stopped")
+
+		<-stopped
+
+		a.log.Info("grpc server forcibly stopped")
+	}
+
+	select {
+	case <-a.serveDone:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

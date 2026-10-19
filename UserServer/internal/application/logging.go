@@ -9,7 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// Expected lookup misses and canceled requests are not infrastructure failures.
 func logOperationError(log *zap.Logger, message string, err error) {
 	switch {
 	case errors.Is(err, user.ErrUserNotFound), errors.Is(err, user.ErrEmailIsExist),
@@ -27,5 +26,6 @@ func logPasswordVerificationError(log *zap.Logger, err error) {
 		log.Warn("password verification rejected")
 		return
 	}
+
 	logOperationError(log, "password verification failed", err)
 }

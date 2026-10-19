@@ -1,14 +1,16 @@
 package infrastructure
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
 	spGRPC "ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/application"
 
-	"fmt"
-	"net"
-	"time"
-
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
@@ -23,6 +25,7 @@ type GRPCApp struct {
 	log        *zap.Logger
 	grpcServer *grpc.Server
 	port       int
+	serveDone  chan struct{}
 }
 
 func NewGRPC(
@@ -36,13 +39,19 @@ func NewGRPC(
 		spotpb.SpotInstrumentService_GetSpot_FullMethodName:   {},
 		spotpb.SpotInstrumentService_ListSpots_FullMethodName: {},
 	}
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		logging.LoggerInterceptor(log),
-		interceptors.RequestLogging(),
-		recovery.RecoveryInterceptor(),
-		interceptors.Authenticate(parser, publicMethods, validator),
-		interceptors.RequireAdmin(publicMethods),
-	))
+
+	grpcServer := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			logging.LoggerInterceptor(log),
+			recovery.RecoveryInterceptor(),
+			authentication.AuthInterceptor(
+				parser,
+				publicMethods,
+				validator,
+			),
+			interceptors.RequireAdmin(publicMethods),
+		),
+	)
 
 	spGRPC.RegisterSpotService(grpcServer, spotService)
 
@@ -53,41 +62,94 @@ func NewGRPC(
 	}
 }
 
-func (a *GRPCApp) Run() error {
+func (a *GRPCApp) Start(
+	ctx context.Context,
+	onFailure func(error),
+) error {
+	var listenConfig net.ListenConfig
 
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
+	listener, err := listenConfig.Listen(
+		ctx,
+		"tcp",
+		fmt.Sprintf(":%d", a.port),
+	)
 	if err != nil {
-		return fmt.Errorf("listen on grpc port %d: %w", a.port, err)
+		return fmt.Errorf(
+			"listen on grpc port %d: %w",
+			a.port,
+			err,
+		)
 	}
+
+	a.serveDone = make(chan struct{})
+
+	go func() {
+		defer close(a.serveDone)
+
+		serveErr := a.grpcServer.Serve(listener)
+
+		if serveErr != nil &&
+			!errors.Is(serveErr, grpc.ErrServerStopped) {
+			if onFailure != nil {
+				onFailure(
+					fmt.Errorf("serve grpc: %w", serveErr),
+				)
+			}
+		}
+	}()
 
 	a.log.Info(
 		"grpc spot server listening",
 		zap.Int("port", a.port),
 	)
 
-	if err := a.grpcServer.Serve(l); err != nil {
-		return fmt.Errorf("serve grpc: %w", err)
-	}
 	return nil
 }
 
-func (a *GRPCApp) Stop() {
+func (a *GRPCApp) Stop(ctx context.Context) error {
+	if a.serveDone == nil {
+		return nil
+	}
+
 	a.log.Info("grpc spot server stopping")
 
-	done := make(chan struct{})
+	stopped := make(chan struct{})
 
 	go func() {
+		defer close(stopped)
 		a.grpcServer.GracefulStop()
-		close(done)
 	}()
+
 	select {
+	case <-stopped:
+		a.log.Info(
+			"grpc spot server gracefully stopped",
+		)
 
-	case <-done:
-		a.log.Info("grpc spot server gracefully stopped")
+	case <-ctx.Done():
+		a.log.Warn(
+			"grpc graceful shutdown timed out; forcing stop",
+			zap.Error(ctx.Err()),
+		)
 
-	case <-time.After(10 * time.Second):
-		a.log.Warn("grpc graceful shutdown timed out; forcing stop", zap.Duration("timeout", 10*time.Second))
 		a.grpcServer.Stop()
-		a.log.Info("grpc spot server force stopped")
+
+		a.log.Info(
+			"grpc spot server force stopped",
+		)
+
+		select {
+		case <-stopped:
+		default:
+			// GracefulStop is still completing.
+		}
+	}
+
+	select {
+	case <-a.serveDone:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

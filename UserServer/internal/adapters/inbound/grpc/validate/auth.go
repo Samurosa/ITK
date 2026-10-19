@@ -1,13 +1,13 @@
 package validate
 
 import (
-	"ITK_Code/m/v2/internal/core/corerrors"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"unicode"
 )
 
 func ComparePasswords(oldPassword, newPassword string) error {
 	if oldPassword == newPassword {
-		return corerrors.ErrPasswordsMatch
+		return errorcore.ErrPasswordsMatch
 	}
 
 	return nil
@@ -28,15 +28,15 @@ func Password(password string) error {
 	}
 
 	if !hasUpper {
-		return corerrors.ErrPasswordWrongUpperSymbol
+		return errorcore.ErrPasswordWrongUpperSymbol
 	}
 
 	if !hasLower {
-		return corerrors.ErrPasswordWrongLowerSymbol
+		return errorcore.ErrPasswordWrongLowerSymbol
 	}
 
 	if !hasDigit {
-		return corerrors.ErrPasswordWrongDigitSymbol
+		return errorcore.ErrPasswordWrongDigitSymbol
 	}
 
 	return nil

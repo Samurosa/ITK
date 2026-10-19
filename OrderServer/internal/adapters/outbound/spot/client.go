@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/spot"
 
@@ -30,7 +30,7 @@ func (c *Client) GetSpot(ctx context.Context, spotID string) (dto.Spot, error) {
 			Id: spotID,
 		})
 	if status.Code(err) == codes.NotFound {
-		return dto.Spot{}, corerrors.ErrSpotNotFound
+		return dto.Spot{}, errorcore.ErrSpotNotFound
 	}
 	if status.Code(err) == codes.Canceled {
 		return dto.Spot{}, fmt.Errorf("get spot: %w", context.Canceled)

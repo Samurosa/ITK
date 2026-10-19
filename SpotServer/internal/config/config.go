@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
 	"gopkg.in/yaml.v3"
 )
 
@@ -14,14 +15,7 @@ type Config struct {
 	Redis         Redis      `yaml:"redis"`
 }
 
-type Redis struct {
-	Addr        string        `yaml:"addr"`
-	Password    string        `yaml:"password"`
-	DB          int           `yaml:"db"`
-	MaxRetries  int           `yaml:"max_retries"`
-	DialTimeout time.Duration `yaml:"dial_timeout"`
-	Timeout     time.Duration `yaml:"timeout"`
-}
+type Redis = sharedredis.Config
 
 type GRPCConfig struct {
 	Port    int           `yaml:"port"`

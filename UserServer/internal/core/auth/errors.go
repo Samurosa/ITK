@@ -1,9 +1,13 @@
 package auth
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/Samurosa/exchange-common/shared/auth/session"
+)
 
 var (
-	ErrSessionNotFound = errors.New("session not found")
+	ErrSessionNotFound = session.ErrNotFound
 
 	ErrIncorrectCredentials = errors.New("incorrect login or password")
 	ErrIncorrectPassword    = errors.New("incorrect password")

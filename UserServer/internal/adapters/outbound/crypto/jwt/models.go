@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/corerrors"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -36,10 +36,12 @@ type RefreshToken struct {
 
 func (c RefreshToken) Validate() error {
 	if _, err := uuid.Parse(c.AccessTokenJTI); err != nil {
-		return corerrors.ErrInvalidToken
+		return errorcore.ErrInvalidToken
 	}
+
 	if _, err := uuid.Parse(c.RefreshTokenJTI); err != nil {
-		return corerrors.ErrInvalidToken
+		return errorcore.ErrInvalidToken
 	}
+
 	return nil
 }

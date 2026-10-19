@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,14 +34,7 @@ type Postgres struct {
 	MinConns   int32  `yaml:"min_connections"`
 }
 
-type Redis struct {
-	Addr        string        `yaml:"addr"`
-	Password    string        `yaml:"password"`
-	DB          int           `yaml:"db"`
-	MaxRetries  int           `yaml:"max_retries"`
-	DialTimeout time.Duration `yaml:"dial_timeout"`
-	Timeout     time.Duration `yaml:"timeout"`
-}
+type Redis = sharedredis.Config
 
 type Limiter struct {
 	Capacity int64         `yaml:"capacity"`
@@ -61,5 +55,6 @@ func Load(
 	if err != nil {
 		return nil, err
 	}
+
 	return &cfg, nil
 }

@@ -1,161 +1,293 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"time"
+
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/hash"
 	"ITK_Code/m/v2/internal/adapters/outbound/crypto/jwt"
-	"ITK_Code/m/v2/internal/application"
-	"context"
-
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/postgres"
 	"ITK_Code/m/v2/internal/adapters/outbound/repository/redis"
+	applicationCore "ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/infrastructure"
 
 	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
+	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
+
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 )
 
 type App struct {
-	logger   *zap.Logger
-	ctx      context.Context
-	cancel   context.CancelFunc
-	postgres *postgres.Storage
-	redis    *redis.Storage
-	grpcApp  *infrastructure.GRPCApp
+	logger     *zap.Logger
+	postgres   *postgres.Storage
+	redis      *redis.Storage
+	grpcApp    *infrastructure.GRPCApp
+	shutDowner fx.Shutdowner
+}
+
+func Run(configPath string, logger *zap.Logger) error {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		return fmt.Errorf(
+			"load config from %s: %w",
+			configPath,
+			err,
+		)
+	}
+
+	secret, err := os.ReadFile(cfg.JWTSecretPath)
+	if err != nil {
+		return fmt.Errorf(
+			"read JWT secret from %s: %w",
+			cfg.JWTSecretPath,
+			err,
+		)
+	}
+
+	fxApp := fx.New(
+		fx.Supply(
+			cfg,
+			string(secret),
+			logger,
+		),
+		fx.Provide(New),
+		fx.Invoke(registerLifecycle),
+		fx.StartTimeout(30*time.Second),
+		fx.StopTimeout(15*time.Second),
+	)
+
+	if err := fxApp.Err(); err != nil {
+		return fmt.Errorf(
+			"initialize application: %w",
+			err,
+		)
+	}
+
+	fxApp.Run()
+
+	return nil
+}
+
+func registerLifecycle(
+	lifecycle fx.Lifecycle,
+	application *App,
+) {
+	lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if err := application.Start(ctx); err != nil {
+				cleanupErr := application.closeResources()
+
+				return errors.Join(err, cleanupErr)
+			}
+
+			return nil
+		},
+
+		OnStop: func(ctx context.Context) error {
+			return application.Stop(ctx)
+		},
+	})
 }
 
 func New(
 	cfg *config.Config,
 	secret string,
+	logger *zap.Logger,
+	shutDowner fx.Shutdowner,
 ) (*App, error) {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		return nil, err
+	application := &App{
+		logger:     logger.Named("app"),
+		shutDowner: shutDowner,
 	}
 
-	log := logger.Named("app")
+	initialized := false
 
-	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		if !initialized {
+			if err := application.closeResources(); err != nil {
+				application.logger.Error(
+					"failed to clean up resources",
+					zap.Error(err),
+				)
+			}
+		}
+	}()
+
+	log := application.logger
+
+	initCtx, cancel := context.WithTimeout(
+		context.Background(),
+		30*time.Second,
+	)
+	defer cancel()
 
 	postgresStorage, err := postgres.NewStorage(
-		ctx,
+		initCtx,
 		log,
 		cfg.Postgres,
 	)
 	if err != nil {
-		cancel()
-		return nil, err
+		return nil, fmt.Errorf(
+			"initialize postgres: %w",
+			err,
+		)
 	}
 
-	redisClient, err := redis.NewRedisClient(
-		ctx,
-		log,
+	application.postgres = postgresStorage
+
+	log.Info("PostgreSQL connected")
+
+	redisClient, err := sharedredis.NewClient(
+		initCtx,
+		application.logger,
 		cfg.Redis,
 	)
 	if err != nil {
-		postgresStorage.ClosePool()
-		cancel()
-		return nil, err
+		return nil, fmt.Errorf(
+			"initialize redis: %w",
+			err,
+		)
 	}
 
-	redisStorage := redis.NewStorage(redisClient)
+	application.redis = redis.NewStorage(redisClient)
 
-	userStorage := postgres.NewUserStorage(postgresStorage.GetPool())
+	log.Info("Redis connected")
 
-	tokenManager, err := jwt.NewJWT(secret, cfg.TokensTTl)
+	userStorage := postgres.NewUserStorage(
+		postgresStorage.GetPool(),
+	)
+
+	tokenManager, err := jwt.NewJWT(
+		secret,
+		cfg.TokensTTl,
+	)
 	if err != nil {
-		log.Error("failed to initialize token manager", zap.Error(err))
-		if closeErr := redisStorage.Stop(); closeErr != nil {
-			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
-		}
-		postgresStorage.ClosePool()
-		cancel()
-		return nil, err
+		return nil, fmt.Errorf(
+			"initialize token manager: %w",
+			err,
+		)
 	}
 
-	limiterManager, err := redis.NewLimiter(cfg.Limiter, redisClient)
+	limiterManager, err := redis.NewLimiter(
+		cfg.Limiter,
+		redisClient,
+	)
 	if err != nil {
-		log.Error("failed to initialize rate limiter", zap.Error(err))
-		if closeErr := redisStorage.Stop(); closeErr != nil {
-			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
-		}
-		postgresStorage.ClosePool()
-		cancel()
-		return nil, err
+		return nil, fmt.Errorf(
+			"initialize rate limiter: %w",
+			err,
+		)
 	}
 
 	passwordHasher := hash.Bcrypt{}
 	tokenHasher := hash.SHA256{}
-	user := application.NewUserService(userStorage, redisStorage, passwordHasher, limiterManager)
-	auth := application.NewAuthService(tokenManager, redisStorage, redisStorage, limiterManager, userStorage, passwordHasher, tokenHasher)
+
+	userService := applicationCore.NewUserService(
+		userStorage,
+		application.redis,
+		passwordHasher,
+		limiterManager,
+	)
+
+	authService := applicationCore.NewAuthService(
+		tokenManager,
+		application.redis,
+		application.redis,
+		limiterManager,
+		userStorage,
+		passwordHasher,
+		tokenHasher,
+	)
 
 	tokenParser, err := sharedjwt.NewParser(secret)
 	if err != nil {
-		log.Error("failed to initialize token parser", zap.Error(err))
-		if closeErr := redisStorage.Stop(); closeErr != nil {
-			log.Warn("Failed to stop redis storage", zap.Error(closeErr))
-		}
-		postgresStorage.ClosePool()
-		cancel()
-		return nil, err
+		return nil, fmt.Errorf(
+			"initialize token parser: %w",
+			err,
+		)
 	}
 
-	var sessionValidator sharedsession.Validator = redisStorage
+	var sessionValidator sharedsession.Validator = application.redis
 
-	grpcApp := infrastructure.NewGRPC(
-		logger,
-		user,
-		auth,
+	application.grpcApp = infrastructure.NewGRPC(
+		logger.Named("grpc"),
+		userService,
+		authService,
 		cfg.GRPC.Port,
 		tokenParser,
 		sessionValidator,
 	)
 
-	return &App{
-		logger:   logger,
-		ctx:      ctx,
-		cancel:   cancel,
-		postgres: postgresStorage,
-		redis:    redisStorage,
-		grpcApp:  grpcApp,
-	}, nil
+	initialized = true
+
+	return application, nil
 }
 
-func (app *App) Start() {
-	log := app.logger.Named("grpc")
+func (a *App) Start(ctx context.Context) error {
+	err := a.grpcApp.Start(
+		ctx,
+		func(serveErr error) {
+			a.logger.Error(
+				"grpc server terminated unexpectedly",
+				zap.Error(serveErr),
+			)
 
-	go func() {
-		if err := app.grpcApp.Run(); err != nil {
-			log.Error(
-				"grpc server failed",
-				zap.Error(err),
+			if shutdownErr := a.shutDowner.Shutdown(
+				fx.ExitCode(1),
+			); shutdownErr != nil {
+				a.logger.Error(
+					"failed to request application shutdown",
+					zap.Error(shutdownErr),
+				)
+			}
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("start application: %w", err)
+	}
+
+	return nil
+}
+
+func (a *App) Stop(ctx context.Context) error {
+	a.logger.Info("application stopping")
+
+	var grpcErr error
+
+	if a.grpcApp != nil {
+		grpcErr = a.grpcApp.Stop(ctx)
+	}
+
+	cleanupErr := a.closeResources()
+
+	a.logger.Info("application stopped")
+
+	return errors.Join(grpcErr, cleanupErr)
+}
+
+func (a *App) closeResources() error {
+	var redisErr error
+
+	if a.redis != nil {
+		redisErr = a.redis.Stop()
+
+		if redisErr != nil {
+			a.logger.Error(
+				"failed to close redis connection",
+				zap.Error(redisErr),
 			)
 		}
-	}()
-}
-
-func (app *App) Stop() {
-	app.logger.Info("application stopping")
-
-	app.grpcApp.Stop()
-	app.cancel()
-
-	app.postgres.ClosePool()
-
-	if err := app.redis.Stop(); err != nil {
-		app.logger.Error(
-			"failed to close redis connection",
-			zap.Error(err),
-		)
 	}
 
-	app.logger.Info("application stopped")
-
-	if err := app.logger.Sync(); err != nil {
-		app.logger.Error(
-			"failed to sync logger",
-			zap.Error(err),
-		)
+	if a.postgres != nil {
+		a.postgres.ClosePool()
 	}
+
+	return redisErr
 }

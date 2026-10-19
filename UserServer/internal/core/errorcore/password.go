@@ -1,4 +1,4 @@
-package corerrors
+package errorcore
 
 import "errors"
 
@@ -8,5 +8,6 @@ var (
 	ErrPasswordWrongLowerSymbol = errors.New("password wrong, lower symbol not found")
 	ErrPasswordWrongDigitSymbol = errors.New("password wrong, digit not found")
 
-	ErrPassGenHash = errors.New("error generating password hash")
+	ErrPassGenHash    = errors.New("error generating password hash")
+	ErrPassVerifyHash = errors.New("error verifying password hash")
 )

@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
 	"errors"
@@ -62,7 +62,7 @@ func (s *Storage) Save(ctx context.Context, order models.CreateOrder, now time.T
 		&orderID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", corerrors.ErrIdempotencyConflict
+		return "", errorcore.ErrIdempotencyConflict
 	}
 	if err != nil {
 		return "", err
@@ -111,7 +111,7 @@ func (s *Storage) Get(ctx context.Context, orderID, userID string) (dto.Order, e
 		&order.UpdatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return dto.Order{}, corerrors.ErrOrderNotFound
+		return dto.Order{}, errorcore.ErrOrderNotFound
 	}
 	if err != nil {
 		return dto.Order{}, err
@@ -144,7 +144,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, fmt.Errorf("%w: %w", corerrors.ErrInvalidCursor, err)
+			return nil, "", false, fmt.Errorf("%w: %w", errorcore.ErrInvalidCursor, err)
 		}
 
 		conditions = append(
@@ -250,7 +250,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 		orders = orders[:pageSize]
 
 		newCursor, err := cursor.EncodeCursor(
-			cursor.SpotCursor{
+			cursor.Cursor{
 				CreatedAt: orders[len(orders)-1].CreatedAt,
 				ID:        orders[len(orders)-1].OrderID,
 			},
@@ -263,4 +263,64 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListOrdersRequest) 
 	}
 
 	return orders, "", false, nil
+}
+
+func (s *Storage) ListenOrderUpdates(ctx context.Context, orderID string) (<-chan models.OrderNotification, error) {
+	conn, err := s.pool.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"acquire order listener connection: %w",
+			err,
+		)
+	}
+
+	_, err = conn.Exec(ctx, "LISTEN order_updates")
+	if err != nil {
+		conn.Release()
+
+		return nil, fmt.Errorf(
+			"listen order updates: %w",
+			err,
+		)
+	}
+
+	notifications := make(chan models.OrderNotification, 1)
+
+	go func() {
+		defer close(notifications)
+
+		defer conn.Release()
+
+		for {
+			notification, err := conn.Conn().
+				WaitForNotification(ctx)
+
+			if err != nil {
+				if ctx.Err() == nil {
+					select {
+					case notifications <- models.OrderNotification{
+						Err: fmt.Errorf(
+							"wait for order notification: %w",
+							err,
+						),
+					}:
+					case <-ctx.Done():
+					}
+				}
+
+				return
+			}
+
+			if notification.Payload != orderID {
+				continue
+			}
+
+			select {
+			case notifications <- models.OrderNotification{}:
+			default:
+			}
+		}
+	}()
+
+	return notifications, nil
 }

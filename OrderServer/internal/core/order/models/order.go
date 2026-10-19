@@ -35,3 +35,7 @@ type OrderUpdateResult struct {
 	Update dto.UpdateOrder
 	Err    error
 }
+
+type OrderNotification struct {
+	Err error
+}

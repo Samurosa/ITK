@@ -11,22 +11,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func DeviceIDInterceptor() grpc.UnaryServerInterceptor {
+func DeviceIDInterceptor(requiredMethods map[string]struct{}) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-
-		var device string
+		if _, ok := requiredMethods[info.FullMethod]; !ok {
+			return handler(ctx, req)
+		}
 
 		log := logging.FromContext(ctx).Named("device-id-interceptor")
 
 		md, ok := metadata.FromIncomingContext(ctx)
 		if !ok {
 			log.Debug("metadata not found")
-			return handler(ctx, req)
+			return nil, status.Error(codes.InvalidArgument, "metadata not found")
 		}
 
 		deviceID := md.Get("device-id")
@@ -36,16 +37,16 @@ func DeviceIDInterceptor() grpc.UnaryServerInterceptor {
 		}
 
 		if len(deviceID) > 0 {
-			device = deviceID[0]
+			return nil, status.Error(codes.InvalidArgument, "device-id metadata must have empty value")
 		}
 
-		if device == "" {
+		if deviceID[0] == "" {
 			log.Debug("device not found in metadata")
-			return handler(ctx, req)
+			return nil, status.Error(codes.InvalidArgument, "device-id must have empty value")
 		}
 
 		ctx = sharedContext.UpdateRequestContext(ctx, func(rc *sharedContext.RequestContext) {
-			rc.Metadata.DeviceID = device
+			rc.Metadata.DeviceID = deviceID[0]
 		})
 
 		return handler(ctx, req)

@@ -84,6 +84,7 @@ func (s *UserServer) DeleteUser(ctx context.Context,
 		logging.FromContext(ctx).Named("DeleteUser").Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
+
 	if err := s.user.DeleteUser(ctx, userID); err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -109,12 +110,13 @@ func (s *UserServer) ChangePassword(ctx context.Context,
 		log.Error("authenticated user context is missing")
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
+
 	if err := validate.ComparePasswords(req.GetOldPassword(), req.GetNewPassword()); err != nil {
 		log.Debug("password change rejected: new password matches current password")
 		return nil, mapper.ToGRPC(err)
 	}
 
-	if err := validate.Password(req.NewPassword); err != nil {
+	if err := validate.Password(req.GetNewPassword()); err != nil {
 		log.Debug("new password rejected by policy", zap.Error(err))
 		return nil, mapper.ToGRPC(err)
 	}

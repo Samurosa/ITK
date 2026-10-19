@@ -11,6 +11,7 @@ type OrderRepository interface {
 	Save(context.Context, models.CreateOrder, time.Time) (string, error)
 	Get(context.Context, string, string) (dto.Order, error)
 	List(context.Context, models.ListOrdersRequest) ([]dto.Order, string, bool, error)
+	ListenOrderUpdates(ctx context.Context, orderID string) (<-chan models.OrderNotification, error)
 }
 
 type SpotClient interface {

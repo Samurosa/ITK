@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	errorsCore "ITK_Code/m/v2/internal/core/coreErrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/spot/models"
 	"context"
 	"errors"
@@ -10,11 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/encoding/cursor"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
-	"go.uber.org/zap"
 )
 
 func (s *Storage) Save(ctx context.Context, spot models.CreateSpot, now time.Time) (string, error) {
@@ -57,16 +55,15 @@ func (s *Storage) Save(ctx context.Context, spot models.CreateSpot, now time.Tim
 	).Scan(&spotID)
 
 	if err != nil {
-
 		var pgErr *pgconn.PgError
+
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			logging.FromContext(ctx).Debug("spot already exist", zap.Error(err))
-			return "", errorsCore.ErrSpotAlreadyExists
+			return "", errorcore.ErrSpotAlreadyExists
 		}
-		logging.FromContext(ctx).Error("unknow error: ", zap.Error(err))
-		return "", err
+
+		return "", fmt.Errorf("postgres save spot: %w", err)
 	}
-	logging.FromContext(ctx).Info("spot created", zap.String("spot_id", spotID))
+
 	return spotID, nil
 }
 
@@ -114,7 +111,7 @@ func (s *Storage) Get(ctx context.Context, spotID string) (dto.Spot, error) {
 	)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return dto.Spot{}, errorsCore.ErrSpotNotFound
+			return dto.Spot{}, errorcore.ErrSpotNotFound
 		}
 		return dto.Spot{}, err
 	}
@@ -155,7 +152,7 @@ func (s *Storage) Enable(ctx context.Context, spotID string) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return errorsCore.ErrSpotNotFound
+		return errorcore.ErrSpotNotFound
 	}
 
 	return nil
@@ -182,7 +179,7 @@ func (s *Storage) Disable(ctx context.Context, spotID string) error {
 	}
 
 	if result.RowsAffected() == 0 {
-		return errorsCore.ErrSpotNotFound
+		return errorcore.ErrSpotNotFound
 	}
 
 	return nil
@@ -208,7 +205,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 	if searchReq.Cursor != "" {
 		gotCursor, err := cursor.DecodeCursor(searchReq.Cursor)
 		if err != nil {
-			return nil, "", false, fmt.Errorf("%w: %w", errorsCore.ErrInvalidCursor, err)
+			return nil, "", false, fmt.Errorf("%w: %w", errorcore.ErrInvalidCursor, err)
 		}
 
 		conditions = append(
@@ -312,7 +309,7 @@ func (s *Storage) List(ctx context.Context, searchReq models.ListSpotsRequest) (
 		spots = spots[:pageSize]
 
 		newCursor, err := cursor.EncodeCursor(
-			cursor.SpotCursor{
+			cursor.Cursor{
 				CreatedAt: spots[len(spots)-1].CreatedAt,
 				ID:        spots[len(spots)-1].ID,
 			},

@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"ITK_Code/m/v2/internal/core/corerrors"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/user"
 	"time"
 
@@ -14,7 +14,6 @@ func generateRefreshToken(
 	refreshTokenTTL time.Duration,
 	jti string,
 ) (string, RefreshToken, error) {
-
 	claimsRefreshToken := RefreshToken{
 		AccessTokenJTI:  jti,
 		RefreshTokenJTI: uuid.NewString(),
@@ -27,7 +26,7 @@ func generateRefreshToken(
 
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", RefreshToken{}, corerrors.ErrGenerateToken
+		return "", RefreshToken{}, errorcore.ErrGenerateToken
 	}
 
 	return refreshTokenString, claimsRefreshToken, nil
@@ -39,7 +38,6 @@ func generateAccessToken(
 	user user.User,
 	deviceId string,
 ) (string, AccessToken, error) {
-
 	tokenID := uuid.NewString()
 	issuedAt := time.Now()
 
@@ -58,21 +56,20 @@ func generateAccessToken(
 
 	accessTokenString, err := accessToken.SignedString([]byte(secret))
 	if err != nil {
-		return "", AccessToken{}, corerrors.ErrGenerateToken
+		return "", AccessToken{}, errorcore.ErrGenerateToken
 	}
 
 	return accessTokenString, claimsAccessToken, nil
 }
 
 func GetClaimsWithRefreshToken(token *jwt.Token) (*RefreshToken, error) {
-
 	if !token.Valid {
-		return &RefreshToken{}, corerrors.ErrInvalidToken
+		return &RefreshToken{}, errorcore.ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(*RefreshToken)
 	if !ok {
-		return &RefreshToken{}, corerrors.ErrInvalidToken
+		return &RefreshToken{}, errorcore.ErrInvalidToken
 	}
 
 	return &RefreshToken{
