@@ -1,18 +1,11 @@
 package redis
 
 import (
-	"ITK_Code/m/v2/internal/config"
 	"context"
-	"errors"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
-)
-
-var (
-	ErrPingToRedis = errors.New("ping to redis failed")
 )
 
 type Storage struct {
@@ -21,31 +14,6 @@ type Storage struct {
 
 func NewStorage(client *redis.Client) *Storage {
 	return &Storage{client: client}
-}
-
-func NewRedisClient(ctx context.Context, log *zap.Logger, cfg config.Redis) (*redis.Client, error) {
-	log = log.Named("Redis outbound adapter")
-	client := redis.NewClient(&redis.Options{
-		Addr:                  cfg.Addr,
-		Password:              cfg.Password,
-		DB:                    cfg.DB,
-		MaxRetries:            cfg.MaxRetries,
-		DialTimeout:           cfg.DialTimeout,
-		ReadTimeout:           cfg.Timeout,
-		WriteTimeout:          cfg.Timeout,
-		ContextTimeoutEnabled: true,
-	})
-
-	if err := client.Ping(ctx).Err(); err != nil {
-		log.Error("Failed to connect to Redis", zap.Error(err))
-		if closeErr := client.Close(); closeErr != nil {
-			log.Warn("failed to close redis client after connection failure", zap.Error(closeErr))
-		}
-		return nil, ErrPingToRedis
-	}
-	log.Info("Redis connected")
-
-	return client, nil
 }
 
 func (s *Storage) GetClient() *redis.Client {
@@ -60,7 +28,6 @@ func (s *Storage) AcquireRefreshLock(
 	ctx context.Context,
 	jti string,
 ) (string, error) {
-
 	key := "lock:refresh:" + jti
 	owner := uuid.NewString()
 
@@ -73,9 +40,11 @@ func (s *Storage) AcquireRefreshLock(
 	if err != nil {
 		return "", err
 	}
+
 	if !ok {
 		return "", nil
 	}
+
 	return owner, nil
 }
 

@@ -45,10 +45,13 @@ services:
 
   user-server:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: UserServer/Dockerfile
     networks:
       - exchange-network
+    env_file:
+      - path: .env
+        required: false
     secrets:
       - jwt_secret
     ports:
@@ -66,4 +69,4 @@ networks:
 
 secrets:
   jwt_secret:
-    file: ./secrets/jwt_secret
+    environment: JWT_SECRET

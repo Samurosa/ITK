@@ -37,6 +37,7 @@ func (s *Storage) toRedisSave(ctx context.Context, jti string, model *auth.Sessi
 	}
 
 	_, err := s.client.TxPipelined(ctx, setter)
+
 	return err
 }
 
@@ -112,9 +113,11 @@ func (s *Storage) toRedisUpdate(ctx context.Context, storedJTI string, jti strin
 	if err != nil {
 		return err
 	}
+
 	if result == 0 {
 		return auth.ErrSessionNotFound
 	}
+
 	return nil
 }
 
@@ -130,6 +133,7 @@ func (s *Storage) deleteFromRedisByJTI(
 	pipe.SRem(ctx, "user:"+userID, key)
 
 	_, err := pipe.Exec(ctx)
+
 	return err
 }
 

@@ -1,143 +1,321 @@
 package app
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"time"
+
 	"ITK_Code/m/v2/internal/adapters/outbound/postgres"
 	"ITK_Code/m/v2/internal/adapters/outbound/sessionValidator"
 	"ITK_Code/m/v2/internal/adapters/outbound/spot"
 	"ITK_Code/m/v2/internal/application"
 	"ITK_Code/m/v2/internal/config"
 	"ITK_Code/m/v2/internal/infrastructure"
-	"context"
-	"errors"
-	"fmt"
-	"os"
-	"syscall"
 
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
+	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
+	"github.com/Samurosa/exchange-common/shared/telemetry"
+
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type App struct {
-	logger *zap.Logger
-
-	ctx    context.Context
-	cancel context.CancelFunc
-
-	postgres *postgres.Storage
-	sessions *sessionValidator.Storage
-	spotConn *grpc.ClientConn
-
-	grpcApp *infrastructure.GRPCApp
+	logger     *zap.Logger
+	postgres   *postgres.Storage
+	sessions   *sessionValidator.Storage
+	spotConn   *grpc.ClientConn
+	grpcApp    *infrastructure.GRPCApp
+	shutDowner fx.Shutdowner
 }
 
-func New(cfg *config.Config, secret string) (_ *App, initErr error) {
-	log, err := zap.NewProduction()
+func Run(configPath string, logger *zap.Logger) error {
+	cfg, err := config.Load(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("initialize logger: %w", err)
+		return fmt.Errorf(
+			"load config from %s: %w",
+			configPath,
+			err,
+		)
 	}
-	log = log.Named("order_server")
+
+	secret, err := os.ReadFile(cfg.JWTSecretPath)
+	if err != nil {
+		return fmt.Errorf(
+			"read JWT secret from %s: %w",
+			cfg.JWTSecretPath,
+			err,
+		)
+	}
+
+	shutdownTracing, err := telemetry.InitTracing(context.Background(), "order-service")
+	if err != nil {
+		return fmt.Errorf(
+			"initialize tracing: %w",
+			err,
+		)
+	}
+
 	defer func() {
-		if initErr != nil {
-			log.Error("order server initialization failed", zap.Error(initErr))
-			_ = log.Sync()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := shutdownTracing(shutdownCtx); err != nil {
+			logger.Error(
+				"failed to shutdown tracing",
+				zap.Error(err),
+			)
 		}
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	storagePostgres, err := postgres.NewStorage(ctx, log, cfg.Postgres)
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("initialize postgres: %w", err)
-	}
-	log.Info("postgres connected")
-	redisClient, err := sessionValidator.NewRedisClient(ctx, cfg.Redis)
-	if err != nil {
-		storagePostgres.ClosePool()
-		cancel()
-		return nil, fmt.Errorf("initialize redis: %w", err)
-	}
-	log.Info("redis connected")
-
-	storageSessions := sessionValidator.NewStorage(redisClient)
-
-	conn, err := grpc.NewClient(
-		cfg.Spot.GRPCAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	fxApp := fx.New(
+		fx.Supply(
+			cfg,
+			string(secret),
+			logger,
+		),
+		fx.Provide(New),
+		fx.Invoke(registerLifecycle),
+		fx.StartTimeout(30*time.Second),
+		fx.StopTimeout(15*time.Second),
 	)
-	if err != nil {
-		storagePostgres.ClosePool()
-		if closeErr := redisClient.Close(); closeErr != nil {
-			log.Warn("redis client cleanup failed", zap.Error(closeErr))
-		}
-		cancel()
-		return nil, fmt.Errorf("initialize spot grpc client: %w", err)
+
+	if err := fxApp.Err(); err != nil {
+		return fmt.Errorf(
+			"initialize application: %w",
+			err,
+		)
 	}
 
-	conn.Connect()
-	log.Debug("spot grpc connection requested", zap.String("target", cfg.Spot.GRPCAddr))
+	fxApp.Run()
 
-	spotClient := spot.NewClient(conn)
+	return nil
+}
 
-	orderService := application.NewOrderService(storagePostgres, spotClient)
+func registerLifecycle(
+	lifecycle fx.Lifecycle,
+	application *App,
+) {
+	lifecycle.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			if err := application.Start(ctx); err != nil {
+				cleanupErr := application.closeResources()
+
+				return errors.Join(err, cleanupErr)
+			}
+
+			return nil
+		},
+
+		OnStop: func(ctx context.Context) error {
+			return application.Stop(ctx)
+		},
+	})
+}
+
+func New(
+	cfg *config.Config,
+	secret string,
+	logger *zap.Logger,
+	shutDowner fx.Shutdowner,
+) (*App, error) {
+	orderApp := &App{
+		logger:     logger.Named("order_server"),
+		shutDowner: shutDowner,
+	}
+
+	initialized := false
+
+	defer func() {
+		if !initialized {
+			if err := orderApp.closeResources(); err != nil {
+				orderApp.logger.Error(
+					"failed to clean up resources",
+					zap.Error(err),
+				)
+			}
+		}
+	}()
+
+	log := orderApp.logger
+
+	initCtx, cancel := context.WithTimeout(
+		context.Background(),
+		30*time.Second,
+	)
+	defer cancel()
 
 	parser, err := jwt.NewParser(secret)
 	if err != nil {
-		if connErr := conn.Close(); connErr != nil {
-			log.Warn("spot grpc client cleanup failed", zap.Error(connErr))
-		}
-		storagePostgres.ClosePool()
-		if closeErr := redisClient.Close(); closeErr != nil {
-			log.Warn("redis client cleanup failed", zap.Error(closeErr))
-		}
-		cancel()
-		return nil, fmt.Errorf("initialize jwt parser: %w", err)
+		return nil, fmt.Errorf(
+			"initialize jwt parser: %w",
+			err,
+		)
 	}
 
-	grpcServer := infrastructure.NewGRPC(log, orderService, parser, storageSessions, cfg.GRPC.Port)
+	storagePostgres, err := postgres.NewStorage(
+		initCtx,
+		log,
+		cfg.Postgres,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"initialize postgres: %w",
+			err,
+		)
+	}
 
-	return &App{
-		logger: log,
-		ctx:    ctx,
-		cancel: cancel,
+	orderApp.postgres = storagePostgres
 
-		postgres: storagePostgres,
-		sessions: storageSessions,
-		spotConn: conn,
+	log.Info("postgres connected")
 
-		grpcApp: grpcServer,
-	}, nil
+	redisClient, err := sharedredis.NewClient(
+		initCtx,
+		log,
+		cfg.Redis,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"initialize redis: %w",
+			err,
+		)
+	}
+
+	orderApp.sessions = sessionValidator.NewStorage(
+		redisClient,
+	)
+
+	log.Info("redis connected")
+
+	conn, err := grpc.NewClient(
+		cfg.Spot.GRPCAddr,
+		grpc.WithTransportCredentials(
+			insecure.NewCredentials(),
+		),
+		grpc.WithStatsHandler(
+			otelgrpc.NewClientHandler(),
+		),
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"initialize spot grpc client: %w",
+			err,
+		)
+	}
+
+	orderApp.spotConn = conn
+
+	conn.Connect()
+
+	log.Debug(
+		"spot grpc connection requested",
+		zap.String("target", cfg.Spot.GRPCAddr),
+	)
+
+	spotClient := spot.NewClient(conn)
+
+	orderService := application.NewOrderService(
+		storagePostgres,
+		spotClient,
+	)
+
+	orderApp.grpcApp = infrastructure.NewGRPC(
+		logger.Named("grpc"),
+		orderService,
+		parser,
+		orderApp.sessions,
+		cfg.GRPC.Port,
+	)
+
+	initialized = true
+
+	return orderApp, nil
 }
 
-func (app *App) Start() {
-	log := app.logger.Named("grpc")
-	go func() {
-		err := app.grpcApp.Run()
-		if err != nil {
-			log.Error("grpc server failed", zap.Error(err))
-		}
-	}()
+func (a *App) Start(ctx context.Context) error {
+	err := a.grpcApp.Start(
+		ctx,
+		func(serveErr error) {
+			a.logger.Error(
+				"grpc server terminated unexpectedly",
+				zap.Error(serveErr),
+			)
+
+			if shutdownErr := a.shutDowner.Shutdown(
+				fx.ExitCode(1),
+			); shutdownErr != nil {
+				a.logger.Error(
+					"failed to request application shutdown",
+					zap.Error(shutdownErr),
+				)
+			}
+		},
+	)
+
+	if err != nil {
+		return fmt.Errorf(
+			"start application: %w",
+			err,
+		)
+	}
+
+	return nil
 }
 
-func (app *App) Stop() {
-	app.logger.Info("order server stopping")
+func (a *App) Stop(ctx context.Context) error {
+	a.logger.Info("order server stopping")
 
-	app.grpcApp.Stop()
-	app.cancel()
-	if err := app.sessions.Close(); err != nil {
-		app.logger.Warn("redis session client close failed", zap.Error(err))
-	}
-	app.postgres.ClosePool()
-	if err := app.spotConn.Close(); err != nil {
-		app.logger.Warn("spot grpc client close failed", zap.Error(err))
-	}
-	app.logger.Info("order server stopped")
+	var grpcErr error
 
-	err := app.logger.Sync()
-	if err != nil && !errors.Is(err, syscall.EINVAL) && !errors.Is(err, syscall.ENOTTY) {
-		// A failed sink cannot reliably report its own flush failure.
-		_, _ = fmt.Fprintf(os.Stderr, "flush order server logger: %v\n", err)
+	if a.grpcApp != nil {
+		grpcErr = a.grpcApp.Stop(ctx)
 	}
+
+	cleanupErr := a.closeResources()
+
+	a.logger.Info("order server stopped")
+
+	return errors.Join(grpcErr, cleanupErr)
+}
+
+func (a *App) closeResources() error {
+	var errs []error
+
+	if a.spotConn != nil {
+		if err := a.spotConn.Close(); err != nil {
+			a.logger.Warn(
+				"spot grpc client close failed",
+				zap.Error(err),
+			)
+
+			errs = append(errs, err)
+		} else {
+			a.logger.Info("spot grpc client closed")
+		}
+	}
+
+	if a.sessions != nil {
+		if err := a.sessions.Close(); err != nil {
+			a.logger.Warn(
+				"redis session client close failed",
+				zap.Error(err),
+			)
+
+			errs = append(errs, err)
+		} else {
+			a.logger.Info("redis connection closed")
+		}
+	}
+
+	if a.postgres != nil {
+		a.postgres.ClosePool()
+		a.logger.Info("postgres pool closed")
+	}
+
+	return errors.Join(errs...)
 }

@@ -41,9 +41,9 @@ func (s *UserServer) Registration(ctx context.Context,
 	}
 
 	id, createdAt, err := s.auth.Registration(ctx,
-		req.Email,
-		req.Password,
-		req.Name,
+		req.GetEmail(),
+		req.GetPassword(),
+		req.GetName(),
 		requestContext.Metadata.ClientIP,
 		requestContext.Metadata.DeviceID,
 	)
@@ -77,8 +77,8 @@ func (s *UserServer) Login(ctx context.Context,
 	}
 
 	tokens, err := s.auth.Login(ctx,
-		req.Email,
-		req.Password,
+		req.GetEmail(),
+		req.GetPassword(),
 		requestContext.Metadata.ClientIP,
 		requestContext.Metadata.DeviceID,
 	)
@@ -108,7 +108,7 @@ func (s *UserServer) Logout(ctx context.Context,
 		return nil, status.Error(codes.Unauthenticated, "context not provided")
 	}
 
-	err := s.auth.Logout(ctx, jti, req.RefreshToken)
+	err := s.auth.Logout(ctx, jti, req.GetRefreshToken())
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
@@ -149,9 +149,10 @@ func (s *UserServer) RefreshToken(ctx context.Context,
 		return nil, status.Error(codes.InvalidArgument, "invalid argument error: "+err.Error())
 	}
 
-	tokens, err := s.auth.RefreshToken(ctx, req.RefreshToken)
+	tokens, err := s.auth.RefreshToken(ctx, req.GetRefreshToken())
 	if err != nil {
 		return nil, mapper.ToGRPC(err)
 	}
+
 	return mapper.ToProtoTokens(tokens), nil
 }

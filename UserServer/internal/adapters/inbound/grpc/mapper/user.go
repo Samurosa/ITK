@@ -16,6 +16,8 @@ func ToProtoRole(role user.Role) shared.Role {
 		return shared.Role_ROLE_PREMIUM
 	case user.AdminRole:
 		return shared.Role_ROLE_ADMIN
+	case user.UnspecifiedRole:
+		return shared.Role_ROLE_UNSPECIFIED
 	default:
 		return shared.Role_ROLE_UNSPECIFIED
 	}

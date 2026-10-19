@@ -13,6 +13,7 @@ redis:
   addr: "redis:6379"
   password: "admin"
   db: 0
-  max_retries: 10
   dial_timeout: 10s
   timeout: 5s
+  ping_max_attempts: 5
+  ping_retry_delay: 5s

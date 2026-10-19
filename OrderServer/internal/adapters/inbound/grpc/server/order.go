@@ -103,7 +103,7 @@ func (o *OrderServer) StreamOrderUpdate(
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return mapper.ToGRPC(context.Cause(ctx))
 
 		case result, ok := <-updates:
 			if !ok {
@@ -111,7 +111,7 @@ func (o *OrderServer) StreamOrderUpdate(
 					return mapper.ToGRPC(err)
 				}
 				log.Error("order update channel closed unexpectedly")
-				return status.Error(codes.Internal, "order subscription stopped unexpectedly")
+				return status.Error(codes.Unavailable, "order subscription stopped unexpectedly")
 			}
 			if result.Err != nil {
 				return mapper.ToGRPC(result.Err)
@@ -132,7 +132,7 @@ func (o *OrderServer) StreamOrderUpdate(
 				} else {
 					log.Warn("order update send failed", zap.Error(err))
 				}
-				return err
+				return mapper.ToGRPC(err)
 			}
 			log.Debug("order update sent", zap.String("order_status", string(update.OrderStatus)))
 		}

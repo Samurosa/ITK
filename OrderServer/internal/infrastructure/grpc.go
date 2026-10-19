@@ -1,18 +1,20 @@
 package infrastructure
 
 import (
-	"ITK_Code/m/v2/internal/adapters/inbound/grpc/interceptors"
+	"context"
+	"errors"
+	"fmt"
+	"net"
+
 	"ITK_Code/m/v2/internal/adapters/inbound/grpc/server"
 	"ITK_Code/m/v2/internal/application"
 
+	"github.com/Samurosa/exchange-common/shared/auth/interceptors/authentication"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	"github.com/Samurosa/exchange-common/shared/auth/session"
-
-	"fmt"
-	"net"
-	"time"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -22,6 +24,7 @@ type GRPCApp struct {
 	log        *zap.Logger
 	grpcServer *grpc.Server
 	port       int
+	serveDone  chan struct{}
 }
 
 func NewGRPC(
@@ -31,17 +34,28 @@ func NewGRPC(
 	validator session.Validator,
 	port int,
 ) *GRPCApp {
-	grpcServer := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		logging.LoggerInterceptor(log),
-		interceptors.RequestLog(),
-		recovery.RecoveryInterceptor(),
-		interceptors.Authentication(jwtParser, validator),
-	), grpc.ChainStreamInterceptor(
-		logging.LoggerStreamInterceptor(log),
-		interceptors.StreamLog(),
-		recovery.RecoveryStreamInterceptor(),
-		interceptors.StreamAuthentication(jwtParser, validator),
-	))
+	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(
+			otelgrpc.NewServerHandler(),
+		),
+		grpc.ChainUnaryInterceptor(
+			logging.LoggerInterceptor(log),
+			recovery.RecoveryInterceptor(),
+			authentication.AuthInterceptor(
+				jwtParser,
+				map[string]struct{}{},
+				validator,
+			),
+		),
+		grpc.ChainStreamInterceptor(
+			logging.LoggerStreamInterceptor(log),
+			recovery.RecoveryStreamInterceptor(),
+			authentication.AuthStreamInterceptor(
+				jwtParser,
+				validator,
+			),
+		),
+	)
 
 	server.NewOrderServer(grpcServer, orderService)
 
@@ -52,41 +66,87 @@ func NewGRPC(
 	}
 }
 
-func (a *GRPCApp) Run() error {
+func (a *GRPCApp) Start(
+	ctx context.Context,
+	onFailure func(error),
+) error {
+	var listenConfig net.ListenConfig
 
-	l, err := net.Listen("tcp", fmt.Sprintf(":%d", a.port))
+	listener, err := listenConfig.Listen(
+		ctx,
+		"tcp",
+		fmt.Sprintf(":%d", a.port),
+	)
 	if err != nil {
-		return fmt.Errorf("listen on grpc port %d: %w", a.port, err)
+		return fmt.Errorf(
+			"listen on grpc port %d: %w",
+			a.port,
+			err,
+		)
 	}
+
+	a.serveDone = make(chan struct{})
+
+	go func() {
+		defer close(a.serveDone)
+
+		serveErr := a.grpcServer.Serve(listener)
+		if serveErr != nil &&
+			!errors.Is(serveErr, grpc.ErrServerStopped) {
+			if onFailure != nil {
+				onFailure(
+					fmt.Errorf("serve grpc: %w", serveErr),
+				)
+			}
+		}
+	}()
 
 	a.log.Info(
 		"grpc order server listening",
-		zap.String("address", l.Addr().String()),
+		zap.String("address", listener.Addr().String()),
 	)
 
-	if err := a.grpcServer.Serve(l); err != nil {
-		return fmt.Errorf("serve grpc: %w", err)
-	}
 	return nil
 }
 
-func (a *GRPCApp) Stop() {
+func (a *GRPCApp) Stop(ctx context.Context) error {
+	if a.serveDone == nil {
+		return nil
+	}
+
 	a.log.Info("grpc order server stopping")
 
-	done := make(chan struct{})
+	stopped := make(chan struct{})
 
 	go func() {
+		defer close(stopped)
 		a.grpcServer.GracefulStop()
-		close(done)
 	}()
+
 	select {
+	case <-stopped:
+		a.log.Info(
+			"grpc order server gracefully stopped",
+		)
 
-	case <-done:
-		a.log.Info("grpc order server gracefully stopped")
+	case <-ctx.Done():
+		a.log.Warn(
+			"grpc graceful shutdown timed out; forcing stop",
+			zap.Error(ctx.Err()),
+		)
 
-	case <-time.After(10 * time.Second):
-		a.log.Warn("grpc graceful shutdown timed out; forcing stop", zap.Duration("timeout", 10*time.Second))
 		a.grpcServer.Stop()
-		a.log.Info("grpc order server stopped after forced shutdown")
+
+		a.log.Info(
+			"grpc order server force stopped",
+		)
+	}
+
+	select {
+	case <-a.serveDone:
+		return nil
+
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
@@ -29,6 +30,7 @@ func NewStorage(ctx context.Context, logger *zap.Logger, postgres config.Postgre
 	}
 	configPool.MaxConns = postgres.MaxConnections
 	configPool.MinConns = postgres.MinConnections
+	configPool.ConnConfig.Tracer = otelpgx.NewTracer()
 
 	if postgres.MaxRetries < 1 {
 		return nil, errors.New("postgres max retries must be positive")

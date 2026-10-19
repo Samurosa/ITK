@@ -3,8 +3,8 @@ package application
 import (
 	"ITK_Code/m/v2/internal/application/ports"
 	"ITK_Code/m/v2/internal/application/validate"
-	coreErorrs "ITK_Code/m/v2/internal/core/corerrors"
 	"ITK_Code/m/v2/internal/core/dto"
+	coreErorrs "ITK_Code/m/v2/internal/core/errorcore"
 	"ITK_Code/m/v2/internal/core/order/models"
 	"context"
 	"errors"
@@ -14,8 +14,13 @@ import (
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
 	"github.com/shopspring/decimal"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+var orderTracer = otel.Tracer("order-service/application/order")
 
 type OrderService struct {
 	repository ports.OrderRepository
@@ -31,11 +36,17 @@ func (o *OrderService) Create(ctx context.Context,
 	createOrder models.CreateOrder,
 	userRole string,
 ) (
-	string,
-	dto.OrderStatus,
-	time.Time,
-	error,
+	orderID string,
+	status dto.OrderStatus,
+	createdAt time.Time,
+	err error,
 ) {
+	ctx, span := orderTracer.Start(ctx, "Order.Create")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("order.create").With(
 		zap.String("user_id", createOrder.UserId),
 		zap.String("spot_id", createOrder.SpotId),
@@ -94,7 +105,7 @@ func (o *OrderService) Create(ctx context.Context,
 		return "", "", time.Time{}, coreErorrs.ErrInvalidOrder
 	}
 
-	orderID, err := o.repository.Save(
+	orderID, err = o.repository.Save(
 		ctx,
 		createOrder,
 		now,
@@ -110,6 +121,9 @@ func (o *OrderService) Create(ctx context.Context,
 }
 
 func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Order, error) {
+	ctx, span := orderTracer.Start(ctx, "Order.Get")
+	defer span.End()
+
 	log := logging.FromContext(ctx).Named("order.get").With(zap.String("order_id", orderID), zap.String("user_id", userID))
 
 	order, err := o.repository.Get(
@@ -117,6 +131,7 @@ func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Ord
 		orderID, userID,
 	)
 	if err != nil {
+		recordSpanError(span, err)
 		logFailure(log, "order lookup failed", err)
 		return dto.Order{}, err
 	}
@@ -126,46 +141,127 @@ func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Ord
 }
 
 func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan models.OrderUpdateResult, error) {
+	ctx, span := orderTracer.Start(ctx, "Order.SubscribeOrderUpdates")
 	log := logging.FromContext(ctx).Named("order.subscribe").With(zap.String("order_id", orderID), zap.String("user_id", userID))
-	initial, err := o.repository.Get(ctx, orderID, userID)
+
+	listenCtx, cancel := context.WithCancel(ctx)
+
+	notifications, err := o.repository.ListenOrderUpdates(listenCtx, orderID)
 	if err != nil {
+		cancel()
+		recordSpanError(span, err)
+		span.End()
+		logFailure(log, "order listener initialization failed", err)
+		return nil, err
+	}
+
+	initial, err := o.repository.Get(listenCtx, orderID, userID)
+	if err != nil {
+		cancel()
+		recordSpanError(span, err)
+		span.End()
 		logFailure(log, "initial order lookup failed", err)
 		return nil, err
 	}
+
 	updates := make(chan models.OrderUpdateResult, 1)
-	updates <- models.OrderUpdateResult{Update: orderUpdate(initial)}
+
+	updates <- models.OrderUpdateResult{
+		Update: orderUpdate(initial),
+	}
+
 	log.Debug("order subscription started")
+
 	go func(last dto.Order) {
+		defer span.End()
+		defer cancel()
 		defer close(updates)
 		defer log.Debug("order subscription stopped")
-		ticker := time.NewTicker(time.Second)
-		defer ticker.Stop()
+
 		for {
 			select {
-			case <-ctx.Done():
+			case <-listenCtx.Done():
 				return
-			case <-ticker.C:
-				current, err := o.repository.Get(ctx, orderID, userID)
-				if err != nil {
-					logFailure(log, "order update polling failed", err)
-					select {
-					case updates <- models.OrderUpdateResult{Err: err}:
-					case <-ctx.Done():
+
+			case notification, ok := <-notifications:
+				if !ok {
+					if listenCtx.Err() == nil {
+						err := coreErorrs.ErrOrderListenerClosed
+						recordSpanError(span, err)
+						logFailure(
+							log,
+							"order listener closed",
+							err,
+						)
+
+						select {
+						case updates <- models.OrderUpdateResult{
+							Err: err,
+						}:
+						case <-listenCtx.Done():
+						}
 					}
+
 					return
 				}
-				if current.UpdatedAt.Equal(last.UpdatedAt) && current.FilledQuantity == last.FilledQuantity && current.OrderStatus == last.OrderStatus {
+
+				if notification.Err != nil {
+					recordSpanError(span, notification.Err)
+
+					logFailure(
+						log,
+						"order listener failed",
+						notification.Err,
+					)
+
+					select {
+					case updates <- models.OrderUpdateResult{
+						Err: notification.Err,
+					}:
+					case <-listenCtx.Done():
+					}
+
+					return
+				}
+
+				current, err := o.repository.Get(listenCtx, orderID, userID)
+				if err != nil {
+					recordSpanError(span, err)
+					logFailure(
+						log,
+						"order update lookup failed",
+						err,
+					)
+
+					select {
+					case updates <- models.OrderUpdateResult{
+						Err: err,
+					}:
+					case <-listenCtx.Done():
+					}
+
+					return
+				}
+
+				if current.UpdatedAt.Equal(last.UpdatedAt) &&
+					current.FilledQuantity == last.FilledQuantity &&
+					current.OrderStatus == last.OrderStatus {
 					continue
 				}
+
 				select {
-				case updates <- models.OrderUpdateResult{Update: orderUpdate(current)}:
+				case updates <- models.OrderUpdateResult{
+					Update: orderUpdate(current),
+				}:
 					last = current
-				case <-ctx.Done():
+
+				case <-listenCtx.Done():
 					return
 				}
 			}
 		}
 	}(initial)
+
 	return updates, nil
 }
 
@@ -187,10 +283,14 @@ func (o *OrderService) ListOrders(ctx context.Context,
 	bool,
 	error,
 ) {
+	ctx, span := orderTracer.Start(ctx, "Order.ListOrders")
+	defer span.End()
+
 	log := logging.FromContext(ctx).Named("order.list").With(zap.String("user_id", request.UserID))
 
 	orderList, cursor, hasMore, err := o.repository.List(ctx, request)
 	if err != nil {
+		recordSpanError(span, err)
 		logFailure(log, "order list failed", err)
 		return []dto.Order{}, "", false, err
 	}
@@ -207,4 +307,21 @@ func logFailure(log *zap.Logger, message string, err error) {
 		return
 	}
 	log.Error(message, zap.Error(err))
+}
+
+func recordSpanError(span trace.Span, err error) {
+	if err == nil ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, coreErorrs.ErrOrderNotFound) ||
+		errors.Is(err, coreErorrs.ErrSpotNotFound) ||
+		errors.Is(err, coreErorrs.ErrIdempotencyConflict) ||
+		errors.Is(err, coreErorrs.ErrInvalidCursor) ||
+		errors.Is(err, coreErorrs.ErrSpotInactive) ||
+		errors.Is(err, coreErorrs.ErrRolePermissionDenied) ||
+		errors.Is(err, coreErorrs.ErrInvalidOrder) {
+		return
+	}
+
+	span.RecordError(err)
+	span.SetStatus(codes.Error, "application operation failed")
 }

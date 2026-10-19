@@ -2,8 +2,8 @@ package redis
 
 import (
 	"ITK_Code/m/v2/internal/config"
+	"ITK_Code/m/v2/internal/core/errorcore"
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,8 +17,9 @@ type Limiter struct {
 
 func NewLimiter(cfg config.Limiter, client *redis.Client) (*Limiter, error) {
 	if cfg.Capacity <= 0 || cfg.Timer < time.Millisecond {
-		return nil, fmt.Errorf("limiter capacity must be positive and timer at least 1ms")
+		return nil, errorcore.ErrInvalidLimiterConfig
 	}
+
 	return &Limiter{
 		capacity: cfg.Capacity,
 		timer:    cfg.Timer,
@@ -36,6 +37,7 @@ func (l *Limiter) Allow(
 	if deviceID != "" {
 		keys = append(keys, "rate-limiter:device:"+deviceID)
 	}
+
 	return l.allow(ctx, keys)
 }
 
@@ -58,5 +60,6 @@ func (l *Limiter) allow(ctx context.Context, keys []string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	return result == 1, nil
 }

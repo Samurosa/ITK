@@ -38,13 +38,8 @@ func (r *UserRepository) SaveUser(ctx context.Context,
 			updated_at
 		)
 		VALUES($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (email) DO UPDATE SET
-			deleted_at = NULL,
-    		name = EXCLUDED.name,
-    		password_hash = EXCLUDED.password_hash,
-    		role = EXCLUDED.role,
-    		updated_at = EXCLUDED.updated_at
-		WHERE users.deleted_at IS NOT NULL
+		ON CONFLICT (email) 
+		DO NOTHING
 		RETURNING id
 	`
 
@@ -76,7 +71,6 @@ func (r *UserRepository) Get(ctx context.Context,
 	userCore.User,
 	error,
 ) {
-
 	query := `
 	SELECT
 		id,
@@ -124,7 +118,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 	userCore.User,
 	error,
 ) {
-
 	query := `
 	SELECT
 		id,
@@ -167,7 +160,6 @@ func (r *UserRepository) GetByEmail(ctx context.Context,
 }
 
 func (r *UserRepository) Update(ctx context.Context, userID string, update userCore.UpdateUser) error {
-
 	query := `
 		UPDATE users
 		SET
@@ -183,7 +175,6 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 		update.Name,
 		userID,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -195,8 +186,7 @@ func (r *UserRepository) Update(ctx context.Context, userID string, update userC
 	return nil
 }
 
-func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.User, newPass string) error {
-
+func (r *UserRepository) UpdatePassword(ctx context.Context, id string, newPassword []byte) error {
 	query := `
 		UPDATE users
 		SET
@@ -209,10 +199,9 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 	result, err := r.pool.Exec(
 		ctx,
 		query,
-		newPass,
-		current.ID,
+		newPassword,
+		id,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -227,7 +216,6 @@ func (r *UserRepository) UpdatePassword(ctx context.Context, current userCore.Us
 func (r *UserRepository) Delete(ctx context.Context,
 	id string,
 ) error {
-
 	query := `
 		UPDATE users
 		SET
@@ -242,7 +230,6 @@ func (r *UserRepository) Delete(ctx context.Context,
 		time.Now(),
 		id,
 	)
-
 	if err != nil {
 		return err
 	}
@@ -260,7 +247,6 @@ func (r *UserRepository) IsAdmin(ctx context.Context,
 	bool,
 	error,
 ) {
-
 	query := `
 		SELECT role
 		FROM users

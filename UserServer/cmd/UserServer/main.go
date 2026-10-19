@@ -1,12 +1,19 @@
 package main
 
 import (
-	"ITK_Code/m/v2/internal/app"
 	"flag"
-	"fmt"
+	"os"
+
+	"ITK_Code/m/v2/internal/app"
+
+	"go.uber.org/zap"
 )
 
 func main() {
+	os.Exit(runMain())
+}
+
+func runMain() int {
 	cfgPath := flag.String(
 		"config",
 		"./internal/config/local.yaml",
@@ -15,8 +22,23 @@ func main() {
 
 	flag.Parse()
 
-	if err := app.Run(*cfgPath); err != nil {
-		fmt.Println("server start error: ", err)
-		return
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		return 1
 	}
+
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	if err := app.Run(*cfgPath, logger); err != nil {
+		logger.Error(
+			"server failed",
+			zap.Error(err),
+		)
+
+		return 1
+	}
+
+	return 0
 }

@@ -22,7 +22,6 @@ func ClientIPInterceptor() grpc.UnaryServerInterceptor {
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (interface{}, error) {
-
 		var ip string
 
 		log := logging.FromContext(ctx).Named("client-ip-interceptor")
@@ -50,6 +49,7 @@ func ClientIPInterceptor() grpc.UnaryServerInterceptor {
 				log.Error("invalid peer address", zap.Error(err))
 				return nil, status.Error(codes.Internal, "invalid client ip")
 			}
+
 			log.Debug("peer address received")
 
 			ip = host

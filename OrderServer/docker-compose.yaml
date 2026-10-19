@@ -35,10 +35,13 @@ services:
 
   order-server:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: OrderServer/Dockerfile
     networks:
       - exchange-network
+    env_file:
+      - path: .env
+        required: false
     secrets:
       - jwt_secret
     ports:
@@ -49,7 +52,7 @@ services:
 
 secrets:
   jwt_secret:
-    file: ./secrets/jwt_secret
+    environment: JWT_SECRET
 
 networks:
   exchange-network:

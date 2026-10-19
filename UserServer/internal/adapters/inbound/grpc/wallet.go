@@ -30,6 +30,5 @@ func (s *UserServer) GetBalances(
 	*pb.UserBalancesInfoResponse,
 	error,
 ) {
-
 	return nil, status.Error(codes.Unimplemented, "balance lookup is not implemented")
 }
