@@ -1,0 +1,16 @@
+# This Dockerfile uses ITK_Code as its build context.
+**
+!UserServer/
+!UserServer/**
+!exchange-common/
+!exchange-common/**
+
+# Keep local credentials and Git metadata out of the build context.
+**/.git
+**/.git/**
+**/.env
+**/.env.*
+**/secrets
+**/secrets/**
+**/.idea
+**/.idea/**

@@ -1,11 +1,13 @@
 FROM golang:1.27.1 AS build
 
-WORKDIR /app
+WORKDIR /src/UserServer
 
-COPY go.mod go.sum ./
+COPY UserServer/go.mod UserServer/go.sum ./
+COPY exchange-common/go.mod exchange-common/go.sum /src/exchange-common/
 RUN go mod download
 
-COPY . .
+COPY exchange-common/ /src/exchange-common/
+COPY UserServer/ .
 
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -o /userserver \
@@ -19,8 +21,8 @@ RUN apk add --no-cache ca-certificates
 WORKDIR /
 
 COPY --from=build /userserver /userserver
-COPY --from=build /app/migrations /migrations
-COPY --from=build /app/internal/config /internal/config
+COPY --from=build /src/UserServer/migrations /migrations
+COPY --from=build /src/UserServer/internal/config /internal/config
 
 EXPOSE 50051
 

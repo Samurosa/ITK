@@ -1,8 +1,10 @@
 FROM golang:1.27.1 AS build
-WORKDIR /
-COPY go.mod go.sum ./
+WORKDIR /src/OrderServer
+COPY OrderServer/go.mod OrderServer/go.sum ./
+COPY exchange-common/go.mod exchange-common/go.sum /src/exchange-common/
 RUN go mod download
-COPY . .
+COPY exchange-common/ /src/exchange-common/
+COPY OrderServer/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /orderserver ./cmd/OrderServer/main.go
 
 
@@ -12,11 +14,11 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=build /orderserver /orderserver
 
-COPY --from=build ./internal/config /internal/config
+COPY --from=build /src/OrderServer/internal/config /internal/config
 
 
 
 WORKDIR /
-EXPOSE 50052
+EXPOSE 50053
 ENTRYPOINT ["/orderserver"]
 CMD ["-config=/internal/config/docker.yaml"]

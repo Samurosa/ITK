@@ -14,6 +14,7 @@ import (
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/recovery"
 	sharedjwt "github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedsession "github.com/Samurosa/exchange-common/shared/auth/session"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -45,6 +46,9 @@ func NewGRPC(
 	sessionValidator sharedsession.Validator,
 ) *GRPCApp {
 	grpcServer := grpc.NewServer(
+		grpc.StatsHandler(
+			otelgrpc.NewServerHandler(),
+		),
 		grpc.ChainUnaryInterceptor(
 			logging.LoggerInterceptor(log),
 			recovery.RecoveryInterceptor(),

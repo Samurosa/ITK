@@ -36,7 +36,7 @@ func DeviceIDInterceptor(requiredMethods map[string]struct{}) grpc.UnaryServerIn
 			return nil, status.Error(codes.InvalidArgument, "device-id must have one value")
 		}
 
-		if len(deviceID) > 0 {
+		if len(deviceID) <= 0 {
 			return nil, status.Error(codes.InvalidArgument, "device-id metadata must have empty value")
 		}
 

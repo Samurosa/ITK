@@ -10,8 +10,12 @@ import (
 	"fmt"
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
 	"go.uber.org/zap"
 )
+
+var userTracer = otel.Tracer("user-service/application/user")
 
 type User struct {
 	userRepository ports.UserRepository
@@ -39,12 +43,18 @@ func NewUserService(
 func (u *User) GetUser(ctx context.Context,
 	id string,
 ) (
-	user.User,
-	error,
+	current user.User,
+	err error,
 ) {
+	ctx, span := userTracer.Start(ctx, "User.GetUser")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("GetUser").With(zap.String("user_id", id))
 
-	current, err := u.userRepository.Get(ctx, id)
+	current, err = u.userRepository.Get(ctx, id)
 	if err != nil {
 		logOperationError(log, "failed to get user", err)
 		return user.User{}, err
@@ -57,10 +67,18 @@ func (u *User) GetUser(ctx context.Context,
 
 func (u *User) DeleteUser(ctx context.Context,
 	id string,
-) error {
+) (
+	err error,
+) {
+	ctx, span := userTracer.Start(ctx, "User.DeleteUser")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("DeleteUser").With(zap.String("user_id", id))
 
-	err := u.userRepository.Delete(ctx, id)
+	err = u.userRepository.Delete(ctx, id)
 	if err != nil {
 		logOperationError(log, "failed to delete user", err)
 		return err
@@ -82,12 +100,18 @@ func (u *User) DeleteUser(ctx context.Context,
 func (u *User) IsAdmin(ctx context.Context,
 	id string,
 ) (
-	bool,
-	error,
+	isAdmin bool,
+	err error,
 ) {
+	ctx, span := userTracer.Start(ctx, "User.IsAdmin")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("IsAdmin").With(zap.String("user_id", id))
 
-	isAdmin, err := u.userRepository.IsAdmin(ctx, id)
+	isAdmin, err = u.userRepository.IsAdmin(ctx, id)
 	if err != nil {
 		logOperationError(log, "failed to check user role", err)
 		return false, err
@@ -101,12 +125,18 @@ func (u *User) IsAdmin(ctx context.Context,
 func (u *User) GetUserByEmail(ctx context.Context,
 	email string,
 ) (
-	user.User,
-	error,
+	current user.User,
+	err error,
 ) {
+	ctx, span := userTracer.Start(ctx, "User.GetUserByEmail")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("GetUserByEmail")
 
-	current, err := u.userRepository.GetByEmail(ctx, email)
+	current, err = u.userRepository.GetByEmail(ctx, email)
 	if err != nil {
 		logOperationError(log, "failed to get user by email", err)
 		return current, err
@@ -120,7 +150,15 @@ func (u *User) GetUserByEmail(ctx context.Context,
 func (u *User) UpdateUserInfo(ctx context.Context,
 	id string,
 	name string,
-) error {
+) (
+	err error,
+) {
+	ctx, span := userTracer.Start(ctx, "User.UpdateUserInfo")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("UpdateUserInfo").With(zap.String("user_id", id))
 
 	updated := user.UpdateUser{}
@@ -128,7 +166,7 @@ func (u *User) UpdateUserInfo(ctx context.Context,
 		updated.Name = &name
 	}
 
-	err := u.userRepository.Update(ctx, id, updated)
+	err = u.userRepository.Update(ctx, id, updated)
 	if err != nil {
 		logOperationError(log, "failed to update user", err)
 		return err
@@ -143,7 +181,15 @@ func (u *User) ChangePassword(ctx context.Context,
 	id string,
 	oldPassword string,
 	newPassword string,
-) error {
+) (
+	err error,
+) {
+	ctx, span := userTracer.Start(ctx, "User.ChangePassword")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("ChangePassword").With(zap.String("user_id", id))
 
 	allowed, err := u.passwordLimiter.AllowPasswordChange(ctx, id)
@@ -165,7 +211,15 @@ func (u *User) ChangePassword(ctx context.Context,
 
 	log.Debug("user retrieved for password change")
 
+	_, verifyPassSpan := userTracer.Start(ctx, "User.VerifyPassword")
+
 	err = u.passwordHasher.VerifyPasswordHash(oldPassword, current.PasswordHash)
+	if err != nil && !errors.Is(err, auth.ErrIncorrectPassword) {
+		verifyPassSpan.RecordError(err)
+		verifyPassSpan.SetStatus(codes.Error, "password verification failed")
+	}
+	verifyPassSpan.End()
+
 	if err != nil {
 		logPasswordVerificationError(log, err)
 		if errors.Is(err, auth.ErrIncorrectPassword) {
@@ -176,7 +230,15 @@ func (u *User) ChangePassword(ctx context.Context,
 
 	log.Debug("current password verified")
 
+	_, hashSpan := userTracer.Start(ctx, "User.HashPassword")
+
 	newPass, err := u.passwordHasher.GeneratePasswordHash(newPassword)
+	if err != nil {
+		hashSpan.RecordError(err)
+		hashSpan.SetStatus(codes.Error, "password hashing failed")
+	}
+	hashSpan.End()
+
 	if err != nil {
 		log.Error("failed to generate password hash", zap.Error(err))
 		return fmt.Errorf("%w: %w", errorcore.ErrPassGenHash, err)

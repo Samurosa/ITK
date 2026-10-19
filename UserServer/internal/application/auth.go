@@ -12,8 +12,13 @@ import (
 	"time"
 
 	"github.com/Samurosa/exchange-common/shared/auth/interceptors/logging"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
+
+var authTracer = otel.Tracer("user-service/application/auth")
 
 type Auth struct {
 	tokenManager          ports.TokenManager
@@ -53,13 +58,19 @@ func (a *Auth) Registration(ctx context.Context,
 	id string,
 	deviceID string,
 ) (
-	string,
-	time.Time,
-	error,
+	userID string,
+	createdAt time.Time,
+	err error,
 ) {
-	now := time.Now()
+	ctx, span := authTracer.Start(ctx, "Auth.Registration")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
 
 	log := logging.FromContext(ctx).Named("Registration")
+
+	now := time.Now()
 
 	allowed, err := a.rateLimiting.Allow(ctx, id, deviceID)
 	if err != nil {
@@ -74,7 +85,16 @@ func (a *Auth) Registration(ctx context.Context,
 
 	log.Debug("registration rate limit check passed")
 
+	_, hashSpan := authTracer.Start(ctx, "Auth.HashPassword")
+
 	passHash, err := a.passwordHasher.GeneratePasswordHash(password)
+
+	if err != nil {
+		hashSpan.RecordError(err)
+		hashSpan.SetStatus(codes.Error, "password hashing failed")
+	}
+	hashSpan.End()
+
 	if err != nil {
 		log.Error("error generating password hash", zap.Error(err))
 		return "", time.Time{}, fmt.Errorf("%w: %w", errorcore.ErrPassGenHash, err)
@@ -108,9 +128,15 @@ func (a *Auth) Login(ctx context.Context,
 	ip string,
 	deviceID string,
 ) (
-	dto.TokensModel,
-	error,
+	tokens dto.TokensModel,
+	err error,
 ) {
+	ctx, span := authTracer.Start(ctx, "Auth.Login")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("Login")
 	if deviceID == "" {
 		log.Warn("login rejected: device id is missing")
@@ -131,13 +157,18 @@ func (a *Auth) Login(ctx context.Context,
 	log.Debug("login rate limit check passed")
 
 	gotUser, err := a.userRepository.GetByEmail(ctx, email)
+
 	if errors.Is(err, user.ErrUserNotFound) {
-		// Keep the missing-user path close to the existing-user path by
-		// spending the same bcrypt work before returning a generic error.
-		_ = a.passwordHasher.VerifyPasswordHash(password, []byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"))
+		_, verifySpan := authTracer.Start(ctx, "Auth.VerifyPassword")
+
+		_ = a.passwordHasher.VerifyPasswordHash(
+			password,
+			[]byte("$2a$14$fidR2tQBZMd5vck77HC6TeeEcC4oXWjR4jZqxP76Jpl1biQEaQmpa"),
+		)
+
+		verifySpan.End()
 
 		log.Warn("login rejected: incorrect credentials")
-
 		return dto.TokensModel{}, auth.ErrIncorrectCredentials
 	}
 
@@ -149,7 +180,20 @@ func (a *Auth) Login(ctx context.Context,
 	log = log.With(zap.String("user_id", gotUser.ID))
 	log.Debug("user retrieved for login")
 
-	err = a.passwordHasher.VerifyPasswordHash(password, gotUser.PasswordHash)
+	_, verifySpan := authTracer.Start(ctx, "Auth.VerifyPassword")
+
+	err = a.passwordHasher.VerifyPasswordHash(
+		password,
+		gotUser.PasswordHash,
+	)
+
+	if err != nil && !errors.Is(err, auth.ErrIncorrectPassword) {
+		verifySpan.RecordError(err)
+		verifySpan.SetStatus(codes.Error, "password verification failed")
+	}
+
+	verifySpan.End()
+
 	if err != nil {
 		logPasswordVerificationError(log, err)
 		if errors.Is(err, auth.ErrIncorrectPassword) {
@@ -157,10 +201,17 @@ func (a *Auth) Login(ctx context.Context,
 		}
 		return dto.TokensModel{}, fmt.Errorf("%w: %w", errorcore.ErrPassVerifyHash, err)
 	}
-
 	log.Debug("password verified")
 
+	_, tokensGenSpan := authTracer.Start(ctx, "Auth.GenerateTokens")
+
 	tokens, accessToken, _, err := a.tokenManager.Generate(gotUser, deviceID)
+	if err != nil {
+		tokensGenSpan.RecordError(err)
+		tokensGenSpan.SetStatus(codes.Error, "failed to generate tokens")
+	}
+	tokensGenSpan.End()
+
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return dto.TokensModel{}, err
@@ -195,6 +246,12 @@ func (a *Auth) Logout(ctx context.Context,
 ) (
 	err error,
 ) {
+	ctx, span := authTracer.Start(ctx, "Auth.Logout")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("Logout")
 
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
@@ -206,7 +263,13 @@ func (a *Auth) Logout(ctx context.Context,
 	log = log.With(zap.String("user_id", sessionInfo.UserID))
 	log.Debug("session retrieved")
 
-	if err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	_, tokenCompareSpan := authTracer.Start(ctx, "Auth.CompareToken")
+
+	err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
+
+	tokenCompareSpan.End()
+
+	if err != nil {
 		log.Warn("refresh token does not match session")
 		return auth.ErrNoAccess
 	}
@@ -226,7 +289,13 @@ func (a *Auth) Logout(ctx context.Context,
 
 func (a *Auth) LogoutAllDevices(ctx context.Context,
 	jti string,
-) error {
+) (err error) {
+	ctx, span := authTracer.Start(ctx, "Auth.LogoutAllDevices")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("LogoutAllDevices")
 
 	sessionInfo, err := a.sessionStorage.GetByJTI(ctx, jti)
@@ -252,14 +321,25 @@ func (a *Auth) LogoutAllDevices(ctx context.Context,
 func (a *Auth) RefreshToken(ctx context.Context,
 	refreshToken string,
 ) (
-	dto.TokensModel,
-	error,
+	tokens dto.TokensModel,
+	err error,
 ) {
+	ctx, span := authTracer.Start(ctx, "Auth.RefreshToken")
+	defer func() {
+		recordSpanError(span, err)
+		span.End()
+	}()
+
 	log := logging.FromContext(ctx).Named("RefreshToken")
 
 	log.Debug("parsing refresh token")
 
+	_, parseRefreshTokenSpan := authTracer.Start(ctx, "Auth.ParseRefreshToken")
+
 	claims, err := a.tokenManager.ParseRefreshToken(refreshToken)
+
+	parseRefreshTokenSpan.End()
+
 	if err != nil {
 		log.Warn("refresh token rejected")
 		return dto.TokensModel{}, errorcore.ErrInvalidToken
@@ -321,14 +401,29 @@ func (a *Auth) RefreshToken(ctx context.Context,
 
 	log.Debug("session user retrieved")
 
-	if err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash); err != nil {
+	_, tokenCompareSpan := authTracer.Start(ctx, "Auth.CompareToken")
+
+	err = a.tokenHasher.CompareHashSHA256(refreshToken, sessionInfo.RefreshTokenHash)
+
+	tokenCompareSpan.End()
+
+	if err != nil {
 		log.Warn("refresh token does not match session")
 		return dto.TokensModel{}, auth.ErrNoAccess
 	}
 
 	log.Debug("refresh token verified")
 
+	_, tokensGenSpan := authTracer.Start(ctx, "Auth.GenerateTokens")
+
 	newTokens, accessToken, _, err := a.tokenManager.Generate(gotUser, sessionInfo.DeviceID)
+	if err != nil {
+		tokensGenSpan.RecordError(err)
+		tokensGenSpan.SetStatus(codes.Error, "failed to generate tokens")
+	}
+
+	tokensGenSpan.End()
+
 	if err != nil {
 		log.Error("error generating tokens", zap.Error(err))
 		return dto.TokensModel{}, fmt.Errorf("%w: %w", errorcore.ErrGenerateToken, err)
@@ -355,4 +450,17 @@ func (a *Auth) RefreshToken(ctx context.Context,
 	log.Info("session rotated; tokens refreshed")
 
 	return newTokens, nil
+}
+
+func recordSpanError(span trace.Span, err error) {
+	if err == nil ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, auth.ErrIncorrectCredentials) ||
+		errors.Is(err, auth.ErrNoAccess) ||
+		errors.Is(err, errorcore.ErrTooManyRequests) {
+		return
+	}
+
+	span.RecordError(err)
+	span.SetStatus(codes.Error, "application operation failed")
 }

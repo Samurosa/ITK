@@ -23,6 +23,10 @@ CREATE TABLE order_outbox (
     CHECK (version > 0)
 );
 
+
+CREATE INDEX idx_order_outbox_order_version
+    ON order_outbox (order_id, version);
+
 -- +goose Down
 DROP TABLE IF EXISTS order_outbox;
 

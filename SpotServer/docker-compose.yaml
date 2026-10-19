@@ -35,10 +35,13 @@ services:
 
   spot-server:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: SpotServer/Dockerfile
     networks:
       - exchange-network
+    env_file:
+      - path: .env
+        required: false
     ports:
       - "50052:50052"
     secrets:
@@ -56,4 +59,4 @@ volumes:
 
 secrets:
   jwt_secret:
-    file: ../UserServer/secrets/jwt_secret
+    environment: JWT_SECRET

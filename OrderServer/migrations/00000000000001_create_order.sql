@@ -57,8 +57,6 @@ CREATE TABLE orders (
 CREATE INDEX idx_orders_created_at_id
     ON orders (created_at DESC, id DESC);
 
-CREATE INDEX idx_order_outbox_order_version
-    ON order_outbox (order_id, version);
 
 -- +goose Down
 DROP TABLE orders;

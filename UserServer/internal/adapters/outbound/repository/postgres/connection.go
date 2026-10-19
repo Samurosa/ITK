@@ -6,6 +6,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 )
@@ -29,6 +30,8 @@ func NewStorage(ctx context.Context, logger *zap.Logger, cfg config.Postgres) (*
 
 	connectionSettings.MaxConns = cfg.MaxConns
 	connectionSettings.MinConns = cfg.MinConns
+
+	connectionSettings.ConnConfig.Tracer = otelpgx.NewTracer()
 
 	for i := 1; i <= cfg.MaxRetries; i++ {
 		pool, err := pgxpool.NewWithConfig(ctx, connectionSettings)

@@ -1,8 +1,10 @@
 FROM golang:1.27.1 AS build
-WORKDIR /
-COPY go.mod go.sum ./
+WORKDIR /src/SpotServer
+COPY SpotServer/go.mod SpotServer/go.sum ./
+COPY exchange-common/go.mod exchange-common/go.sum /src/exchange-common/
 RUN go mod download
-COPY . .
+COPY exchange-common/ /src/exchange-common/
+COPY SpotServer/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -o /spotserver ./cmd/SpotServer/main.go
 
 
@@ -12,7 +14,7 @@ RUN apk add --no-cache ca-certificates
 
 COPY --from=build /spotserver /spotserver
 
-COPY --from=build ./internal/config /internal/config
+COPY --from=build /src/SpotServer/internal/config /internal/config
 
 
 

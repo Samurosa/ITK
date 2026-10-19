@@ -15,6 +15,7 @@ import (
 
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
+	"github.com/Samurosa/exchange-common/shared/telemetry"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -46,6 +47,26 @@ func Run(configPath string, logger *zap.Logger) error {
 			err,
 		)
 	}
+
+	shutdownTracing, err := telemetry.InitTracing(context.Background(), "spot-service")
+	if err != nil {
+		return fmt.Errorf(
+			"initialize tracing: %w",
+			err,
+		)
+	}
+
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := shutdownTracing(shutdownCtx); err != nil {
+			logger.Error(
+				"failed to shutdown tracing",
+				zap.Error(err),
+			)
+		}
+	}()
 
 	fxApp := fx.New(
 		fx.Supply(
