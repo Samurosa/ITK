@@ -14,6 +14,42 @@ type Config struct {
 	Spot          Spot       `yaml:"spot"`
 	Postgres      Postgres   `yaml:"postgres"`
 	Redis         Redis      `yaml:"redis"`
+	Kafka         Kafka      `yaml:"kafka"`
+}
+
+type Kafka struct {
+	Brokers  []string      `yaml:"brokers"`
+	ClientID string        `yaml:"client_id"`
+	Topics   KafkaTopics   `yaml:"topics"`
+	Producer KafkaProducer `yaml:"producer"`
+	Consumer KafkaConsumer `yaml:"consumer"`
+	Security KafkaSecurity `yaml:"security"`
+}
+
+type KafkaTopics struct {
+	Commands string `yaml:"commands"`
+	Events   string `yaml:"events"`
+}
+
+type KafkaProducer struct {
+	RequiredAcks string        `yaml:"required_acks"`
+	Idempotent   bool          `yaml:"idempotent"`
+	Compression  string        `yaml:"compression"`
+	BatchTimeout time.Duration `yaml:"batch_timeout"`
+	RetryMax     int           `yaml:"retry_max"`
+}
+
+type KafkaConsumer struct {
+	GroupID     string `yaml:"group_id"`
+	AutoCommit  bool   `yaml:"auto_commit"`
+	StartOffset string `yaml:"start_offset"`
+}
+
+type KafkaSecurity struct {
+	Protocol      string `yaml:"protocol"`
+	SASLMechanism string `yaml:"sasl_mechanism"`
+	Username      string `yaml:"username"`
+	Password      string `yaml:"password"`
 }
 
 type GRPCConfig struct {

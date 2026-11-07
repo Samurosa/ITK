@@ -17,3 +17,30 @@ redis:
   timeout: 5s
   ping_max_attempts: 5
   ping_retry_delay: 5s
+kafka:
+  brokers:
+    - "kafka:9094"
+
+  client_id: "order-service"
+
+  topics:
+    commands: "order.commands"
+    events: "order.events"
+
+  producer:
+    required_acks: "all"
+    idempotent: true
+    compression: "snappy"
+    batch_timeout: 5ms
+    retry_max: 10
+
+  consumer:
+    group_id: "order-service"
+    auto_commit: false
+    start_offset: "earliest"
+
+  security:
+    protocol: "PLAINTEXT"
+    sasl_mechanism: ""
+    username: ""
+    password: ""

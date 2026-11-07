@@ -2,7 +2,7 @@ package mapper
 
 import (
 	"ITK_Code/m/v2/internal/core/dto"
-	"ITK_Code/m/v2/internal/core/order/models"
+	"ITK_Code/m/v2/internal/core/models"
 
 	pb "github.com/Samurosa/exchange-contract/protobuf/gen/go/order"
 	"github.com/Samurosa/exchange-contract/protobuf/gen/go/shared"
@@ -17,8 +17,8 @@ func ToProtoOrder(dtoOrder dto.Order) *pb.Order {
 		SpotId:         dtoOrder.SpotID,
 		OrderSide:      ToProtoSide(dtoOrder.OrderSide),
 		Price:          &shared.Money{Currency: dtoOrder.PriceCurrency, Amount: dtoOrder.Price.String()},
-		Quantity:       &shared.Money{Currency: dtoOrder.QuantityCurrency, Amount: dtoOrder.Quantity},
-		FilledQuantity: &shared.Money{Currency: dtoOrder.QuantityCurrency, Amount: dtoOrder.FilledQuantity},
+		Quantity:       &shared.Money{Currency: dtoOrder.QuantityCurrency, Amount: dtoOrder.Quantity.String()},
+		FilledQuantity: &shared.Money{Currency: dtoOrder.QuantityCurrency, Amount: dtoOrder.FilledQuantity.String()},
 		OrderStatus:    ToProtoStatus(dtoOrder.OrderStatus),
 		CreatedAt:      timestamppb.New(dtoOrder.CreatedAt),
 		UpdatedAt:      timestamppb.New(dtoOrder.UpdatedAt),
@@ -85,7 +85,7 @@ func FromProtoCreateOrder(req *pb.CreateOrderRequest) (models.CreateOrder, error
 		return models.CreateOrder{}, err
 	}
 	return models.CreateOrder{
-		SpotId:           req.SpotId,
+		SpotID:           req.SpotId,
 		OrderSide:        FromProtoOrderSide(req.OrderSide),
 		IdempotencyKey:   req.IdempotencyKey,
 		Price:            price,
@@ -99,7 +99,7 @@ func FromProtoListOrdersRequest(req *pb.ListOrdersRequest) models.ListOrdersRequ
 	result := models.ListOrdersRequest{
 		PageSize: req.GetPageSize(),
 		Cursor:   req.GetCursor(),
-		SpotId:   req.GetSpotId(),
+		SpotID:   req.GetSpotId(),
 	}
 
 	if req.Status != nil {

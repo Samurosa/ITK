@@ -38,7 +38,7 @@ func (o *OrderServer) CreateOrder(ctx context.Context,
 		return nil, status.Error(codes.Unauthenticated, "request context not provided")
 	}
 
-	requestOrder.UserId = tokenContext.Principal.UserID
+	requestOrder.UserID = tokenContext.Principal.UserID
 
 	orderID, orderStatus, createdTo, err := o.order.Create(ctx, requestOrder, tokenContext.Principal.Role)
 	if err != nil {
@@ -121,7 +121,7 @@ func (o *OrderServer) StreamOrderUpdate(
 			response := &pb.StreamOrderUpdateResponse{
 				OrderId:        update.OrderID,
 				OrderStatus:    mapper.ToProtoStatus(update.OrderStatus),
-				FilledQuantity: &shared.Money{Currency: update.QuantityCurrency, Amount: update.Quantity},
+				FilledQuantity: &shared.Money{Currency: update.QuantityCurrency, Amount: update.Quantity.String()},
 				UpdatedAt:      timestamppb.New(update.UpdatedAt),
 			}
 

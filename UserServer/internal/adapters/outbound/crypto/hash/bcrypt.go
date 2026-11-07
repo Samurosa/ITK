@@ -10,7 +10,7 @@ import (
 type Bcrypt struct{}
 
 func (Bcrypt) GeneratePasswordHash(password string) ([]byte, error) {
-	return bcrypt.GenerateFromPassword([]byte(password), 14)
+	return bcrypt.GenerateFromPassword([]byte(password), 10)
 }
 
 func (Bcrypt) VerifyPasswordHash(password string, hash []byte) error {

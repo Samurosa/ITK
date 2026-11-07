@@ -26,20 +26,31 @@ const (
 	SideSell        OrderSide = "ORDER_SIDE_SELL"
 )
 
+type OrderMessage string
+
+const (
+	CreateOrder          OrderMessage = "CREATE_ORDER"
+	CancelOrder          OrderMessage = "CANCEL_ORDER"
+	OrderAccepted        OrderMessage = "ORDER_ACCEPTED"
+	OrderPartiallyFilled OrderMessage = "ORDER_PARTIALLY_FILLED"
+	OrderFilled          OrderMessage = "ORDER_FILLED"
+	OrderRejected        OrderMessage = "ORDER_REJECTED"
+)
+
 type Order struct {
 	OrderID string
-
-	UserID string
-	SpotID string
+	UserID  string
+	SpotID  string
 
 	OrderSide   OrderSide
 	OrderStatus OrderStatus
 
-	Price          decimal.Decimal
-	PriceCurrency  string
-	FilledQuantity string
+	Price         decimal.Decimal
+	PriceCurrency string
 
-	Quantity         string
+	FilledQuantity decimal.Decimal
+
+	Quantity         decimal.Decimal
 	QuantityCurrency string
 
 	CreatedAt time.Time
@@ -47,11 +58,11 @@ type Order struct {
 }
 
 type UpdateOrder struct {
-	OrderID string
-
+	OrderID     string
 	OrderStatus OrderStatus
 
-	Quantity         string
+	FilledQuantity   decimal.Decimal
+	Quantity         decimal.Decimal
 	QuantityCurrency string
 
 	UpdatedAt time.Time
@@ -69,14 +80,10 @@ type Role string
 
 const (
 	UnspecifiedRole Role = "ROLE_UNSPECIFIED"
-
-	UserRole Role = "ROLE_USER"
-
-	GuestRole Role = "ROLE_GUEST"
-
-	PremiumRole Role = "ROLE_PREMIUM"
-
-	AdminRole Role = "ROLE_ADMIN"
+	UserRole        Role = "ROLE_USER"
+	GuestRole       Role = "ROLE_GUEST"
+	PremiumRole     Role = "ROLE_PREMIUM"
+	AdminRole       Role = "ROLE_ADMIN"
 )
 
 type Spot struct {

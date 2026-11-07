@@ -2,7 +2,7 @@ package ports
 
 import (
 	"ITK_Code/m/v2/internal/core/dto"
-	"ITK_Code/m/v2/internal/core/order/models"
+	"ITK_Code/m/v2/internal/core/models"
 	"context"
 	"time"
 )
@@ -11,7 +11,6 @@ type OrderRepository interface {
 	Save(context.Context, models.CreateOrder, time.Time) (string, error)
 	Get(context.Context, string, string) (dto.Order, error)
 	List(context.Context, models.ListOrdersRequest) ([]dto.Order, string, bool, error)
-	ListenOrderUpdates(ctx context.Context, orderID string) (<-chan models.OrderNotification, error)
 }
 
 type SpotClient interface {

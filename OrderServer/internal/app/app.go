@@ -1,6 +1,7 @@
 package app
 
 import (
+	"ITK_Code/m/v2/internal/workers/outbox"
 	"context"
 	"errors"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"github.com/Samurosa/exchange-common/shared/auth/jwt"
 	sharedredis "github.com/Samurosa/exchange-common/shared/redis"
 	"github.com/Samurosa/exchange-common/shared/telemetry"
-
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -32,6 +32,12 @@ type App struct {
 	spotConn   *grpc.ClientConn
 	grpcApp    *infrastructure.GRPCApp
 	shutDowner fx.Shutdowner
+
+	kafka        *outbox.Kafka
+	outboxWorker *outbox.Worker
+
+	workerCancel context.CancelFunc
+	workerDone   chan struct{}
 }
 
 func Run(configPath string, logger *zap.Logger) error {
@@ -105,9 +111,10 @@ func registerLifecycle(
 		OnStart: func(ctx context.Context) error {
 			if err := application.Start(ctx); err != nil {
 				cleanupErr := application.closeResources()
-
 				return errors.Join(err, cleanupErr)
 			}
+
+			application.startOutboxWorker()
 
 			return nil
 		},
@@ -185,6 +192,22 @@ func New(
 			err,
 		)
 	}
+
+	outboxStorage := postgres.NewOutboxStorage(
+		storagePostgres.GetPool(),
+	)
+
+	producer, err := outbox.NewClient(cfg.Kafka)
+	if err != nil {
+		return nil, fmt.Errorf("initialize kafka producer: %w", err)
+	}
+
+	orderApp.kafka = producer
+	orderApp.outboxWorker = outbox.NewWorker(
+		outboxStorage,
+		producer,
+		log,
+	)
 
 	orderApp.sessions = sessionValidator.NewStorage(
 		redisClient,
@@ -270,10 +293,15 @@ func (a *App) Start(ctx context.Context) error {
 func (a *App) Stop(ctx context.Context) error {
 	a.logger.Info("order server stopping")
 
-	var grpcErr error
+	workerErr := a.stopOutboxWorker(ctx)
 
+	var grpcErr error
 	if a.grpcApp != nil {
 		grpcErr = a.grpcApp.Stop(ctx)
+	}
+
+	if workerErr != nil {
+		return errors.Join(workerErr, grpcErr)
 	}
 
 	cleanupErr := a.closeResources()
@@ -285,6 +313,11 @@ func (a *App) Stop(ctx context.Context) error {
 
 func (a *App) closeResources() error {
 	var errs []error
+
+	if a.kafka != nil {
+		a.kafka.Close()
+		a.logger.Info("kafka producer closed")
+	}
 
 	if a.spotConn != nil {
 		if err := a.spotConn.Close(); err != nil {
@@ -318,4 +351,38 @@ func (a *App) closeResources() error {
 	}
 
 	return errors.Join(errs...)
+}
+
+func (a *App) startOutboxWorker() {
+	if a.outboxWorker == nil || a.workerCancel != nil {
+		return
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	a.workerCancel = cancel
+	a.workerDone = make(chan struct{})
+
+	go func() {
+		defer close(a.workerDone)
+
+		a.logger.Info("outbox worker started")
+		a.outboxWorker.Run(ctx)
+		a.logger.Info("outbox worker stopped")
+	}()
+}
+
+func (a *App) stopOutboxWorker(ctx context.Context) error {
+	if a.workerCancel == nil {
+		return nil
+	}
+
+	a.workerCancel()
+
+	select {
+	case <-a.workerDone:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("stop outbox worker: %w", ctx.Err())
+	}
 }

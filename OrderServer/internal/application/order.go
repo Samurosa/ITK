@@ -5,7 +5,7 @@ import (
 	"ITK_Code/m/v2/internal/application/validate"
 	"ITK_Code/m/v2/internal/core/dto"
 	coreErorrs "ITK_Code/m/v2/internal/core/errorcore"
-	"ITK_Code/m/v2/internal/core/order/models"
+	"ITK_Code/m/v2/internal/core/models"
 	"context"
 	"errors"
 	"fmt"
@@ -48,13 +48,13 @@ func (o *OrderService) Create(ctx context.Context,
 	}()
 
 	log := logging.FromContext(ctx).Named("order.create").With(
-		zap.String("user_id", createOrder.UserId),
-		zap.String("spot_id", createOrder.SpotId),
+		zap.String("user_id", createOrder.UserID),
+		zap.String("spot_id", createOrder.SpotID),
 	)
 
 	now := time.Now()
 
-	spot, err := o.spotClient.GetSpot(ctx, createOrder.SpotId)
+	spot, err := o.spotClient.GetSpot(ctx, createOrder.SpotID)
 	if err != nil {
 		logFailure(log, "spot lookup failed", err)
 		return "", "", time.Time{}, err
@@ -120,15 +120,15 @@ func (o *OrderService) Create(ctx context.Context,
 	return orderID, dto.StatusNew, now, nil
 }
 
-func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Order, error) {
+func (o *OrderService) Get(ctx context.Context, orderID, UserID string) (dto.Order, error) {
 	ctx, span := orderTracer.Start(ctx, "Order.Get")
 	defer span.End()
 
-	log := logging.FromContext(ctx).Named("order.get").With(zap.String("order_id", orderID), zap.String("user_id", userID))
+	log := logging.FromContext(ctx).Named("order.get").With(zap.String("order_id", orderID), zap.String("user_id", UserID))
 
 	order, err := o.repository.Get(
 		ctx,
-		orderID, userID,
+		orderID, UserID,
 	)
 	if err != nil {
 		recordSpanError(span, err)
@@ -140,129 +140,8 @@ func (o *OrderService) Get(ctx context.Context, orderID, userID string) (dto.Ord
 	return order, nil
 }
 
-func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, userID string) (<-chan models.OrderUpdateResult, error) {
-	ctx, span := orderTracer.Start(ctx, "Order.SubscribeOrderUpdates")
-	log := logging.FromContext(ctx).Named("order.subscribe").With(zap.String("order_id", orderID), zap.String("user_id", userID))
-
-	listenCtx, cancel := context.WithCancel(ctx)
-
-	notifications, err := o.repository.ListenOrderUpdates(listenCtx, orderID)
-	if err != nil {
-		cancel()
-		recordSpanError(span, err)
-		span.End()
-		logFailure(log, "order listener initialization failed", err)
-		return nil, err
-	}
-
-	initial, err := o.repository.Get(listenCtx, orderID, userID)
-	if err != nil {
-		cancel()
-		recordSpanError(span, err)
-		span.End()
-		logFailure(log, "initial order lookup failed", err)
-		return nil, err
-	}
-
-	updates := make(chan models.OrderUpdateResult, 1)
-
-	updates <- models.OrderUpdateResult{
-		Update: orderUpdate(initial),
-	}
-
-	log.Debug("order subscription started")
-
-	go func(last dto.Order) {
-		defer span.End()
-		defer cancel()
-		defer close(updates)
-		defer log.Debug("order subscription stopped")
-
-		for {
-			select {
-			case <-listenCtx.Done():
-				return
-
-			case notification, ok := <-notifications:
-				if !ok {
-					if listenCtx.Err() == nil {
-						err := coreErorrs.ErrOrderListenerClosed
-						recordSpanError(span, err)
-						logFailure(
-							log,
-							"order listener closed",
-							err,
-						)
-
-						select {
-						case updates <- models.OrderUpdateResult{
-							Err: err,
-						}:
-						case <-listenCtx.Done():
-						}
-					}
-
-					return
-				}
-
-				if notification.Err != nil {
-					recordSpanError(span, notification.Err)
-
-					logFailure(
-						log,
-						"order listener failed",
-						notification.Err,
-					)
-
-					select {
-					case updates <- models.OrderUpdateResult{
-						Err: notification.Err,
-					}:
-					case <-listenCtx.Done():
-					}
-
-					return
-				}
-
-				current, err := o.repository.Get(listenCtx, orderID, userID)
-				if err != nil {
-					recordSpanError(span, err)
-					logFailure(
-						log,
-						"order update lookup failed",
-						err,
-					)
-
-					select {
-					case updates <- models.OrderUpdateResult{
-						Err: err,
-					}:
-					case <-listenCtx.Done():
-					}
-
-					return
-				}
-
-				if current.UpdatedAt.Equal(last.UpdatedAt) &&
-					current.FilledQuantity == last.FilledQuantity &&
-					current.OrderStatus == last.OrderStatus {
-					continue
-				}
-
-				select {
-				case updates <- models.OrderUpdateResult{
-					Update: orderUpdate(current),
-				}:
-					last = current
-
-				case <-listenCtx.Done():
-					return
-				}
-			}
-		}
-	}(initial)
-
-	return updates, nil
+func (o *OrderService) SubscribeOrderUpdates(ctx context.Context, orderID, UserID string) (<-chan models.OrderUpdateResult, error) {
+	return nil, nil
 }
 
 func orderUpdate(order dto.Order) dto.UpdateOrder {
